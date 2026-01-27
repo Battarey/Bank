@@ -1,0 +1,89 @@
+version: "3.9"
+
+services:
+  gateway_service:
+    build: ./gateway_service
+    env_file: ./gateway_service/.env
+    depends_on:
+      - auth_service
+      - bank_account_service
+      - bd_service
+      - currency_service
+      - log_service
+      - metal_service
+      - notification_service
+      - transaction_service
+
+  auth_service:
+    build: ./auth_service
+    env_file: ./auth_service/.env
+    depends_on:
+      - postgres
+
+  bank_account_service:
+    build: ./bank_account_service
+    env_file: ./bank_account_service/.env
+    depends_on:
+      - postgres
+
+  bd_service:
+    build: ./bd_service
+    env_file: ./bd_service/.env
+    depends_on:
+      - postgres
+
+  currency_service:
+    build: ./currency_service
+    env_file: ./currency_service/.env
+    depends_on:
+      - postgres
+
+  log_service:
+    build: ./log_service
+    env_file: ./log_service/.env
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  metal_service:
+    build: ./metal_service
+    env_file: ./metal_service/.env
+    depends_on:
+      - postgres
+
+  notification_service:
+    build: ./notification_service
+    env_file: ./notification_service/.env 
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  transaction_service:
+    build: ./transaction_service
+    env_file: ./transaction_service/.env
+    depends_on:
+      - postgres
+
+##########  Внешние инструменты  ##########
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ...
+      POSTGRES_USER: ...
+      POSTGRES_PASSWORD: ...
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  pg_data:

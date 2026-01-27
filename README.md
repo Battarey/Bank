@@ -2,10 +2,11 @@
 
 ## Стек
  - Python: FastAPI, asyncio, Pytest, sqlalchemy
- - БД:
+ - БД: PostgreSQL
  - RabbitMQ
 
 ## Файловая архитектура
+```
 bank
 ├── auth_service/                # Сервис для авторизации/регистрации/деавторизации
 ├── bank_account_service/        # Сервис для работы с счетами пользователя
@@ -20,3 +21,12 @@ bank
 ├── .gitignore
 ├── docker-compose.yaml
 └── README.md
+```
+
+## TODO: 
+ - Прописать значения для БД в docker-compose
+ - Добавить описание каждому полю в tables и описание самой таблицы
+ - Реализация Alembic для БД
+ 
+
+
