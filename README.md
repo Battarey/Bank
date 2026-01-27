@@ -1,8 +1,8 @@
 # Backend для банковского приложения 
 
 ## Стек
- - Python: FastAPI, asyncio, Pytest, sqlalchemy
- - БД: PostgreSQL
+ - Python: FastAPI, asyncio, Pytest, sqlalchemy, httpx
+ - БД: PostgreSQL, CkickHouse, Redis, MongoDB
  - RabbitMQ
 
 ## Файловая архитектура
