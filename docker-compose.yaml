@@ -18,56 +18,75 @@ services:
     build: ./auth_service
     env_file: ./auth_service/.env
     depends_on:
-      - postgres_core
-      - redis
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
 
   bank_account_service:
     build: ./bank_account_service
     env_file: ./bank_account_service/.env
     depends_on:
-      - postgres_core
+      migrations:
+        condition: service_completed_successfully
 
   bd_service:
     build: ./bd_service
     env_file: ./bd_service/.env
     depends_on:
-      - postgres_core
+      migrations:
+        condition: service_completed_successfully
+
+  migrations:
+    build: ./bd_service
+    env_file: ./bd_service/.env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres_core:
+        condition: service_healthy
+    restart: "no"
 
   currency_service:
     build: ./currency_service
     env_file: ./currency_service/.env
     depends_on:
-      - postgres_core
+      migrations:
+        condition: service_completed_successfully
 
   log_service:
     build: ./log_service
     env_file: ./log_service/.env
     depends_on:
-      - postgres_core
-      - rabbitmq
+      migrations:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
 
   metal_service:
     build: ./metal_service
     env_file: ./metal_service/.env
     depends_on:
-      - postgres_core
+      migrations:
+        condition: service_completed_successfully
 
   notification_service:
     build: ./notification_service
     env_file: ./notification_service/.env 
     depends_on:
-      - postgres_core
-      - rabbitmq
-      - mongodb
+      migrations:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
 
   transaction_service:
     build: ./transaction_service
     env_file: ./transaction_service/.env
     depends_on:
-      - postgres_core
+      migrations:
+        condition: service_completed_successfully
 
 
-##########  Внешние инструменты  ##########
+##########  Внешние инструменты (БД и Брокер) ##########
 
   postgres_core:
     image: postgres:17
@@ -82,6 +101,11 @@ services:
       - pg_core_data:/var/lib/postgresql/data
     ports: 
       - "${POSTGRES_CORE_HOST_PORT}:${POSTGRES_CORE_CONTAINER_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CORE_USER} -d ${POSTGRES_CORE_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 
   rabbitmq:
