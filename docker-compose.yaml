@@ -19,7 +19,6 @@ services:
     env_file: ./auth_service/.env
     depends_on:
       - postgres_core
-      - postgres_history
       - redis
 
   bank_account_service:
@@ -27,21 +26,18 @@ services:
     env_file: ./bank_account_service/.env
     depends_on:
       - postgres_core
-      - postgres_history
 
   bd_service:
     build: ./bd_service
     env_file: ./bd_service/.env
     depends_on:
       - postgres_core
-      - postgres_history
 
   currency_service:
     build: ./currency_service
     env_file: ./currency_service/.env
     depends_on:
       - postgres_core
-      - postgres_history
 
   log_service:
     build: ./log_service
@@ -49,14 +45,12 @@ services:
     depends_on:
       - postgres_core
       - rabbitmq
-      - clickhouse
 
   metal_service:
     build: ./metal_service
     env_file: ./metal_service/.env
     depends_on:
       - postgres_core
-      - postgres_history
 
   notification_service:
     build: ./notification_service
@@ -71,7 +65,6 @@ services:
     env_file: ./transaction_service/.env
     depends_on:
       - postgres_core
-      - postgres_history
 
 
 ##########  Внешние инструменты  ##########
@@ -80,7 +73,7 @@ services:
     image: postgres:17
     restart: unless-stopped
     env_file:
-      - ./infra.env
+      - /.env
     environment:
       POSTGRES_DB: ${POSTGRES_CORE_DB}
       POSTGRES_USER: ${POSTGRES_CORE_USER}
@@ -90,70 +83,33 @@ services:
     ports: 
       - "${POSTGRES_CORE_HOST_PORT}:${POSTGRES_CORE_CONTAINER_PORT}"
 
-  postgres_history:
-    image: postgres:17
-    restart: unless-stopped
-    env_file:
-      - ./infra.env
-    environment:
-      POSTGRES_DB: ${POSTGRES_HISTORY_DB}
-      POSTGRES_USER: ${POSTGRES_HISTORY_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_HISTORY_PASSWORD}
-    volumes:
-      - pg_history_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_HISTORY_HOST_PORT}:${POSTGRES_HISTORY_CONTAINER_PORT}"
 
   rabbitmq:
     image: rabbitmq:3.13-management
     restart: unless-stopped
+    env_file:
+      - /.env
     ports:
       - "${RABBITMQ_HOST_PORT}:${RABBITMQ_CONTAINER_PORT}"
       - "${RABBITMQ_WEB_HOST_PORT}:${RABBITMQ_WEB_CONTAINER_PORT}"
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:24
-    restart: unless-stopped
-    env_file:
-      - ./infra.env
-    environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
-    ports:
-      - "${CLICKHOUSE_HOST_PORT}:${CLICKHOUSE_CONTAINER_PORT}"
-      - "${CLICKHOUSE_TCP_HOST_PORT}:${CLICKHOUSE_TCP_CONTAINER_PORT}"
-    volumes:
-      - ch_data:/var/lib/clickhouse
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     env_file:
-      - ./infra.env
+      - /.env
     ports:
       - "${REDIS_HOST_PORT}:${REDIS_CONTAINER_PORT}"
     volumes:
       - redis_data:/data
 
-  mongodb:
-    image: mongo:7
-    restart: unless-stopped
-    env_file:
-      - ./infra.env
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DB}
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-    ports:
-      - "${MONGO_HOST_PORT}:${MONGO_CONTAINER_PORT}"
-    volumes:
-      - mongo_data:/data/db
+
 
 volumes:
   pg_core_data:
-  pg_history_data:
-  ch_data:
+  # pg_history_data:
+  # ch_data:
   redis_data:
-  mongo_data:
+  # mongo_data:
