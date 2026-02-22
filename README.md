@@ -2,20 +2,22 @@
 
 ## Стек
  - Python: FastAPI, asyncio, Pytest, sqlalchemy, httpx
- - БД: PostgreSQL, CkickHouse, Redis, MongoDB
+ - БД: PostgreSQL, Redis
  - RabbitMQ
 
 ## Файловая архитектура
 ```
 bank
+├── account_service/             # Сервис для работы с банковскими счетами
 ├── auth_service/                # Сервис для авторизации/регистрации/деавторизации
-├── bank_account_service/        # Сервис для работы с счетами пользователя
-├── bd_service/                  # Сервис для работы с БД
 ├── currency_service/            # Сервис для работы с иностранными валютами
-├── gateway_service/
+├── customer_service/            # Сервис для работы с данными клиента (ФИО, паспорт, контакты)
+├── gateway_service/             # API Gateway - единая точка входа
 ├── log_service/                 # Сервис для логирования
 ├── metal_service/               # Сервис для работы с драг.металлами
+├── migrations/                  # Alembic миграции для БД
 ├── notification_service/        # Сервис для уведомлений
+├── shared/                      # Пакет с общей логикой (модели, схемы, подключения)
 ├── transaction_service/         # Сервис для транзакций
 ├── .dockerignore
 ├── .gitignore
@@ -27,7 +29,8 @@ bank
  - Добавить описание каждому полю в tables и описание самой таблицы
  - Сформировать ER-диаграмму
  - Добавить необходимые таблицы и поля
- - Реализация Alembic для БД
  - Функционал верификации email
  - Функционал логирования
  - Функционал уведомлений
+ - Функционал повторного ввода уже пройденного шага в создании аккаунта 
+ - Доделать customer_service + покрыть тестами
