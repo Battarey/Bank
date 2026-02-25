@@ -29,4 +29,14 @@ class PersonalDataResponse(PersonalDataPayload):
 
 	model_config = ConfigDict(from_attributes=True)
 
-__all__ = ["PersonalDataPayload", "PersonalDataResponse"]
+
+class PersonalDataUpdate(BaseModel):
+	"""Частичное обновление ФИО. birth_date и gender неизменяемы."""
+	last_name: NameStr | None = None
+	first_name: NameStr | None = None
+	middle_name: NameStr | None = None
+
+	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+__all__ = ["PersonalDataPayload", "PersonalDataResponse", "PersonalDataUpdate"]

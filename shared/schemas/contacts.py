@@ -12,4 +12,13 @@ class ContactsResponse(ContactsPayload):
 
 	model_config = ConfigDict(from_attributes=True)
 
-__all__ = ["ContactsPayload", "ContactsResponse"]
+
+class ContactsUpdate(BaseModel):
+	"""Частичное обновление контактов — email и/или phone."""
+	email: EmailStr | None = None
+	phone: constr(pattern=r"^\+\d{10,15}$") | None = None
+
+	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+__all__ = ["ContactsPayload", "ContactsResponse", "ContactsUpdate"]

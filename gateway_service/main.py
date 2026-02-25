@@ -1,30 +1,16 @@
 import os
 from contextlib import asynccontextmanager
+
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from shared.redis_sessions import dependencies as session_deps, client as redis_client
-from .routes.customer import router as customer_router
+from shared.redis_sessions import client as redis_client
+
+from .middleware import auth_middleware
+from .routes.customer import onboarding_router, update_router
 
 CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL")
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS")
-
-# Эндпоинты, не требующие авторизации
-PUBLIC_PATHS: set[str] = {
-	"/",
-	"/health",
-	"/docs",
-	"/openapi.json",
-	"/redoc",
-	"/favicon.ico",
-}
-
-# Префиксы путей, не требующих авторизации (онбординг и т.д.)
-PUBLIC_PREFIXES: tuple[str, ...] = (
-	"/users/start",
-	"/users/",  # все /users/{id}/account/* — онбординг до авторизации
-)
 
 
 @asynccontextmanager
@@ -45,26 +31,7 @@ app.add_middleware(
 	allow_headers=["*"],
 )
 
-
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-	"""Проверяет X-Session-Token, извлекает user_id и кладёт его в state."""
-
-	# Пропускаем публичные эндпоинты и preflight-запросы
-	path = request.url.path
-	if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES) or request.method == "OPTIONS":
-		return await call_next(request)
-
-	token = request.headers.get("X-Session-Token")
-	try:
-		session_data = await session_deps.authenticate_token(token)
-	except HTTPException as exc:
-		return JSONResponse(
-			status_code=exc.status_code,
-			content={"detail": exc.detail},
-		)
-	request.state.user_id = session_data["user_id"]
-	return await call_next(request)
+app.middleware("http")(auth_middleware)
 
 
 @app.get("/health", tags=["health"])
@@ -72,4 +39,5 @@ async def health_check() -> dict[str, str]:
 	return {"status": "ok"}
 
 
-app.include_router(customer_router)
+app.include_router(onboarding_router)
+app.include_router(update_router)
