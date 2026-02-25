@@ -1,7 +1,7 @@
-from __future__ import annotations
-
-from fastapi import FastAPI
-
+from contextlib import asynccontextmanager
+from fastapi import Depends, FastAPI
+from shared.redis_onboarding import client as redis_onboarding_client
+from shared.internal_auth import verify_internal_key
 from .create_account.router import (
 	router as create_account_router,
 	start_router as create_account_start_router,
@@ -9,13 +9,23 @@ from .create_account.router import (
 from .delete_account.router import router as delete_account_router
 from .update_user_data.router import router as update_user_data_router
 
-app = FastAPI(title="Customer Service", version="0.1.0")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	yield
+	await redis_onboarding_client.close_client()
+
+
+app = FastAPI(
+	title="Customer Service",
+	version="0.1.0",
+	lifespan=lifespan,
+	dependencies=[Depends(verify_internal_key)],
+)
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
 	return {"status": "ok"}
-
 
 app.include_router(create_account_start_router)
 app.include_router(create_account_router)

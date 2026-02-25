@@ -1,6 +1,6 @@
 from datetime import date
 from uuid import UUID
-from sqlalchemy import Date, Text, String
+from sqlalchemy import Date, ForeignKey, Text, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
@@ -10,7 +10,12 @@ class Passport(Base):
 
 	__tablename__ = "passport"
 
-	client_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, nullable=False)
+	client_id: Mapped[UUID] = mapped_column(
+		PGUUID(as_uuid=True),
+		ForeignKey("users.id", ondelete="CASCADE"),
+		primary_key=True,
+		nullable=False,
+	)
 	series: Mapped[str] = mapped_column(String(4), nullable=False)
 	number: Mapped[str] = mapped_column(String(6), nullable=False)
 	division_code: Mapped[str] = mapped_column(String(7), nullable=False)

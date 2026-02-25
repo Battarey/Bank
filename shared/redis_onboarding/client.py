@@ -5,7 +5,14 @@ from typing import Final
 from redis.asyncio import Redis
 
 
-REDIS_ONBOARDING_URL: Final[str] = os.getenv("REDIS_ONBOARDING_URL")
+REDIS_ONBOARDING_URL: Final[str] = os.getenv("REDIS_ONBOARDING_URL", "")
+
+if not REDIS_ONBOARDING_URL:
+	import warnings
+	warnings.warn(
+		"REDIS_ONBOARDING_URL is not set. Redis onboarding client will fail at runtime.",
+		stacklevel=2,
+	)
 
 _client: Redis | None = None
 

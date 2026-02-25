@@ -1,21 +1,23 @@
 import os
 from contextlib import asynccontextmanager
-from uuid import UUID
 import httpx
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from shared import schemas
+from fastapi.responses import JSONResponse
 from shared.redis_sessions import dependencies as session_deps, client as redis_client
+from .routes.customer import router as customer_router
 
 CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL")
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS")
 
 # Эндпоинты, не требующие авторизации
 PUBLIC_PATHS: set[str] = {
+	"/",
 	"/health",
 	"/docs",
 	"/openapi.json",
 	"/redoc",
+	"/favicon.ico",
 }
 
 # Префиксы путей, не требующих авторизации (онбординг и т.д.)
@@ -54,7 +56,13 @@ async def auth_middleware(request: Request, call_next):
 		return await call_next(request)
 
 	token = request.headers.get("X-Session-Token")
-	session_data = await session_deps.authenticate_token(token)
+	try:
+		session_data = await session_deps.authenticate_token(token)
+	except HTTPException as exc:
+		return JSONResponse(
+			status_code=exc.status_code,
+			content={"detail": exc.detail},
+		)
 	request.state.user_id = session_data["user_id"]
 	return await call_next(request)
 
@@ -64,139 +72,4 @@ async def health_check() -> dict[str, str]:
 	return {"status": "ok"}
 
 
-async def _forward_request(
-	request: Request,
-	method: str,
-	path: str,
-	payload: dict | None = None,
-) -> dict:
-	client: httpx.AsyncClient = request.app.state.http_client
-
-	# Передаём user_id из сессии во внутренний сервис через заголовок
-	headers = {}
-	user_id = getattr(request.state, "user_id", None)
-	if user_id:
-		headers["X-User-ID"] = str(user_id)
-
-	response = await client.request(
-		method=method,
-		url=path,
-		json=payload,
-		headers=headers,
-	)
-	if response.status_code >= 400:
-		try:
-			detail = response.json()
-		except ValueError:  # non-json error
-			detail = response.text or "Upstream service error"
-		raise HTTPException(status_code=response.status_code, detail=detail)
-	if response.headers.get("content-type", "").startswith("application/json"):
-		return response.json()
-	return {}
-
-
-@app.post(
-	"/users/start",
-	response_model=schemas.StartOnboardingResponse,
-	status_code=status.HTTP_201_CREATED,
-)
-async def start_onboarding(request: Request):
-	data = await _forward_request(
-		request,
-		"POST",
-		"/users/start",
-	)
-	return schemas.StartOnboardingResponse.model_validate(data)
-
-
-@app.post(
-	"/users/{user_id}/account/personal-data",
-	response_model=schemas.PersonalDataResponse,
-	status_code=status.HTTP_201_CREATED,
-)
-async def submit_personal_data(
-	user_id: UUID,
-	payload: schemas.PersonalDataPayload,
-	request: Request,
-):
-	data = await _forward_request(
-		request,
-		"POST",
-		f"/users/{user_id}/account/personal-data",
-		payload.model_dump(mode="json"),
-	)
-	return schemas.PersonalDataResponse.model_validate(data)
-
-
-@app.post(
-	"/users/{user_id}/account/passport",
-	response_model=schemas.PassportResponse,
-	status_code=status.HTTP_201_CREATED,
-)
-async def submit_passport_data(
-	user_id: UUID,
-	payload: schemas.PassportPayload,
-	request: Request,
-):
-	data = await _forward_request(
-		request,
-		"POST",
-		f"/users/{user_id}/account/passport",
-		payload.model_dump(mode="json"),
-	)
-	return schemas.PassportResponse.model_validate(data)
-
-
-@app.post(
-	"/users/{user_id}/account/identifiers",
-	response_model=schemas.IdentifiersResponse,
-	status_code=status.HTTP_201_CREATED,
-)
-async def submit_identifiers(
-	user_id: UUID,
-	payload: schemas.IdentifiersPayload,
-	request: Request,
-):
-	data = await _forward_request(
-		request,
-		"POST",
-		f"/users/{user_id}/account/identifiers",
-		payload.model_dump(mode="json"),
-	)
-	return schemas.IdentifiersResponse.model_validate(data)
-
-
-@app.post(
-	"/users/{user_id}/account/contacts",
-	response_model=schemas.ContactsResponse,
-	status_code=status.HTTP_201_CREATED,
-)
-async def submit_contacts(
-	user_id: UUID,
-	payload: schemas.ContactsPayload,
-	request: Request,
-):
-	data = await _forward_request(
-		request,
-		"POST",
-		f"/users/{user_id}/account/contacts",
-		payload.model_dump(mode="json"),
-	)
-	return schemas.ContactsResponse.model_validate(data)
-
-
-@app.post(
-	"/users/{user_id}/account/finalize",
-	response_model=schemas.FinalizeResponse,
-	status_code=status.HTTP_200_OK,
-)
-async def finalize_onboarding(
-	user_id: UUID,
-	request: Request,
-):
-	data = await _forward_request(
-		request,
-		"POST",
-		f"/users/{user_id}/account/finalize",
-	)
-	return schemas.FinalizeResponse.model_validate(data)
+app.include_router(customer_router)

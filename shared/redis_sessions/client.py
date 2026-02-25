@@ -4,7 +4,14 @@ import os
 from typing import Final
 from redis.asyncio import Redis
 
-REDIS_SESSIONS_URL: Final[str] = os.getenv("REDIS_SESSIONS_URL")
+REDIS_SESSIONS_URL: Final[str] = os.getenv("REDIS_SESSIONS_URL", "")
+
+if not REDIS_SESSIONS_URL:
+	import warnings
+	warnings.warn(
+		"REDIS_SESSIONS_URL is not set. Redis sessions client will fail at runtime.",
+		stacklevel=2,
+	)
 
 _client: Redis | None = None
 

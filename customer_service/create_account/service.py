@@ -4,6 +4,7 @@ from typing import Awaitable, Callable, Dict
 from uuid import UUID, uuid4
 from pydantic import BaseModel
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared import models, schemas
 from shared.redis_onboarding import drafts as onboarding_drafts
@@ -85,8 +86,8 @@ def _normalize_personal_payload(payload: schemas.PersonalDataPayload) -> schemas
 
 	return payload.model_copy(
 		update={
-			"last_name": _normalize_name(payload.last_name) or payload.last_name,
-			"first_name": _normalize_name(payload.first_name) or payload.first_name,
+			"last_name": _normalize_name(payload.last_name),
+			"first_name": _normalize_name(payload.first_name),
 			"middle_name": _normalize_name(payload.middle_name),
 		},
 	)
@@ -170,7 +171,7 @@ async def _ensure_passport_unique(
 
 async def _ensure_identifiers_unique(
 	session: AsyncSession,
-	_: UUID,
+	user_id: UUID,
 	payload: schemas.IdentifiersPayload,
 ) -> None:
 	"""Проверяет уникальность ИНН/СНИЛС."""
@@ -182,13 +183,13 @@ async def _ensure_identifiers_unique(
 			)
 		)
 	)
-	if duplicate:
+	if duplicate and duplicate.client_id != user_id:
 		raise AccountDataConflict("Provided INN or SNILS already belongs to another client.")
 
 
 async def _ensure_contacts_unique(
 	session: AsyncSession,
-	_: UUID,
+	user_id: UUID,
 	payload: schemas.ContactsPayload,
 ) -> None:
 	"""Проверяет, что email/phone ещё не заняты."""
@@ -200,7 +201,7 @@ async def _ensure_contacts_unique(
 			)
 		)
 	)
-	if duplicate:
+	if duplicate and duplicate.client_id != user_id:
 		raise AccountDataConflict("Provided email or phone already belongs to another client.")
 
 
@@ -289,6 +290,13 @@ async def start_onboarding(session: AsyncSession) -> UUID:
 	raise AccountDataError("Не удалось создать нового пользователя для онбординга.")
 
 
+async def _ensure_user_exists(session: AsyncSession, user_id: UUID) -> None:
+	"""Проверяет, что пользователь с данным ID создан через start_onboarding."""
+	user = await session.get(models.User, user_id)
+	if user is None:
+		raise AccountDataError(f"Пользователь {user_id} не найден. Сначала вызовите /users/start.")
+
+
 async def _store_step(
 	session: AsyncSession,
 	user_id: UUID,
@@ -297,6 +305,7 @@ async def _store_step(
 ) -> BaseModel:
 	"""Проводит общий пайплайн шага: проверки → нормализация → сохранение черновика."""
 
+	await _ensure_user_exists(session, user_id)
 	await definition.ensure_no_record(session, user_id)
 	await _ensure_no_draft(user_id, definition.step, definition.conflict_message)
 	normalized_payload = definition.normalize(payload)
@@ -374,16 +383,36 @@ async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
 	"""Переносит все черновики из Redis в PostgreSQL и очищает их."""
 
 	draft_payloads: Dict[onboarding_drafts.StepName, BaseModel] = {}
+	missing_steps: list[str] = []
 	for definition in STEP_SEQUENCE:
 		record = await onboarding_drafts.load_draft(user_id, definition.step)
 		if record is None or not record.get("payload"):
-			raise AccountDataError(f"Черновик шага '{definition.step}' не найден.")
-		draft_payloads[definition.step] = definition.payload_model.model_validate(record["payload"])
+			missing_steps.append(definition.step)
+		else:
+			draft_payloads[definition.step] = definition.payload_model.model_validate(record["payload"])
+
+	if missing_steps:
+		raise AccountDataError(
+			f"Не заполнены или истекли черновики шагов: {', '.join(missing_steps)}. "
+			"Заполните их заново перед финализацией."
+		)
 
 	try:
 		for definition in STEP_SEQUENCE:
 			await _persist_step(session, user_id, draft_payloads[definition.step], definition)
+
+		user = await session.get(models.User, user_id)
+		if user:
+			user.status = "active"
+			user.is_verified = True
+			user.updated_at = datetime.now(UTC)
+
 		await session.commit()
+	except IntegrityError as exc:
+		await session.rollback()
+		raise AccountDataConflict(
+			"Данные конфликтуют с уже существующими записями (дубликат уникального поля)."
+		) from exc
 	except Exception:
 		await session.rollback()
 		raise
