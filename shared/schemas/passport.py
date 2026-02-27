@@ -1,15 +1,17 @@
 from datetime import date
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, constr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, constr, model_validator
 
 class PassportPayload(BaseModel):
-	series: constr(pattern=r"^\d{4}$")
-	number: constr(pattern=r"^\d{6}$")
-	division_code: constr(pattern=r"^\d{3}-\d{3}$")
-	issued_by: constr(min_length=3, max_length=255)
-	issued_at: date
-	expiration_date: date
-	registration_address: constr(min_length=3, max_length=255)
+	"""Паспортные данные клиента."""
+
+	series: constr(pattern=r"^\d{4}$") = Field(description="Серия паспорта (4 цифры)")
+	number: constr(pattern=r"^\d{6}$") = Field(description="Номер паспорта (6 цифр)")
+	division_code: constr(pattern=r"^\d{3}-\d{3}$") = Field(description="Код подразделения (формат: 000-000)")
+	issued_by: constr(min_length=3, max_length=255) = Field(description="Кем выдан")
+	issued_at: date = Field(description="Дата выдачи (YYYY-MM-DD)")
+	expiration_date: date = Field(description="Срок действия (YYYY-MM-DD), должен быть позже issued_at")
+	registration_address: constr(min_length=3, max_length=255) = Field(description="Адрес регистрации")
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -20,7 +22,9 @@ class PassportPayload(BaseModel):
 		return self
 
 class PassportResponse(PassportPayload):
-	client_id: UUID
+	"""Паспортные данные клиента (ответ)."""
+
+	client_id: UUID = Field(description="UUID клиента")
 
 	model_config = ConfigDict(from_attributes=True)
 

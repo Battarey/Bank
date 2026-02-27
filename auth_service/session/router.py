@@ -23,7 +23,7 @@ def _raise(exc: service.SessionError) -> None:
 
 # ── Эндпоинты ──────────────────────────────────────────────────────────
 
-@router.post("/set-pin", response_model=MessageResponse)
+@router.post("/set-pin", response_model=MessageResponse, summary="Установить / сменить PIN")
 async def set_pin(
 	body: SetPinRequest,
 	user_id: UUID = Depends(require_user_id),
@@ -37,7 +37,7 @@ async def set_pin(
 	return MessageResponse(message="PIN-код успешно установлен.")
 
 
-@router.post("/logout", response_model=MessageResponse)
+@router.post("/logout", response_model=MessageResponse, summary="Выход")
 async def logout(
 	x_session_token: str = Header(..., alias="X-Session-Token"),
 ):
@@ -46,7 +46,7 @@ async def logout(
 	return MessageResponse(message="Сеанс завершён.")
 
 
-@router.post("/logout-all", response_model=MessageResponse)
+@router.post("/logout-all", response_model=MessageResponse, summary="Выход со всех устройств")
 async def logout_all(
 	user_id: UUID = Depends(require_user_id),
 ):

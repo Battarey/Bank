@@ -3,28 +3,32 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StartInternalResponse(BaseModel):
-	"""Внутренний ответ customer_service (содержит user_id)."""
-	user_id: UUID
-	status: Literal["pending"]
+	"""Внутренний ответ customer_service на начало онбординга."""
+
+	user_id: UUID = Field(description="UUID созданного пользователя")
+	status: Literal["pending"] = Field(description="Статус онбординга")
 
 
 class StartOnboardingResponse(BaseModel):
-	"""Ответ gateway (содержит onboarding-токен)."""
-	onboarding_token: str
-	status: Literal["pending"]
+	"""Ответ на начало регистрации — содержит onboarding-токен для прохождения шагов."""
+
+	onboarding_token: str = Field(description="Токен для прохождения шагов регистрации (TTL 30 мин)")
+	status: Literal["pending"] = Field(description="Статус онбординга")
 
 
 class FinalizeInternalResponse(BaseModel):
 	"""Внутренний ответ customer_service на завершение онбординга."""
-	status: Literal["completed"]
-	message: str
+
+	status: Literal["completed"] = Field(description="Статус онбординга")
+	message: str = Field(description="Сообщение о результате")
 
 
 class FinalizeResponse(FinalizeInternalResponse):
-	"""Ответ gateway на завершение онбординга (включает сессионный токен)."""
-	session_token: str
-	user_id: UUID
+	"""Ответ на завершение регистрации — включает сессионный токен для дальнейшей работы."""
+
+	session_token: str = Field(description="Сессионный токен (TTL 30 мин)")
+	user_id: UUID = Field(description="UUID пользователя")

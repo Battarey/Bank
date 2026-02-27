@@ -6,11 +6,13 @@ from pydantic import BaseModel, ConfigDict, Field, constr, field_validator
 NameStr = constr(strip_whitespace=True, min_length=1, max_length=100)
 
 class PersonalDataPayload(BaseModel):
-	last_name: NameStr
-	first_name: NameStr
-	middle_name: NameStr | None = Field(default=None)
-	birth_date: date
-	gender: Literal["M", "F"]
+	"""Персональные данные клиента: ФИО, дата рождения, пол."""
+
+	last_name: NameStr = Field(description="Фамилия")
+	first_name: NameStr = Field(description="Имя")
+	middle_name: NameStr | None = Field(default=None, description="Отчество (необязательно)")
+	birth_date: date = Field(description="Дата рождения (YYYY-MM-DD)")
+	gender: Literal["M", "F"] = Field(description="Пол: M — мужской, F — женский")
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -25,16 +27,19 @@ class PersonalDataPayload(BaseModel):
 		raise ValueError("gender must be 'M' or 'F'")
 
 class PersonalDataResponse(PersonalDataPayload):
-	client_id: UUID
+	"""Персональные данные клиента (ответ)."""
+
+	client_id: UUID = Field(description="UUID клиента")
 
 	model_config = ConfigDict(from_attributes=True)
 
 
 class PersonalDataUpdate(BaseModel):
-	"""Частичное обновление ФИО. birth_date и gender неизменяемы."""
-	last_name: NameStr | None = None
-	first_name: NameStr | None = None
-	middle_name: NameStr | None = None
+	"""Частичное обновление ФИО. Дата рождения и пол неизменяемы."""
+
+	last_name: NameStr | None = Field(default=None, description="Фамилия")
+	first_name: NameStr | None = Field(default=None, description="Имя")
+	middle_name: NameStr | None = Field(default=None, description="Отчество")
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

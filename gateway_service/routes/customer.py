@@ -54,8 +54,10 @@ async def _resolve_onboarding(
 	"/users/start",
 	response_model=schemas.StartOnboardingResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Начать регистрацию",
 )
 async def start_onboarding(request: Request):
+	"""Создаёт нового пользователя и возвращает `onboarding_token` для прохождения шагов регистрации."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -76,12 +78,14 @@ async def start_onboarding(request: Request):
 	"/users/me/account/personal-data",
 	response_model=schemas.PersonalDataResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 1: Персональные данные",
 )
 async def submit_personal_data(
 	payload: schemas.PersonalDataPayload,
 	request: Request,
 	user_id: UUID = Depends(_resolve_onboarding),
 ):
+	"""Сохраняет ФИО, дату рождения и пол клиента."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -95,12 +99,14 @@ async def submit_personal_data(
 	"/users/me/account/passport",
 	response_model=schemas.PassportResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 2: Паспортные данные",
 )
 async def submit_passport_data(
 	payload: schemas.PassportPayload,
 	request: Request,
 	user_id: UUID = Depends(_resolve_onboarding),
 ):
+	"""Сохраняет серию, номер, кем выдан и прочие паспортные сведения."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -114,12 +120,14 @@ async def submit_passport_data(
 	"/users/me/account/identifiers",
 	response_model=schemas.IdentifiersResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 3: ИНН и СНИЛС",
 )
 async def submit_identifiers(
 	payload: schemas.IdentifiersPayload,
 	request: Request,
 	user_id: UUID = Depends(_resolve_onboarding),
 ):
+	"""Сохраняет идентификаторы налогоплательщика и социального страхования."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -133,12 +141,14 @@ async def submit_identifiers(
 	"/users/me/account/contacts",
 	response_model=schemas.ContactsResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 4: Контактные данные",
 )
 async def submit_contacts(
 	payload: schemas.ContactsPayload,
 	request: Request,
 	user_id: UUID = Depends(_resolve_onboarding),
 ):
+	"""Сохраняет email и номер телефона клиента."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -152,12 +162,14 @@ async def submit_contacts(
 	"/users/me/account/finalize",
 	response_model=schemas.FinalizeResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Завершить регистрацию",
 )
 async def finalize_onboarding(
 	request: Request,
 	user_id: UUID = Depends(_resolve_onboarding),
 	onb_token: str | None = Depends(onboarding_token_scheme),
 ):
+	"""Переносит данные из черновиков в БД, выдаёт сессионный токен и удаляет onboarding-токен."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -187,11 +199,13 @@ async def finalize_onboarding(
 	"/users/me/personal-data",
 	response_model=schemas.PersonalDataResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Обновить персональные данные",
 )
 async def update_personal_data(
 	payload: schemas.PersonalDataUpdate,
 	request: Request,
 ):
+	"""Частичное обновление ФИО. Дата рождения и пол неизменяемы."""
 	data = await forward_request(
 		request,
 		"PATCH",
@@ -205,11 +219,13 @@ async def update_personal_data(
 	"/users/me/passport",
 	response_model=schemas.PassportResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Заменить паспортные данные",
 )
 async def replace_passport(
 	payload: schemas.PassportPayload,
 	request: Request,
 ):
+	"""Полная замена паспортных данных (все поля обязательны)."""
 	data = await forward_request(
 		request,
 		"PUT",
@@ -223,11 +239,13 @@ async def replace_passport(
 	"/users/me/contacts",
 	response_model=schemas.ContactsResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Обновить контактные данные",
 )
 async def update_contacts(
 	payload: schemas.ContactsUpdate,
 	request: Request,
 ):
+	"""Частичное обновление email и/или телефона."""
 	data = await forward_request(
 		request,
 		"PATCH",

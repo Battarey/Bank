@@ -1,28 +1,78 @@
-# Сервис для работы с БД
+# Migrations
+
+Сервис миграций базы данных. Управляет схемой PostgreSQL через Alembic и предоставляет скрипт полного сброса + накатки для dev-окружения.
 
 ## Файловая архитектура
 ```
-bd_service
-├── alembic/                     #
-├── postgre_core/                # Папка, где хранятся md файлы с информацией про таблицы, название файла - название таблицы
-└── alembic.ini                  # 
+migrations/
+├── alembic/                          # Alembic-директория
+│   ├── env.py                        # Конфигурация окружения (ALEMBIC_DATABASE_URL)
+│   ├── script.py.mako                # Шаблон новой миграции
+│   └── versions/                     # Файлы миграций
+│       ├── postgre_core_init.py      # Инициализация схемы (7 таблиц)
+│       └── add_pin_hash.py           # Добавление pin_hash в users
+├── postgre_core/                     # Документация таблиц (md-файл = таблица)
+│   ├── users.md
+│   ├── personal_data.md
+│   ├── passport.md
+│   ├── identifiers.md
+│   ├── contacts.md
+│   ├── bank_accounts.md
+│   └── transactions.md
+├── alembic.ini                       # Конфигурация Alembic
+├── reset_and_upgrade.py              # Dev-скрипт: DROP → CREATE SCHEMA → upgrade head
+├── Dockerfile                        # python:3.12-slim, CMD: alembic upgrade head
+├── requirements.txt                  # alembic, SQLAlchemy, psycopg, python-dotenv
+├── .env                              # ALEMBIC_DATABASE_URL и параметры PostgreSQL
+└── README.md
 ```
 
-## Выбор БД
- Для хранения полей и пользователской информации используется Postgre. В Postgre будут следующие БД: 
-  1. Учётные данные пользователя - postgre_core
-  2. История операций пользователя (Потом)
- Для хранения логов используется ClickHouse. (Потом)
- Для хранения токенов и временных данных используется Redis. В Redis будут следующие БД:
-  1. Для хранения сессий
-  2. Для хранения временных данных
- Для хранения уведомлений MongoDB. (Потом)
+## Конфигурация
+
+| Переменная              | Обязательна | Описание                                              |
+|-------------------------|-------------|-------------------------------------------------------|
+| `ALEMBIC_DATABASE_URL`  | Да          | Sync URL PostgreSQL (`postgresql+psycopg://...`)      |
+| `POSTGRES_CORE_DB`      | Да          | Имя базы данных                                       |
+| `POSTGRES_CORE_USER`    | Да          | Пользователь PostgreSQL                               |
+| `POSTGRES_CORE_PASSWORD`| Да          | Пароль PostgreSQL                                     |
+
+> **Важно:** Alembic использует **синхронный** драйвер `psycopg`, а микросервисы — **асинхронный** `asyncpg`. Это разные URL.
+
+## Docker
+
+В `docker-compose.yaml` сервис `migrations` запускается с командой `python reset_and_upgrade.py` и зависит от `postgres_core` (condition: `service_healthy`). После выполнения контейнер останавливается (`restart: "no"`). Все микросервисы зависят от `migrations`.
+
+```
+postgres_core (healthy) → migrations → customer_service, auth_service, ...
+```
+
+## Хранилища данных
+
+### PostgreSQL — `postgre_core`
+
+Основная реляционная БД для учётных данных клиентов и банковских операций.
+
+### Redis Sessions
+
+Хранение сессионных токенов пользователей (TTL 30 мин). Инстанс: `redis_sessions` (Redis 7 Alpine).
+
+### Redis Onboarding
+
+Хранение JSON-черновиков шагов регистрации и onboarding-токенов (TTL 30 мин). Инстанс: `redis_onboarding` (Redis Stack).
+
+### Планируется
+
+| Хранилище   | Назначение                      |
+|-------------|----------------------------------|
+| ClickHouse  | Хранение логов                   |
+| MongoDB     | Хранение уведомлений             |
+| PostgreSQL  | История операций (отдельная БД)  |
 
 ## ER-диаграммы
 
 ### postgre_core
 
-####  Простая вресия
+#### Простая версия
 ````mermaid
 erDiagram
     USERS ||--|| PERSONAL_DATA : "client_id"
@@ -34,7 +84,7 @@ erDiagram
     BANK_ACCOUNTS ||--o{ TRANSACTIONS : "related_account_id"
 ````
 
-### Подробная версия
+#### Подробная версия
 ````mermaid
 erDiagram
     USERS {
@@ -43,6 +93,7 @@ erDiagram
         TIMESTAMP updated_at
         TEXT status
         BOOLEAN is_verified
+        TEXT pin_hash
     }
     PERSONAL_DATA {
         UUID client_id FK
@@ -108,14 +159,43 @@ erDiagram
 ````
 
 **Примечания**
-- Связи `||` обозначают связь один-к-одному (client_id — уникальный для KYC-таблиц).
-- `o{` показывает связь один-ко-многим: у клиента несколько счетов, у счёта много транзакций.
-- `related_account_id` используется только для переводов, поэтому связь пунктирно отражает возможную ссылку на второй счёт.
+- `||` — связь один-к-одному (`client_id` — уникальный PK для KYC-таблиц).
+- `o{` — связь один-ко-многим: у клиента несколько счетов, у счёта много транзакций.
+- `related_account_id` используется только для переводов (ссылка на второй счёт).
+- Проверка диаграмм — https://mermaid.live
 
-Проверка диаграммы - https://mermaid.live
+## Миграции
 
-## Alembic
- Команды:
-    - `alembic revision -m "init"` — создать новую миграцию (правь файлы в `alembic/versions`).
-    - `alembic upgrade head` — применить все миграции.
-    - `alembic downgrade -1` — откатить последнюю миграцию.
+### Цепочка ревизий
+
+```
+(None) → postgre_core_init → add_pin_hash  ← HEAD
+```
+
+| Ревизия              | Описание                                                   |
+|----------------------|-------------------------------------------------------------|
+| `postgre_core_init`  | Создание 7 таблиц: users, personal_data, passport, identifiers, contacts, bank_accounts, transactions |
+| `add_pin_hash`       | Добавление колонки `pin_hash` (Text, nullable) в `users`    |
+
+### CHECK-ограничения
+
+| Таблица         | Constraint                          | Допустимые значения                          |
+|-----------------|-------------------------------------|----------------------------------------------|
+| `users`         | `users_status_check`                | `pending`, `active`, `blocked`, `deleted`    |
+| `personal_data` | `ck_personal_data_gender`           | `M`, `F`                                     |
+| `bank_accounts` | `bank_accounts_type_check`          | `checking`, `savings`, `credit`, `deposit`   |
+| `bank_accounts` | `bank_accounts_currency_check`      | `RUB`, `USD`, `EUR`                          |
+| `bank_accounts` | `bank_accounts_status_check`        | `open`, `closed`, `frozen`                   |
+| `transactions`  | `transactions_type_check`           | `deposit`, `withdrawal`, `transfer`          |
+| `transactions`  | `transactions_direction_check`      | `incoming`, `outgoing`                       |
+| `transactions`  | `transactions_status_check`         | `pending`, `posted`, `failed`                |
+
+### `reset_and_upgrade.py`
+
+Dev-скрипт для полного сброса базы:
+
+1. Подключается через **синхронный** `psycopg` к PostgreSQL.
+2. `DROP SCHEMA public CASCADE` → `CREATE SCHEMA public`.
+3. Запускает `alembic upgrade head`.
+
+> **Внимание:** уничтожает все данные. Используется только в dev-окружении.

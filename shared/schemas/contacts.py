@@ -1,22 +1,27 @@
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, EmailStr, constr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, constr
 
 class ContactsPayload(BaseModel):
-	email: EmailStr
-	phone: constr(pattern=r"^\+\d{10,15}$")
+	"""Контактные данные клиента."""
+
+	email: EmailStr = Field(description="Email-адрес")
+	phone: constr(pattern=r"^\+\d{10,15}$") = Field(description="Телефон в международном формате (+XXXXXXXXXXX)")
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 class ContactsResponse(ContactsPayload):
-	client_id: UUID
+	"""Контактные данные клиента (ответ)."""
+
+	client_id: UUID = Field(description="UUID клиента")
 
 	model_config = ConfigDict(from_attributes=True)
 
 
 class ContactsUpdate(BaseModel):
-	"""Частичное обновление контактов — email и/или phone."""
-	email: EmailStr | None = None
-	phone: constr(pattern=r"^\+\d{10,15}$") | None = None
+	"""Частичное обновление контактов — email и/или телефон."""
+
+	email: EmailStr | None = Field(default=None, description="Новый email-адрес")
+	phone: constr(pattern=r"^\+\d{10,15}$") | None = Field(default=None, description="Новый телефон")
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

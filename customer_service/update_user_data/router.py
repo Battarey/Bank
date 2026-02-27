@@ -42,6 +42,7 @@ async def _run(
 	"/personal-data",
 	response_model=schemas.PersonalDataResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Обновить персональные данные",
 )
 async def update_personal_data(
 	payload: schemas.PersonalDataUpdate,
@@ -59,6 +60,7 @@ async def update_personal_data(
 	"/passport",
 	response_model=schemas.PassportResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Заменить паспортные данные",
 )
 async def replace_passport(
 	payload: schemas.PassportPayload,
@@ -76,6 +78,7 @@ async def replace_passport(
 	"/contacts",
 	response_model=schemas.ContactsResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Обновить контакты",
 )
 async def update_contacts(
 	payload: schemas.ContactsUpdate,

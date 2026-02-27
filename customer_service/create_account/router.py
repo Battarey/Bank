@@ -44,6 +44,7 @@ async def _run_step(
 	"/start",
 	response_model=schemas.StartInternalResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Начать онбординг",
 )
 async def start_onboarding(session: AsyncSession = Depends(get_session)) -> schemas.StartInternalResponse:
 	"""Создаёт нового пользователя для начала онбординга."""
@@ -56,6 +57,7 @@ async def start_onboarding(session: AsyncSession = Depends(get_session)) -> sche
 	"/finalize",
 	response_model=schemas.FinalizeInternalResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Завершить онбординг",
 )
 async def finalize_onboarding(
 	user_id: UUID,
@@ -71,6 +73,7 @@ async def finalize_onboarding(
 	"/personal-data",
 	response_model=schemas.PersonalDataResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 1: Персональные данные",
 )
 async def submit_personal_data(
 	user_id: UUID,
@@ -89,6 +92,7 @@ async def submit_personal_data(
 	"/passport",
 	response_model=schemas.PassportResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 2: Паспортные данные",
 )
 async def submit_passport_data(
 	user_id: UUID,
@@ -107,6 +111,7 @@ async def submit_passport_data(
 	"/identifiers",
 	response_model=schemas.IdentifiersResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 3: ИНН и СНИЛС",
 )
 async def submit_identifiers(
 	user_id: UUID,
@@ -125,6 +130,7 @@ async def submit_identifiers(
 	"/contacts",
 	response_model=schemas.ContactsResponse,
 	status_code=status.HTTP_201_CREATED,
+	summary="Шаг 4: Контактные данные",
 )
 async def submit_contacts(
 	user_id: UUID,

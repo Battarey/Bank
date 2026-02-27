@@ -18,7 +18,7 @@ def _raise(exc: service.AuthError) -> None:
 	raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
-@router.post("/login-pin", response_model=LoginPinResponse)
+@router.post("/login-pin", response_model=LoginPinResponse, summary="Вход по PIN")
 async def login_pin(
 	body: LoginPinRequest,
 	session: AsyncSession = Depends(get_session),

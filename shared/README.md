@@ -1,16 +1,26 @@
+# Shared
 
-
-
-
+Общий пакет с переиспользуемой логикой для всех микросервисов: ORM-модели, Pydantic-схемы, подключения к БД и Redis, внутренняя аутентификация.
 
 ## Файловая архитектура
 ```
-shared
-├── database_core/               # Логика для подключения к основной БД
-├── internal_auth/               # Зависимости для работы с токеном между сервисами
-├── models/                      # Pydantic модели
-├── redis_onboarding/            # Логика redis для работы с черновиками данных до попадания в основную БД
-├── redis_sessions/              # Логика redis для работы с пользовательскими сессиями
-└── schemas/                     # Pydantic схемы
-```
+shared/
+├── database_core/               # Подключение к PostgreSQL (async engine, сессии)
+├── internal_auth/               # Защита микросервисов от прямого доступа
+├── models/                      # SQLAlchemy ORM-модели
+├── redis_onboarding/            # Redis Stack — черновики и onboarding-токены
+├── redis_sessions/              # Redis — сессионные токены
+├── schemas/                     # Pydantic-схемы для запросов и ответов
+└── README.md
+```  
 
+## Кто использует
+
+| Подпакет           | gateway | customer | auth |
+|--------------------|---------|----------|------|
+| `database_core`    |         | ✓        | ✓    |
+| `internal_auth`    |         | ✓        | ✓    |
+| `models`           |         | ✓        | ✓    |
+| `redis_onboarding` | ✓       | ✓        |      |
+| `redis_sessions`   | ✓       |          | ✓    |
+| `schemas`          | ✓       | ✓        | ✓    |

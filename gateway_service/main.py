@@ -32,7 +32,34 @@ async def lifespan(app: FastAPI):
 	await redis_onboarding_client.close_client()
 
 
-app = FastAPI(title="Gateway Service", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+	title="Gateway Service",
+	version="0.1.0",
+	description="API Gateway банковского приложения. Единая точка входа для клиентских запросов: "
+		"онбординг, аутентификация, управление данными пользователя.",
+	lifespan=lifespan,
+	openapi_tags=[
+		{
+			"name": "onboarding",
+			"description": "Регистрация нового клиента: создание аккаунта, заполнение данных по шагам и финализация. "
+				"Шаги требуют заголовок `X-Onboarding-Token`.",
+		},
+		{
+			"name": "user-update",
+			"description": "Обновление данных авторизованного пользователя. "
+				"Требует заголовок `X-Session-Token`.",
+		},
+		{
+			"name": "auth",
+			"description": "Аутентификация: вход по PIN-коду, управление сессиями. "
+				"Защищённые эндпоинты требуют заголовок `X-Session-Token`.",
+		},
+		{
+			"name": "health",
+			"description": "Проверка работоспособности сервиса.",
+		},
+	],
+)
 
 app.add_middleware(
 	CORSMiddleware,

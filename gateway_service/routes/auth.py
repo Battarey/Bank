@@ -19,8 +19,10 @@ protected_router = APIRouter(
 	"/login-pin",
 	response_model=schemas.LoginPinResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Вход по PIN-коду",
 )
 async def login_pin(payload: schemas.LoginPinRequest, request: Request):
+	"""Аутентификация по номеру телефона и PIN-коду. Возвращает сессионный токен."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -37,8 +39,10 @@ async def login_pin(payload: schemas.LoginPinRequest, request: Request):
 	"/set-pin",
 	response_model=schemas.MessageResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Установить / сменить PIN",
 )
 async def set_pin(payload: schemas.SetPinRequest, request: Request):
+	"""Устанавливает или обновляет PIN-код текущего пользователя."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -53,8 +57,10 @@ async def set_pin(payload: schemas.SetPinRequest, request: Request):
 	"/logout",
 	response_model=schemas.MessageResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Выход",
 )
 async def logout(request: Request):
+	"""Завершает текущий сеанс (удаляет сессионный токен)."""
 	data = await forward_request(
 		request,
 		"POST",
@@ -68,8 +74,10 @@ async def logout(request: Request):
 	"/logout-all",
 	response_model=schemas.MessageResponse,
 	status_code=status.HTTP_200_OK,
+	summary="Выход со всех устройств",
 )
 async def logout_all(request: Request):
+	"""Завершает все активные сеансы пользователя."""
 	data = await forward_request(
 		request,
 		"POST",

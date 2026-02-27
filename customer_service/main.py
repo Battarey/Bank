@@ -19,8 +19,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
 	title="Customer Service",
 	version="0.1.0",
+	description="Внутренний сервис управления данными клиента: онбординг, KYC, обновление профиля.",
 	lifespan=lifespan,
 	dependencies=[Depends(verify_internal_key)],
+	openapi_tags=[
+		{
+			"name": "user-account",
+			"description": "Онбординг: создание пользователя, пошаговое заполнение данных и финализация.",
+		},
+		{
+			"name": "user-update",
+			"description": "Обновление персональных данных, паспорта и контактов авторизованного пользователя.",
+		},
+		{
+			"name": "health",
+			"description": "Проверка работоспособности сервиса.",
+		},
+	],
 )
 
 @app.get("/health", tags=["health"])
