@@ -6,13 +6,25 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-class StartOnboardingResponse(BaseModel):
-	"""Ответ на начало онбординга."""
+class StartInternalResponse(BaseModel):
+	"""Внутренний ответ customer_service (содержит user_id)."""
 	user_id: UUID
 	status: Literal["pending"]
 
 
-class FinalizeResponse(BaseModel):
-	"""Ответ на завершение онбординга."""
+class StartOnboardingResponse(BaseModel):
+	"""Ответ gateway (содержит onboarding-токен)."""
+	onboarding_token: str
+	status: Literal["pending"]
+
+
+class FinalizeInternalResponse(BaseModel):
+	"""Внутренний ответ customer_service на завершение онбординга."""
 	status: Literal["completed"]
 	message: str
+
+
+class FinalizeResponse(FinalizeInternalResponse):
+	"""Ответ gateway на завершение онбординга (включает сессионный токен)."""
+	session_token: str
+	user_id: UUID

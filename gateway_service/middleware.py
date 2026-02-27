@@ -8,7 +8,15 @@ from shared.redis_sessions import dependencies as session_deps
 # Схема авторизации для Swagger UI (кнопка "Authorize")
 session_token_scheme = APIKeyHeader(
 	name="X-Session-Token",
+	scheme_name="SessionToken",
 	description="Сессионный токен, полученный при авторизации",
+	auto_error=False,
+)
+
+onboarding_token_scheme = APIKeyHeader(
+	name="X-Onboarding-Token",
+	scheme_name="OnboardingToken",
+	description="Токен онбординга, полученный из /users/start (TTL 30 минут)",
 	auto_error=False,
 )
 
@@ -20,6 +28,7 @@ PUBLIC_PATHS: set[str] = {
 	"/openapi.json",
 	"/redoc",
 	"/favicon.ico",
+	"/auth/login-pin",
 }
 
 # Префиксы путей, не требующих авторизации (только онбординг)

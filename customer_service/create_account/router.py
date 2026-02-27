@@ -42,19 +42,19 @@ async def _run_step(
 
 @start_router.post(
 	"/start",
-	response_model=schemas.StartOnboardingResponse,
+	response_model=schemas.StartInternalResponse,
 	status_code=status.HTTP_201_CREATED,
 )
-async def start_onboarding(session: AsyncSession = Depends(get_session)) -> schemas.StartOnboardingResponse:
+async def start_onboarding(session: AsyncSession = Depends(get_session)) -> schemas.StartInternalResponse:
 	"""Создаёт нового пользователя для начала онбординга."""
 
 	user_id = await service.start_onboarding(session)
-	return schemas.StartOnboardingResponse(user_id=user_id, status="pending")
+	return schemas.StartInternalResponse(user_id=user_id, status="pending")
 
 
 @router.post(
 	"/finalize",
-	response_model=schemas.FinalizeResponse,
+	response_model=schemas.FinalizeInternalResponse,
 	status_code=status.HTTP_200_OK,
 )
 async def finalize_onboarding(
@@ -64,7 +64,7 @@ async def finalize_onboarding(
 	"""Переносит данные из Redis в PostgreSQL и завершает онбординг."""
 
 	await _run_step(lambda: service.persist_onboarding_data(session, user_id), session)
-	return schemas.FinalizeResponse(status="completed", message="Пользователь успешно авторизован.")
+	return schemas.FinalizeInternalResponse(status="completed", message="Пользователь успешно авторизован.")
 
 
 @router.post(

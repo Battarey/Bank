@@ -1,16 +1,53 @@
 """Маршруты customer_service — онбординг, управление пользователями."""
 
+import secrets
 from uuid import UUID
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from shared import schemas
+from shared.redis_onboarding.tokens import (
+	delete_onboarding_token,
+	generate_token as generate_onboarding_token,
+	load_onboarding_token,
+	save_onboarding_token,
+)
+from shared.redis_sessions.tokens import save_token as save_session_token
 from ..helpers import forward_request
-from ..middleware import session_token_scheme
+from ..middleware import onboarding_token_scheme, session_token_scheme
 
 onboarding_router = APIRouter(tags=["onboarding"])
+onboarding_steps_router = APIRouter(
+	tags=["onboarding"],
+	dependencies=[Depends(onboarding_token_scheme)],
+)
 update_router = APIRouter(
 	tags=["user-update"],
 	dependencies=[Depends(session_token_scheme)],
 )
+
+
+# ── Зависимость: onboarding-токен → user_id ────────────────────────────
+
+
+async def _resolve_onboarding(
+	token: str | None = Depends(onboarding_token_scheme),
+) -> UUID:
+	"""Извлекает и проверяет X-Onboarding-Token, возвращает user_id."""
+
+	if not token:
+		raise HTTPException(
+			status_code=status.HTTP_401_UNAUTHORIZED,
+			detail="Заголовок X-Onboarding-Token обязателен.",
+		)
+	user_id = await load_onboarding_token(token)
+	if user_id is None:
+		raise HTTPException(
+			status_code=status.HTTP_401_UNAUTHORIZED,
+			detail="Onboarding-токен невалиден или истёк.",
+		)
+	return user_id
+
+
+# ── Онбординг ──────────────────────────────────────────────────────────
 
 
 @onboarding_router.post(
@@ -24,18 +61,26 @@ async def start_onboarding(request: Request):
 		"POST",
 		"/users/start",
 	)
-	return schemas.StartOnboardingResponse.model_validate(data)
+
+	user_id = UUID(data["user_id"])
+	token = generate_onboarding_token()
+	await save_onboarding_token(token, user_id)
+
+	return schemas.StartOnboardingResponse(
+		onboarding_token=token,
+		status=data["status"],
+	)
 
 
-@onboarding_router.post(
-	"/users/{user_id}/account/personal-data",
+@onboarding_steps_router.post(
+	"/users/me/account/personal-data",
 	response_model=schemas.PersonalDataResponse,
 	status_code=status.HTTP_201_CREATED,
 )
 async def submit_personal_data(
-	user_id: UUID,
 	payload: schemas.PersonalDataPayload,
 	request: Request,
+	user_id: UUID = Depends(_resolve_onboarding),
 ):
 	data = await forward_request(
 		request,
@@ -46,15 +91,15 @@ async def submit_personal_data(
 	return schemas.PersonalDataResponse.model_validate(data)
 
 
-@onboarding_router.post(
-	"/users/{user_id}/account/passport",
+@onboarding_steps_router.post(
+	"/users/me/account/passport",
 	response_model=schemas.PassportResponse,
 	status_code=status.HTTP_201_CREATED,
 )
 async def submit_passport_data(
-	user_id: UUID,
 	payload: schemas.PassportPayload,
 	request: Request,
+	user_id: UUID = Depends(_resolve_onboarding),
 ):
 	data = await forward_request(
 		request,
@@ -65,15 +110,15 @@ async def submit_passport_data(
 	return schemas.PassportResponse.model_validate(data)
 
 
-@onboarding_router.post(
-	"/users/{user_id}/account/identifiers",
+@onboarding_steps_router.post(
+	"/users/me/account/identifiers",
 	response_model=schemas.IdentifiersResponse,
 	status_code=status.HTTP_201_CREATED,
 )
 async def submit_identifiers(
-	user_id: UUID,
 	payload: schemas.IdentifiersPayload,
 	request: Request,
+	user_id: UUID = Depends(_resolve_onboarding),
 ):
 	data = await forward_request(
 		request,
@@ -84,15 +129,15 @@ async def submit_identifiers(
 	return schemas.IdentifiersResponse.model_validate(data)
 
 
-@onboarding_router.post(
-	"/users/{user_id}/account/contacts",
+@onboarding_steps_router.post(
+	"/users/me/account/contacts",
 	response_model=schemas.ContactsResponse,
 	status_code=status.HTTP_201_CREATED,
 )
 async def submit_contacts(
-	user_id: UUID,
 	payload: schemas.ContactsPayload,
 	request: Request,
+	user_id: UUID = Depends(_resolve_onboarding),
 ):
 	data = await forward_request(
 		request,
@@ -103,21 +148,36 @@ async def submit_contacts(
 	return schemas.ContactsResponse.model_validate(data)
 
 
-@onboarding_router.post(
-	"/users/{user_id}/account/finalize",
+@onboarding_steps_router.post(
+	"/users/me/account/finalize",
 	response_model=schemas.FinalizeResponse,
 	status_code=status.HTTP_200_OK,
 )
 async def finalize_onboarding(
-	user_id: UUID,
 	request: Request,
+	user_id: UUID = Depends(_resolve_onboarding),
+	onb_token: str | None = Depends(onboarding_token_scheme),
 ):
 	data = await forward_request(
 		request,
 		"POST",
 		f"/users/{user_id}/account/finalize",
 	)
-	return schemas.FinalizeResponse.model_validate(data)
+
+	# Удаляем onboarding-токен — он больше не нужен
+	if onb_token:
+		await delete_onboarding_token(onb_token)
+
+	# Автовыдача сессионного токена
+	session_token = secrets.token_urlsafe(32)
+	await save_session_token(session_token, user_id)
+
+	return schemas.FinalizeResponse(
+		status=data["status"],
+		message=data["message"],
+		session_token=session_token,
+		user_id=user_id,
+	)
 
 
 # ── Обновление данных пользователя ─────────────────────────────────────

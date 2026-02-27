@@ -15,5 +15,6 @@ class User(Base):
 	updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 	status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
 	is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+	pin_hash: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
 __all__ = ["User"]

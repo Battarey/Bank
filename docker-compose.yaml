@@ -17,6 +17,7 @@ services:
       - notification_service
       - transaction_service
       - redis_sessions
+      - redis_onboarding
     ports:
       - "8000:8000"
     networks:
@@ -28,7 +29,9 @@ services:
 ##########  Бизнес-сервисы  ##########
 
   auth_service:
-    build: ./auth_service
+    build:
+      context: .
+      dockerfile: ./auth_service/Dockerfile
     env_file: ./auth_service/.env
     depends_on:
       migrations:

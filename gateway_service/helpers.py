@@ -13,17 +13,24 @@ async def forward_request(
 	method: str,
 	path: str,
 	payload: dict | None = None,
+	*,
+	service: str = "customer",
 ) -> dict:
 	"""Пересылает запрос во внутренний сервис и возвращает JSON-ответ."""
 
-	client: httpx.AsyncClient = request.app.state.http_client
+	client: httpx.AsyncClient = request.app.state.services[service]
 
 	headers = {"X-Internal-Key": INTERNAL_API_KEY}
 
-	# Передаём user_id из сессии во внутренний сервис через заголовок
+	# Передаём user_id из сессии во внутренний сервис
 	user_id = getattr(request.state, "user_id", None)
 	if user_id:
 		headers["X-User-ID"] = str(user_id)
+
+	# Пробрасываем сессионный токен (нужен auth_service для logout)
+	session_token = request.headers.get("X-Session-Token")
+	if session_token:
+		headers["X-Session-Token"] = session_token
 
 	response = await client.request(
 		method=method,
