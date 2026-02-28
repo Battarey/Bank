@@ -29,6 +29,8 @@ PUBLIC_PATHS: set[str] = {
 	"/redoc",
 	"/favicon.ico",
 	"/auth/login-pin",
+	"/auth/request-unlock",
+	"/auth/unlock",
 }
 
 # Префиксы путей, не требующих авторизации (только онбординг)

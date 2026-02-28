@@ -82,6 +82,44 @@ LOGIN_ALERT = EmailTemplate(
 	),
 )
 
+ACCOUNT_LOCKED = EmailTemplate(
+	name="account_locked",
+	subject="Аккаунт заблокирован",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш аккаунт был заблокирован из-за многократного неверного ввода PIN-кода "
+		"(15 неудачных попыток).\n\n"
+		"Для разблокировки отправьте запрос через /auth/request-unlock и введите "
+		"6-значный код, который придёт на этот email.\n\n"
+		"Если это были не вы, немедленно свяжитесь с поддержкой.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+UNLOCK_CODE = EmailTemplate(
+	name="unlock_code",
+	subject="Код разблокировки аккаунта",
+	body=(
+		"Ваш код разблокировки: {code}\n\n"
+		"Код действителен 10 минут.\n"
+		"Если вы не запрашивали разблокировку, немедленно свяжитесь с поддержкой."
+	),
+)
+
+ACCOUNT_UNLOCKED = EmailTemplate(
+	name="account_unlocked",
+	subject="Аккаунт разблокирован",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш аккаунт успешно разблокирован.\n"
+		"Теперь вы можете войти по PIN-коду.\n\n"
+		"Если вы не запрашивали разблокировку, немедленно свяжитесь с поддержкой.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
 # ── Реестр ──────────────────────────────────────────────────────────────
 
 TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
@@ -89,6 +127,9 @@ TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
 	WELCOME,
 	PIN_CHANGED,
 	LOGIN_ALERT,
+	ACCOUNT_LOCKED,
+	UNLOCK_CODE,
+	ACCOUNT_UNLOCKED,
 )}
 
 
@@ -108,10 +149,13 @@ def get_template(name: str) -> EmailTemplate:
 
 
 __all__ = [
+	"ACCOUNT_LOCKED",
+	"ACCOUNT_UNLOCKED",
 	"EmailTemplate",
 	"LOGIN_ALERT",
 	"PIN_CHANGED",
 	"TEMPLATES",
+	"UNLOCK_CODE",
 	"VERIFICATION_CODE",
 	"WELCOME",
 	"get_template",

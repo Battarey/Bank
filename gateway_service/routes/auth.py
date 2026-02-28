@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Request, status
 from shared import schemas
+from shared.schemas.unlock import RequestUnlockRequest, UnlockRequest
 from ..helpers import forward_request
 from ..middleware import session_token_scheme
 
@@ -31,6 +32,42 @@ async def login_pin(payload: schemas.LoginPinRequest, request: Request):
 		service="auth",
 	)
 	return schemas.LoginPinResponse.model_validate(data)
+
+
+@public_router.post(
+	"/request-unlock",
+	response_model=schemas.MessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Запросить код разблокировки",
+)
+async def request_unlock(payload: RequestUnlockRequest, request: Request):
+	"""Отправляет код разблокировки на email привязанный к аккаунту."""
+	data = await forward_request(
+		request,
+		"POST",
+		"/request-unlock",
+		payload.model_dump(mode="json"),
+		service="auth",
+	)
+	return schemas.MessageResponse.model_validate(data)
+
+
+@public_router.post(
+	"/unlock",
+	response_model=schemas.MessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Разблокировать аккаунт",
+)
+async def unlock(payload: UnlockRequest, request: Request):
+	"""Проверяет код и разблокирует аккаунт."""
+	data = await forward_request(
+		request,
+		"POST",
+		"/unlock",
+		payload.model_dump(mode="json"),
+		service="auth",
+	)
+	return schemas.MessageResponse.model_validate(data)
 
 
 # ── Защищённые ─────────────────────────────────────────────────────────

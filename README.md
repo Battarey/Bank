@@ -107,10 +107,12 @@ bank/
 - Установка / смена PIN: `/auth/set-pin`
 - Выход: `/auth/logout`, `/auth/logout-all`
 - bcrypt для хеширования PIN, сессии в Redis (TTL 30 мин)
+- **Rate-limiting PIN:** 5 неудач → кулдаун 5 мин, 3× = 15 неудач → блокировка аккаунта + email-уведомление
+- **Разблокировка:** `/auth/request-unlock` → код на email → `/auth/unlock`
 
 ### Notification Service
 - RabbitMQ consumer (не HTTP-сервис)
-- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`
+- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`
 - SMTP-транспорт через aiosmtplib (Gmail)
 - Произвольные письма не отправляются — только зарегистрированные шаблоны
 

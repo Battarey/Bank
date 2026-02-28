@@ -21,6 +21,9 @@ templates/
 | `WELCOME`            | `EmailTemplate`              | Приветственное письмо                               |
 | `PIN_CHANGED`        | `EmailTemplate`              | Уведомление о смене PIN                            |
 | `LOGIN_ALERT`        | `EmailTemplate`              | Уведомление о входе в аккаунт                      |
+| `ACCOUNT_LOCKED`     | `EmailTemplate`              | Уведомление о блокировке аккаунта              |
+| `UNLOCK_CODE`        | `EmailTemplate`              | Код разблокировки аккаунта                       |
+| `ACCOUNT_UNLOCKED`   | `EmailTemplate`              | Уведомление о разблокировке                       |
 | `EmailTemplate`      | `dataclass`                  | Класс шаблона (`name`, `subject`, `body`, `render()`) |
 
 ## Шаблоны
@@ -31,6 +34,9 @@ templates/
 | `welcome`            | Добро пожаловать в Bank App! | —                 |
 | `pin_changed`        | PIN-код изменён            | —                 |
 | `login_alert`        | Вход в аккаунт             | `{login_time}`    |
+| `account_locked`     | Аккаунт заблокирован        | —                 |
+| `unlock_code`        | Код разблокировки аккаунта| `{code}`          |
+| `account_unlocked`   | Аккаунт разблокирован      | —                 |
 
 ## EmailTemplate
 

@@ -1,6 +1,7 @@
 """Эндпоинт входа по PIN-коду."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database_core.db import get_session
@@ -11,6 +12,14 @@ router = APIRouter(tags=["auth-login"])
 
 
 def _raise(exc: service.AuthError) -> None:
+	if isinstance(exc, service.AuthAccountLocked):
+		raise HTTPException(status.HTTP_423_LOCKED, detail=str(exc))
+	if isinstance(exc, service.AuthCooldown):
+		raise HTTPException(
+			status.HTTP_429_TOO_MANY_REQUESTS,
+			detail=str(exc),
+			headers={"Retry-After": str(exc.retry_after)},
+		)
 	if isinstance(exc, service.AuthNotFound):
 		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
 	if isinstance(exc, service.AuthForbidden):

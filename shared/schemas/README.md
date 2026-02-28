@@ -11,7 +11,8 @@ schemas/
 ├── passport.py            # Паспортные данные
 ├── identifiers.py         # ИНН, СНИЛС
 ├── contacts.py            # Email, телефон
-└── email_verification.py  # Коды подтверждения email
+├── email_verification.py  # Коды подтверждения email
+└── unlock.py              # Разблокировка аккаунта
 ```
 
 ## Схемы по файлам
@@ -88,3 +89,10 @@ FinalizeInternalResponse →   FinalizeResponse
 | `SendEmailCodeRequest`   | Request  | `email` (EmailStr)                             | Запрос на отправку кода подтверждения |
 | `VerifyEmailCodeRequest` | Request  | `code` (6 цифр, `^\d{6}$`)                    | Запрос на проверку кода               |
 | `EmailCodeResponse`      | Response | `message`, `email_verified` (bool)             | Ответ на отправку / проверку кода   |
+
+### `unlock.py`
+
+| Схема                    | Тип      | Поля                                | Описание                                |
+|--------------------------|----------|--------------------------------------|--------------------------------------------|
+| `RequestUnlockRequest`   | Request  | `email` (EmailStr)                   | Запрос на отправку кода разблокировки |
+| `UnlockRequest`          | Request  | `email` (EmailStr), `code` (`^\d{6}$`) | Проверка кода и разблокировка         |

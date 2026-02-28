@@ -22,7 +22,7 @@ shared/
 | `database_core`    |         | ✓        | ✓    |              |
 | `internal_auth`    |         | ✓        | ✓    |              |
 | `models`           |         | ✓        | ✓    |              |
-| `rabbitmq`         |         | ✓        |      |              |
+| `rabbitmq`         |         | ✓        | ✓    |              |
 | `redis_onboarding` | ✓       | ✓        |      |              |
 | `redis_sessions`   | ✓       |          | ✓    |              |
 | `schemas`          | ✓       | ✓        | ✓    |              |

@@ -17,6 +17,7 @@ from .onboarding import (
 )
 from .passport import PassportPayload, PassportResponse
 from .personal_data import PersonalDataPayload, PersonalDataResponse, PersonalDataUpdate
+from .unlock import RequestUnlockRequest, UnlockRequest
 
 __all__ = [
 	"ContactsPayload",
@@ -35,9 +36,11 @@ __all__ = [
 	"PersonalDataPayload",
 	"PersonalDataResponse",
 	"PersonalDataUpdate",
+	"RequestUnlockRequest",
 	"SendEmailCodeRequest",
 	"SetPinRequest",
 	"StartInternalResponse",
 	"StartOnboardingResponse",
+	"UnlockRequest",
 	"VerifyEmailCodeRequest",
 ]
