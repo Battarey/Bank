@@ -50,7 +50,7 @@ redis_sessions/
 | `load_token()`    | Получить данные сессии по токену (или `None`)                 |
 | `touch_token()`   | Продлить TTL токена + set пользователя (скользящая экспирация) |
 | `delete_token()`  | Удалить токен и убрать из set пользователя                    |
-| `revoke_all()`    | Удалить все активные токены пользователя (logout-all)         |
+| `revoke_all()`    | Удалить все активные токены пользователя (batch delete, logout-all)         |
 
 ### `dependencies.py`
 
@@ -81,7 +81,7 @@ redis_sessions/
 | `DEFAULT_CODE_TTL`              | `timedelta(minutes=10)`                                |
 | `generate_code()`               | Случайный цифровой код                                 |
 | `save_unlock_code(user_id, code)` | Сохранить код с TTL                                  |
-| `verify_unlock_code(user_id, code)` | Проверить и удалить код (True/False)               |
+| `verify_unlock_code(user_id, code)` | Проверить (через `hmac.compare_digest`) и удалить код (True/False)               |
 | `clear_unlock_code(user_id)`    | Удалить код (если есть)                                |
 
 ## Ошибки

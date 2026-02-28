@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared import models, schemas
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
+from shared.utils.normalize import normalize_name, normalize_email, normalize_phone, digits_only
 
 
 class AccountDataError(Exception):
@@ -58,38 +59,14 @@ async def _get_or_create_user(session: AsyncSession, user_id: UUID) -> models.Us
 	return user
 
 
-def _normalize_name(value: str | None) -> str | None:
-	"""Стандартизирует ФИО для сравнения (upper + trim)."""
-
-	if value is None:
-		return None
-	return value.strip().upper()
-
-
-def _normalize_email(value: str) -> str:
-	"""Приводит email к нижнему регистру."""
-	return value.lower()
-
-
-
-def _normalize_phone(value: str) -> str:
-	"""Удаляет пробелы в телефонном номере."""
-	return value.replace(" ", "")
-
-
-def _digits_only(value: str) -> str:
-	"""Оставляет только цифры (ИНН/СНИЛС)."""
-	return "".join(ch for ch in value if ch.isdigit())
-
-
 def _normalize_personal_payload(payload: schemas.PersonalDataPayload) -> schemas.PersonalDataPayload:
 	"""Возвращает копию с нормализованными текстовыми полями персонального шага."""
 
 	return payload.model_copy(
 		update={
-			"last_name": _normalize_name(payload.last_name),
-			"first_name": _normalize_name(payload.first_name),
-			"middle_name": _normalize_name(payload.middle_name),
+			"last_name": normalize_name(payload.last_name),
+			"first_name": normalize_name(payload.first_name),
+			"middle_name": normalize_name(payload.middle_name),
 		},
 	)
 
@@ -108,8 +85,8 @@ def _normalize_identifiers_payload(payload: schemas.IdentifiersPayload) -> schem
 	"""Удаляет нецифровые символы из ИНН/СНИЛС."""
 	return payload.model_copy(
 		update={
-			"inn": _digits_only(payload.inn),
-			"snils": _digits_only(payload.snils),
+			"inn": digits_only(payload.inn),
+			"snils": digits_only(payload.snils),
 		},
 	)
 
@@ -118,8 +95,8 @@ def _normalize_contacts_payload(payload: schemas.ContactsPayload) -> schemas.Con
 	"""Нормализует email и телефон для поиска дублей."""
 	return payload.model_copy(
 		update={
-			"email": _normalize_email(payload.email),
-			"phone": _normalize_phone(payload.phone),
+			"email": normalize_email(payload.email),
+			"phone": normalize_phone(payload.phone),
 		},
 	)
 

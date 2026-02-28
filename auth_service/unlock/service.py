@@ -72,7 +72,7 @@ async def request_unlock(session: AsyncSession, email: str) -> None:
 	await publish(
 		exchange_name=NOTIFICATIONS_EXCHANGE,
 		routing_key=EMAIL_ROUTING_KEY,
-		message={
+		body={
 			"type": "unlock_code",
 			"payload": {
 				"to": contact.email,
@@ -110,7 +110,7 @@ async def unlock_account(session: AsyncSession, email: str, code: str) -> None:
 	await publish(
 		exchange_name=NOTIFICATIONS_EXCHANGE,
 		routing_key=EMAIL_ROUTING_KEY,
-		message={
+		body={
 			"type": "account_unlocked",
 			"payload": {
 				"to": contact.email,

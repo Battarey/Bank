@@ -34,7 +34,7 @@ customer_service/
 | POST   | `/users/{user_id}/account/contacts`      | Телефон и email                       |
 | POST   | `/users/{user_id}/account/send-email-code` | Отправить код подтверждения на email |
 | POST   | `/users/{user_id}/account/verify-email`  | Проверить код подтверждения email    |
-| POST   | `/users/{user_id}/account/finalize`      | Перенос из Redis в PostgreSQL, `active` |
+| POST   | `/users/{user_id}/account/finalize`      | Перенос из Redis в PostgreSQL, `active` + welcome email |
 
 ### Обновление данных (update_user_data)
 
@@ -55,8 +55,9 @@ customer_service ──(publish)──► RabbitMQ ──(consume)──► noti
 ```
 
 1. `send-email-code` генерирует 6-значный код, сохраняет в Redis и публикует задачу в очередь
-2. `verify-email` проверяет код и ставит флаг `email_verified`
+2. `verify-email` проверяет код (через `hmac.compare_digest`) и ставит флаг `email_verified`
 3. `finalize` не выполнится без подтверждённого email
+4. При успешном `finalize` отправляется приветственное письмо (шаблон `welcome`)
 
 ## Обработка ошибок
 

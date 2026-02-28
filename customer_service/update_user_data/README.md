@@ -6,7 +6,7 @@
 ```
 update_user_data/
 ├── router.py                # FastAPI эндпоинты, зависимость require_user_id
-├── service.py               # Бизнес-логика, проверка уникальности, нормализация
+├── service.py               # Бизнес-логика, проверка уникальности, нормализация (через shared/utils)
 └── README.md
 ```
 

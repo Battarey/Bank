@@ -77,9 +77,9 @@ async def revoke_all(user_id: UUID) -> None:
 	if not tokens:
 		return
 
-	for token in tokens:
-		await client.delete(_key(token))
-	await client.delete(_user_sessions_key(user_id))
+	keys = [_key(t) for t in tokens]
+	keys.append(_user_sessions_key(user_id))
+	await client.delete(*keys)
 
 
 __all__ = [

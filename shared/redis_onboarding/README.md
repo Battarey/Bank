@@ -67,6 +67,6 @@ redis_onboarding/
 | `DEFAULT_CODE_TTL`            | `timedelta(minutes=10)`                                |
 | `generate_code()`             | Генерирует 6-значный цифровой код                    |
 | `save_email_code()`           | Сохранить код с TTL 10 мин                              |
-| `verify_email_code()`         | Проверить код, при успехе — поставить флаг verified   |
+| `verify_email_code()`         | Проверить код (через `hmac.compare_digest`), при успехе — поставить флаг verified   |
 | `is_email_verified()`         | Проверить флаг подтверждения                         |
 | `clear_email_verification()`  | Удалить код + флаг (после finalize)                |

@@ -25,7 +25,7 @@ bank/
 ├── notification_service/        # Сервис уведомлений: RabbitMQ consumer → SMTP (email по шаблонам)
 ├── transaction_service/         # Сервис транзакций (заглушка)
 ├── migrations/                  # Alembic-миграции + dev-скрипт сброса БД
-├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, внутренняя аутентификация
+├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, утилиты, внутренняя аутентификация
 ├── docker-compose.yaml          # 14 сервисов: 9 бизнес + 5 инфраструктура
 ├── .env                         # Переменные окружения инфраструктуры
 └── README.md
@@ -36,7 +36,7 @@ bank/
 ```
                   ┌───────────────┐
    Клиент ──────► │    Gateway    │ :8000
-                  └──┬────┬───┬──┘
+                  └──┬────┬───┬───┘
                      │    │   │
           ┌──────────┘    │   └──────────┐
           ▼               ▼              ▼
@@ -44,8 +44,8 @@ bank/
    │  Customer   │ │    Auth    │ │  Account...  │
    │   Service   │ │   Service  │ │  (заглушки)  │
    └──────┬──────┘ └─────┬──────┘ └──────────────┘
-          │               │
-          ▼               ▼
+          │              │
+          ▼              ▼
    ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
    │  PostgreSQL │ │    Redis    │ │   RabbitMQ   │
    │    (core)   │ │ sessions /  │ │              │
@@ -71,9 +71,11 @@ bank/
 | Сервис             | Образ                          | Порт  | Назначение                              |
 |--------------------|--------------------------------|-------|-----------------------------------------|
 | `postgres_core`    | `postgres:17`                  | 5432  | Основная БД (учётные данные клиентов)   |
-| `redis_sessions`   | `redis:7-alpine`               | 6379  | Сессионные токены (TTL 30 мин)          |
-| `redis_onboarding` | `redis/redis-stack-server`     | 6379  | JSON-черновики + onboarding-токены       |
+| `redis_sessions`   | `redis:7-alpine`               | 6379  | Сессионные токены (TTL 30 мин, healthcheck) |
+| `redis_onboarding` | `redis/redis-stack-server`     | 6379  | JSON-черновики + onboarding-токены (healthcheck) |
 | `rabbitmq`         | `rabbitmq:3.13-management`     | 5672  | Брокер сообщений (уведомления, логи)    |
+
+> Все бизнес-сервисы запускаются с `restart: unless-stopped`. Redis-сервисы имеют healthcheck (`redis-cli ping`), и зависимые сервисы ждут `condition: service_healthy`.
 | `pgadmin`          | `dpage/pgadmin4`               | 80    | Веб-интерфейс для PostgreSQL            |
 
 ## Аутентификация
@@ -100,11 +102,12 @@ bank/
 - Email-верификация: `send-email-code` → `verify-email` (через RabbitMQ → notification_service)
 - Черновики шагов хранятся в Redis Stack (JSON, TTL 60 мин)
 - Повторный ввод шага — черновик перезаписывается
+- При завершении регистрации отправляется приветственное письмо (`welcome`)
 - Обновление данных авторизованного пользователя: `/users/me/personal-data`, `/users/me/passport`, `/users/me/contacts`
 
 ### Auth Service
-- Логин по PIN: `/auth/login-pin`
-- Установка / смена PIN: `/auth/set-pin`
+- Логин по PIN: `/auth/login-pin` + email-уведомление о входе (`login_alert`)
+- Установка / смена PIN: `/auth/set-pin` + email-уведомление (`pin_changed`)
 - Выход: `/auth/logout`, `/auth/logout-all`
 - bcrypt для хеширования PIN, сессии в Redis (TTL 30 мин, скользящая экспирация)
 - **Rate-limiting PIN:** 5 неудач → кулдаун 5 мин, 3× = 15 неудач → блокировка аккаунта + email-уведомление
@@ -121,7 +124,8 @@ bank/
 - Pydantic-схемы для всех запросов/ответов
 - Redis-клиенты для сессий и онбординга
 - RabbitMQ-клиент (aio-pika): `connect`, `disconnect`, `publish`
-- Зависимости: `verify_internal_key()`, `require_user_id()`
+- Зависимости: `verify_internal_key()` (timing-safe), `require_user_id()`
+- Утилиты нормализации: `normalize_name`, `normalize_email`, `normalize_phone`, `digits_only`
 
 ### Migrations
 - Alembic с синхронным драйвером `psycopg`

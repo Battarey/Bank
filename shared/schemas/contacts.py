@@ -5,7 +5,7 @@ class ContactsPayload(BaseModel):
 	"""Контактные данные клиента."""
 
 	email: EmailStr = Field(description="Email-адрес")
-	phone: constr(pattern=r"^\+\d{10,15}$") = Field(description="Телефон в международном формате (+XXXXXXXXXXX)")
+	phone: constr(pattern=r"^\+7\d{10}$") = Field(description="Телефон в формате +7XXXXXXXXXX")
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -21,7 +21,7 @@ class ContactsUpdate(BaseModel):
 	"""Частичное обновление контактов — email и/или телефон."""
 
 	email: EmailStr | None = Field(default=None, description="Новый email-адрес")
-	phone: constr(pattern=r"^\+\d{10,15}$") | None = Field(default=None, description="Новый телефон")
+	phone: constr(pattern=r"^\+7\d{10}$") | None = Field(default=None, description="Новый телефон в формате +7XXXXXXXXXX")
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

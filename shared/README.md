@@ -6,12 +6,13 @@
 ```
 shared/
 ├── database_core/               # Подключение к PostgreSQL (async engine, сессии)
-├── internal_auth/               # Защита микросервисов от прямого доступа
+├── internal_auth/               # Защита микросервисов от прямого доступа (timing-safe)
 ├── models/                      # SQLAlchemy ORM-модели
 ├── rabbitmq/                    # RabbitMQ-клиент (aio-pika): publish, connect
 ├── redis_onboarding/            # Redis Stack — черновики, onboarding-токены, email-коды
 ├── redis_sessions/              # Redis — сессионные токены
 ├── schemas/                     # Pydantic-схемы для запросов и ответов
+├── utils/                       # Утилиты нормализации данных (normalize_name, normalize_email и др.)
 └── README.md
 ```  
 
@@ -26,3 +27,4 @@ shared/
 | `redis_onboarding` | ✓       | ✓        |      |              |
 | `redis_sessions`   | ✓       |          | ✓    |              |
 | `schemas`          | ✓       | ✓        | ✓    |              |
+| `utils`            |         | ✓        |      |              |

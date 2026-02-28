@@ -65,7 +65,7 @@ schemas/
 
 | Схема             | Тип      | Описание                                                |
 |-------------------|----------|---------------------------------------------------------|
-| `ContactsPayload` | Request  | `email` (EmailStr), `phone` (`^\+\d{10,15}$`)          |
+| `ContactsPayload` | Request  | `email` (EmailStr), `phone` (`^\+7\d{10}$`)    |
 | `ContactsResponse`| Response | + `client_id`. `from_attributes=True`                   |
 | `ContactsUpdate`  | Request  | Частичное обновление email и/или phone                   |
 

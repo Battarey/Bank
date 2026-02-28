@@ -13,7 +13,7 @@ unlock/
 ## Поток
 
 1. `POST /request-unlock { email }` — поиск заблокированного пользователя по email, генерация 6-значного кода → Redis (TTL 10 мин), отправка через RabbitMQ → notification_service → SMTP
-2. `POST /unlock { email, code }` — проверка кода, `status → "active"`, сброс rate-limit счётчиков, email-уведомление о разблокировке
+2. `POST /unlock { email, code }` — проверка кода (через `hmac.compare_digest`), `status → "active"`, сброс rate-limit счётчиков, email-уведомление о разблокировке
 
 ## Исключения
 

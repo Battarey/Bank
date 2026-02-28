@@ -58,7 +58,7 @@ POST /login-pin { phone, pin }
          │     ├── Попытка 5 или 10 → кулдаун 5 мин → 429
          │     └── Попытка 15 → status → "blocked" + email-уведомление → 423
          │
-         └── Верный PIN → сброс счётчиков → session_token
+         └── Верный PIN → сброс счётчиков → session_token + email-уведомление (login_alert)
 ```
 
 ### Разблокировка
@@ -78,7 +78,7 @@ POST /request-unlock { email }
 POST /unlock { email, code }
          │
          ▼
-  Проверка кода в Redis
+  Проверка кода в Redis (`hmac.compare_digest`)
          │
          ▼
   status → "active", сброс rate-limit, email-уведомление
@@ -88,7 +88,7 @@ POST /unlock { email, code }
 
 ```
 POST /logout       → удаление текущего токена из Redis
-POST /logout-all   → удаление всех токенов пользователя из Redis
+POST /logout-all   → удаление всех токенов пользователя из Redis (batch delete)
 ```
 
 ## Rate-limiting PIN-кода

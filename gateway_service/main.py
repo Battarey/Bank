@@ -14,7 +14,14 @@ from .routes.customer import onboarding_router, onboarding_steps_router, update_
 
 CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL")
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL")
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS")
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "")
+
+
+def _parse_cors_origins(raw: str) -> list[str]:
+	"""Разбивает строку из env в список origins для CORSMiddleware."""
+	if not raw:
+		return []
+	return [o.strip() for o in raw.split(",") if o.strip()]
 
 
 @asynccontextmanager
@@ -63,7 +70,7 @@ app = FastAPI(
 
 app.add_middleware(
 	CORSMiddleware,
-	allow_origins=CORS_ALLOWED_ORIGINS,
+	allow_origins=_parse_cors_origins(CORS_ALLOWED_ORIGINS),
 	allow_credentials=True,
 	allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
 	allow_headers=["*"],

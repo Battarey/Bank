@@ -6,7 +6,7 @@
 ```
 session/
 ├── router.py                # Эндпоинты: set-pin, logout, logout-all
-├── service.py               # Хеширование PIN (bcrypt), удаление токенов
+├── service.py               # Хеширование PIN (bcrypt), удаление токенов, уведомления
 └── README.md
 ```
 
@@ -14,9 +14,15 @@ session/
 
 | Метод | Путь          | Зависимость       | Описание                              |
 |--------|----------------|--------------------|-----------------------------------------|
-| POST   | `/set-pin`     | `require_user_id`  | Хеширует PIN и сохраняет в `users.pin_hash` |
+| POST   | `/set-pin`     | `require_user_id`  | Хеширует PIN и сохраняет в `users.pin_hash` + отправляет уведомление `pin_changed` |
 | POST   | `/logout`      | `X-Session-Token`  | Удаляет текущий токен из Redis         |
-| POST   | `/logout-all`  | `require_user_id`  | Удаляет все токены пользователя из Redis  |
+| POST   | `/logout-all`  | `require_user_id`  | Удаляет все токены пользователя из Redis (batch delete) |
+
+## Email-уведомления
+
+| Шаблон        | Когда отправляется              |
+|-----------------|------------------------------------|
+| `pin_changed`   | После успешной смены PIN-кода  |
 
 ## Исключения
 

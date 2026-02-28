@@ -1,5 +1,6 @@
 """Хранение и проверка кодов разблокировки аккаунта в Redis (sessions)."""
 
+import hmac
 import secrets
 from datetime import timedelta
 from uuid import UUID
@@ -37,7 +38,7 @@ async def verify_unlock_code(user_id: UUID, code: str) -> bool:
 	"""
 	client = get_client()
 	stored = await client.get(_code_key(user_id))
-	if stored is None or stored != code:
+	if stored is None or not hmac.compare_digest(stored, code):
 		return False
 
 	await client.delete(_code_key(user_id))

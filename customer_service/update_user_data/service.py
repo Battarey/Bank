@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
+from shared.utils.normalize import normalize_name, normalize_email, normalize_phone
 
 
 class UpdateDataError(Exception):
@@ -24,20 +25,6 @@ class UpdateDataConflict(UpdateDataError):
 
 class UpdateDataEmpty(UpdateDataError):
 	"""Пустой запрос — ни одно поле не передано."""
-
-
-def _normalize_name(value: str | None) -> str | None:
-	if value is None:
-		return None
-	return value.strip().upper()
-
-
-def _normalize_email(value: str) -> str:
-	return value.lower()
-
-
-def _normalize_phone(value: str) -> str:
-	return value.replace(" ", "")
 
 
 async def _get_active_user(session: AsyncSession, user_id: UUID) -> models.User:
@@ -73,11 +60,11 @@ async def update_personal_data(
 
 	# Нормализация
 	if "last_name" in fields:
-		fields["last_name"] = _normalize_name(fields["last_name"])
+		fields["last_name"] = normalize_name(fields["last_name"])
 	if "first_name" in fields:
-		fields["first_name"] = _normalize_name(fields["first_name"])
+		fields["first_name"] = normalize_name(fields["first_name"])
 	if "middle_name" in fields:
-		fields["middle_name"] = _normalize_name(fields["middle_name"])
+		fields["middle_name"] = normalize_name(fields["middle_name"])
 
 	for attr, value in fields.items():
 		setattr(record, attr, value)
@@ -166,9 +153,9 @@ async def update_contacts(
 
 	# Нормализация
 	if "email" in fields:
-		fields["email"] = _normalize_email(fields["email"])
+		fields["email"] = normalize_email(fields["email"])
 	if "phone" in fields:
-		fields["phone"] = _normalize_phone(fields["phone"])
+		fields["phone"] = normalize_phone(fields["phone"])
 
 	# Проверка уникальности
 	conditions = []

@@ -7,6 +7,7 @@ services:
       context: .
       dockerfile: ./gateway_service/Dockerfile
     env_file: ./gateway_service/.env
+    restart: unless-stopped
     depends_on:
       - auth_service
       - customer_service
@@ -33,11 +34,12 @@ services:
       context: .
       dockerfile: ./auth_service/Dockerfile
     env_file: ./auth_service/.env
+    restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
       redis_sessions:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
@@ -49,11 +51,12 @@ services:
       context: .
       dockerfile: ./customer_service/Dockerfile
     env_file: ./customer_service/.env
+    restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
       redis_onboarding:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
@@ -65,6 +68,7 @@ services:
       context: .
       dockerfile: ./account_service/Dockerfile
     env_file: ./account_service/.env
+    restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -75,6 +79,7 @@ services:
   currency_service:
     build: ./currency_service
     env_file: ./currency_service/.env
+    restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -85,6 +90,7 @@ services:
   log_service:
     build: ./log_service
     env_file: ./log_service/.env
+    restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -97,6 +103,7 @@ services:
   metal_service:
     build: ./metal_service
     env_file: ./metal_service/.env
+    restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -109,6 +116,7 @@ services:
       context: .
       dockerfile: ./notification_service/Dockerfile
     env_file: ./notification_service/.env
+    restart: unless-stopped
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -119,6 +127,7 @@ services:
   transaction_service:
     build: ./transaction_service
     env_file: ./transaction_service/.env
+    restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -173,7 +182,7 @@ services:
       - "${RABBITMQ_HOST_PORT}:${RABBITMQ_CONTAINER_PORT}"
       - "${RABBITMQ_WEB_HOST_PORT}:${RABBITMQ_WEB_CONTAINER_PORT}"
     healthcheck:
-      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_port_connectivity"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -190,6 +199,11 @@ services:
       - "${REDIS_SESSIONS_HOST_PORT}:${REDIS_SESSIONS_CONTAINER_PORT}"
     volumes:
       - redis_sessions_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - data
 
@@ -202,6 +216,11 @@ services:
       - "${REDIS_ONBOARDING_HOST_PORT}:${REDIS_ONBOARDING_CONTAINER_PORT}"
     volumes:
       - redis_onboarding_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - data
 

@@ -2,7 +2,7 @@ from typing import Awaitable, Callable, TypeVar
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from shared import schemas
+from shared import models, schemas
 from shared.database_core.db import get_session
 from shared.rabbitmq import publish, NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
 from shared.redis_onboarding.email_codes import (
@@ -74,6 +74,22 @@ async def finalize_onboarding(
 	"""Переносит данные из Redis в PostgreSQL и завершает онбординг."""
 
 	await _run_step(lambda: service.persist_onboarding_data(session, user_id), session)
+
+	# Отправляем приветственное письмо
+	contact = await session.get(models.Contact, user_id)
+	if contact:
+		await publish(
+			exchange_name=NOTIFICATIONS_EXCHANGE,
+			routing_key=EMAIL_ROUTING_KEY,
+			body={
+				"type": "welcome",
+				"payload": {
+					"to": contact.email,
+					"variables": {},
+				},
+			},
+		)
+
 	return schemas.FinalizeInternalResponse(status="completed", message="Пользователь успешно авторизован.")
 
 

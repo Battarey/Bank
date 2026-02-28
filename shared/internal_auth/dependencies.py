@@ -1,6 +1,7 @@
 """Зависимости для защиты внутренних микросервисов от прямого доступа."""
 
 import os
+import secrets
 from uuid import UUID
 
 from fastapi import Header, HTTPException, status
@@ -17,7 +18,7 @@ def verify_internal_key(x_internal_key: str = Header(..., alias="X-Internal-Key"
 			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
 			detail="Сервис не сконфигурирован: INTERNAL_API_KEY не задан.",
 		)
-	if x_internal_key != INTERNAL_API_KEY:
+	if not secrets.compare_digest(x_internal_key, INTERNAL_API_KEY):
 		raise HTTPException(
 			status_code=status.HTTP_403_FORBIDDEN,
 			detail="Недействительный внутренний ключ.",

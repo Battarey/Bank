@@ -54,7 +54,7 @@ gateway_service/
 
 ### Цепочка обработки запроса
 
-1. **CORS** — разрешает cross-origin запросы с указанных origins
+1. **CORS** — разрешает cross-origin запросы с указанных origins (env `CORS_ALLOWED_ORIGINS` парсится как список через запятую)
 2. **auth_middleware** — проверяет `X-Session-Token` через Redis:
    - Публичный путь → пропускает без проверки
    - Есть токен → извлекает `user_id` → кладёт в `request.state.user_id`
@@ -114,7 +114,7 @@ gateway_service/
   │  X-Onboarding-Token: ***       │                              │                  │               │
   │──────────────────────────────▶│  resolve → forward → finalize│                  │               │
   │                                │─────────────────────────────▶│                  │               │
-  │                                │◀─────────────────────────────│ OK               │               │
+  │                                │◀─────────────────────────────│ OK + welcome email│               │
   │                                │                              │                  │               │
   │                                │  delete onboarding_token     │                  │               │
   │                                │──────────────────────────────────────────────────▶│ DEL           │

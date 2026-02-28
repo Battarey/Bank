@@ -16,7 +16,7 @@ class StartInternalResponse(BaseModel):
 class StartOnboardingResponse(BaseModel):
 	"""Ответ на начало регистрации — содержит onboarding-токен для прохождения шагов."""
 
-	onboarding_token: str = Field(description="Токен для прохождения шагов регистрации (TTL 30 мин)")
+	onboarding_token: str = Field(description="Токен для прохождения шагов регистрации (TTL 60 мин)")
 	status: Literal["pending"] = Field(description="Статус онбординга")
 
 

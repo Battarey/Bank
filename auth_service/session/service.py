@@ -6,6 +6,8 @@ import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
+from shared.rabbitmq.client import publish
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
 from shared.redis_sessions import tokens as session_tokens
 
 
@@ -41,6 +43,21 @@ async def set_pin(session: AsyncSession, user_id: UUID, pin: str) -> None:
 	except Exception:
 		await session.rollback()
 		raise
+
+	# Уведомляем об изменении PIN
+	contact = await session.get(models.Contact, user_id)
+	if contact:
+		await publish(
+			exchange_name=NOTIFICATIONS_EXCHANGE,
+			routing_key=EMAIL_ROUTING_KEY,
+			body={
+				"type": "pin_changed",
+				"payload": {
+					"to": contact.email,
+					"variables": {},
+				},
+			},
+		)
 
 
 async def logout(token: str) -> None:

@@ -1,6 +1,7 @@
 """Бизнес-логика входа по PIN-коду."""
 
 import secrets
+from datetime import datetime, UTC
 from uuid import UUID
 
 import bcrypt
@@ -99,7 +100,7 @@ async def _lock_account(
 	await publish(
 		exchange_name=NOTIFICATIONS_EXCHANGE,
 		routing_key=EMAIL_ROUTING_KEY,
-		message={
+		body={
 			"type": "account_locked",
 			"payload": {
 				"to": email,
@@ -160,6 +161,22 @@ async def login_pin(
 
 	token = _generate_token()
 	await session_tokens.save_token(token, user.id)
+
+	# Уведомляем о входе
+	await publish(
+		exchange_name=NOTIFICATIONS_EXCHANGE,
+		routing_key=EMAIL_ROUTING_KEY,
+		body={
+			"type": "login_alert",
+			"payload": {
+				"to": contact.email,
+				"variables": {
+					"login_time": datetime.now(UTC).strftime("%d.%m.%Y %H:%M UTC"),
+				},
+			},
+		},
+	)
+
 	return token, user.id
 
 

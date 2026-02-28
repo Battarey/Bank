@@ -1,5 +1,6 @@
 """Хранение и проверка кодов подтверждения email в Redis (onboarding)."""
 
+import hmac
 import secrets
 from datetime import timedelta
 from uuid import UUID
@@ -42,7 +43,7 @@ async def verify_email_code(user_id: UUID, code: str) -> bool:
 
 	client = get_client()
 	stored = await client.get(_code_key(user_id))
-	if stored is None or stored != code:
+	if stored is None or not hmac.compare_digest(stored, code):
 		return False
 
 	# Код верный — помечаем email как подтверждённый
