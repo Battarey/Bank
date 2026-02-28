@@ -13,6 +13,7 @@ async def authenticate_token(token: str | None) -> Dict[str, str]:
 	"""Проверяет наличие и валидность токена. Возвращает данные сессии.
 
 	Используется в gateway-middleware для аутентификации запроса.
+	При успешной проверке продлевает TTL токена (скользящая экспирация).
 	Выбрасывает HTTPException при отсутствии или невалидности токена.
 	"""
 
@@ -28,6 +29,12 @@ async def authenticate_token(token: str | None) -> Dict[str, str]:
 			status_code=status.HTTP_401_UNAUTHORIZED,
 			detail="Сессионный токен недействителен или истёк.",
 		)
+
+	# Скользящая экспирация: продлеваем TTL при каждом запросе
+	user_id = session_data.get("user_id")
+	if user_id:
+		await session_tokens.touch_token(token, UUID(user_id))
+
 	return session_data
 
 

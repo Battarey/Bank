@@ -24,8 +24,10 @@ redis_sessions/
 
 | Паттерн                        | Тип    | TTL    | Описание                                     |
 |---------------------------------|--------|--------|----------------------------------------------|
-| `session:token:{token}`         | Hash   | 30 мин | Данные сессии (`user_id` + payload)           |
-| `session:user:{user_id}`        | Set    | 30 мин | Множество активных токенов пользователя       |
+| `session:token:{token}`         | Hash   | 30 мин* | Данные сессии (`user_id` + payload)           |
+| `session:user:{user_id}`        | Set    | 30 мин* | Множество активных токенов пользователя       |
+
+> \* Скользящая экспирация — TTL продлевается при каждом запросе. 30 минут отсчитываются от последнего действия.
 | `rate:pin:{phone}:total`        | String | —      | Счётчик неудачных попыток ввода PIN           |
 | `rate:pin:{phone}:cooldown`     | String | 5 мин  | Флаг кулдауна                                |
 | `unlock:{user_id}:code`         | String | 10 мин | 6-значный код разблокировки                   |
@@ -46,6 +48,7 @@ redis_sessions/
 | `DEFAULT_SESSION_TTL` | `timedelta(minutes=30)`                                 |
 | `save_token()`    | Сохранить токен → user_id + payload, добавить в set пользователя |
 | `load_token()`    | Получить данные сессии по токену (или `None`)                 |
+| `touch_token()`   | Продлить TTL токена + set пользователя (скользящая экспирация) |
 | `delete_token()`  | Удалить токен и убрать из set пользователя                    |
 | `revoke_all()`    | Удалить все активные токены пользователя (logout-all)         |
 
@@ -54,7 +57,7 @@ redis_sessions/
 | Символ                  | Описание                                                          |
 |-------------------------|-------------------------------------------------------------------|
 | `SessionTokenHeader`    | Annotated-тип для заголовка `X-Session-Token`                     |
-| `authenticate_token()`  | Проверяет наличие и валидность токена; используется в gateway middleware |
+| `authenticate_token()`  | Проверяет токен + продлевает TTL (скользящая экспирация); gateway middleware |
 | `verify_session_token()`| Проверяет токен + соответствие `user_id`; FastAPI `Depends()`     |
 
 ### `rate_limit.py`

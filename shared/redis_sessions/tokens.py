@@ -46,6 +46,18 @@ async def load_token(token: str) -> dict[str, str] | None:
 	return data or None
 
 
+async def touch_token(
+	token: str,
+	user_id: UUID,
+	ttl: timedelta = DEFAULT_SESSION_TTL,
+) -> None:
+	"""Продлить TTL токена и множества сессий (скользящая экспирация)."""
+
+	client = get_client()
+	await client.expire(_key(token), int(ttl.total_seconds()))
+	await client.expire(_user_sessions_key(user_id), int(ttl.total_seconds()))
+
+
 async def delete_token(token: str) -> None:
 	"""Удалить токен и его связь с пользователем."""
 
@@ -76,4 +88,5 @@ __all__ = [
 	"load_token",
 	"revoke_all",
 	"save_token",
+	"touch_token",
 ]

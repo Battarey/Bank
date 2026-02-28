@@ -106,7 +106,7 @@ bank/
 - Логин по PIN: `/auth/login-pin`
 - Установка / смена PIN: `/auth/set-pin`
 - Выход: `/auth/logout`, `/auth/logout-all`
-- bcrypt для хеширования PIN, сессии в Redis (TTL 30 мин)
+- bcrypt для хеширования PIN, сессии в Redis (TTL 30 мин, скользящая экспирация)
 - **Rate-limiting PIN:** 5 неудач → кулдаун 5 мин, 3× = 15 неудач → блокировка аккаунта + email-уведомление
 - **Разблокировка:** `/auth/request-unlock` → код на email → `/auth/unlock`
 
