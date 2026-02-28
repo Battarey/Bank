@@ -6,7 +6,7 @@ from uuid import UUID
 
 from .client import get_client
 
-DEFAULT_ONBOARDING_TTL = timedelta(minutes=30)
+DEFAULT_ONBOARDING_TTL = timedelta(minutes=60)
 
 
 def generate_token() -> str:

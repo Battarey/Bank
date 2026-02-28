@@ -7,6 +7,7 @@ from .auth import (
 	SetPinRequest,
 )
 from .contacts import ContactsPayload, ContactsResponse, ContactsUpdate
+from .email_verification import EmailCodeResponse, SendEmailCodeRequest, VerifyEmailCodeRequest
 from .identifiers import IdentifiersPayload, IdentifiersResponse
 from .onboarding import (
 	FinalizeInternalResponse,
@@ -21,6 +22,7 @@ __all__ = [
 	"ContactsPayload",
 	"ContactsResponse",
 	"ContactsUpdate",
+	"EmailCodeResponse",
 	"FinalizeInternalResponse",
 	"FinalizeResponse",
 	"IdentifiersPayload",
@@ -33,7 +35,9 @@ __all__ = [
 	"PersonalDataPayload",
 	"PersonalDataResponse",
 	"PersonalDataUpdate",
+	"SendEmailCodeRequest",
 	"SetPinRequest",
 	"StartInternalResponse",
 	"StartOnboardingResponse",
+	"VerifyEmailCodeRequest",
 ]

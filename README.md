@@ -1,7 +1,6 @@
 # Backend для банковского приложения
 
 ## Стек
-
 - **Язык:** Python 3.12
 - **Фреймворк:** FastAPI, asyncio
 - **ORM / миграции:** SQLAlchemy 2.0 (async), Alembic
@@ -23,7 +22,7 @@ bank/
 ├── currency_service/            # Сервис иностранных валют (заглушка)
 ├── log_service/                 # Сервис логирования (заглушка)
 ├── metal_service/               # Сервис драг. металлов (заглушка)
-├── notification_service/        # Сервис уведомлений (заглушка)
+├── notification_service/        # Сервис уведомлений: RabbitMQ consumer → SMTP (email по шаблонам)
 ├── transaction_service/         # Сервис транзакций (заглушка)
 ├── migrations/                  # Alembic-миграции + dev-скрипт сброса БД
 ├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, внутренняя аутентификация
@@ -47,11 +46,16 @@ bank/
    └──────┬──────┘ └─────┬──────┘ └──────────────┘
           │               │
           ▼               ▼
-   ┌─────────────┐ ┌─────────────┐
-   │  PostgreSQL │ │    Redis    │
-   │    (core)   │ │ sessions /  │
-   │             │ │ onboarding  │
-   └─────────────┘ └─────────────┘
+   ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
+   │  PostgreSQL │ │    Redis    │ │   RabbitMQ   │
+   │    (core)   │ │ sessions /  │ │              │
+   │             │ │ onboarding  │ │      ▼       │
+   └─────────────┘ └─────────────┘ │ Notification │
+                                   │   Service    │
+                                   │  (consumer)  │
+                                   └──────┬───────┘
+                                          ▼
+                                     Gmail SMTP
 ```
 
 ### Сети Docker
@@ -69,7 +73,7 @@ bank/
 | `postgres_core`    | `postgres:17`                  | 5432  | Основная БД (учётные данные клиентов)   |
 | `redis_sessions`   | `redis:7-alpine`               | 6379  | Сессионные токены (TTL 30 мин)          |
 | `redis_onboarding` | `redis/redis-stack-server`     | 6379  | JSON-черновики + onboarding-токены       |
-| `rabbitmq`         | `rabbitmq:3.13-management`     | 5672  | Брокер сообщений (логи, уведомления)    |
+| `rabbitmq`         | `rabbitmq:3.13-management`     | 5672  | Брокер сообщений (уведомления, логи)    |
 | `pgadmin`          | `dpage/pgadmin4`               | 80    | Веб-интерфейс для PostgreSQL            |
 
 ## Аутентификация
@@ -93,7 +97,9 @@ bank/
 ### Customer Service
 - Онбординг: `/users/start` → 4 шага → `/users/me/account/finalize`
 - Шаги: персональные данные, паспорт, идентификаторы (ИНН/СНИЛС), контакты
-- Черновики шагов хранятся в Redis Stack (JSON, TTL 24 ч)
+- Email-верификация: `send-email-code` → `verify-email` (через RabbitMQ → notification_service)
+- Черновики шагов хранятся в Redis Stack (JSON, TTL 60 мин)
+- Повторный ввод шага — черновик перезаписывается
 - Обновление данных авторизованного пользователя: `/users/me/personal-data`, `/users/me/passport`, `/users/me/contacts`
 
 ### Auth Service
@@ -102,10 +108,17 @@ bank/
 - Выход: `/auth/logout`, `/auth/logout-all`
 - bcrypt для хеширования PIN, сессии в Redis (TTL 30 мин)
 
+### Notification Service
+- RabbitMQ consumer (не HTTP-сервис)
+- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`
+- SMTP-транспорт через aiosmtplib (Gmail)
+- Произвольные письма не отправляются — только зарегистрированные шаблоны
+
 ### Shared
 - ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`
 - Pydantic-схемы для всех запросов/ответов
 - Redis-клиенты для сессий и онбординга
+- RabbitMQ-клиент (aio-pika): `connect`, `disconnect`, `publish`
 - Зависимости: `verify_internal_key()`, `require_user_id()`
 
 ### Migrations
@@ -125,14 +138,10 @@ Swagger UI: `http://localhost:8000/docs`.
 pgAdmin: `http://localhost:5050`.
 
 ## TODO
-
 - account_service — открытие / закрытие счетов
 - transaction_service — переводы, пополнения, списания
 - delete_account — удаление аккаунта клиента
 - Покрыть тестами customer_service и auth_service
-- Верификация email
 - currency_service — курсы валют
 - metal_service — драг. металлы
 - log_service — логирование через RabbitMQ + ClickHouse
-- notification_service — уведомления через RabbitMQ + MongoDB
-- Повторный ввод уже пройденного шага при онбординге

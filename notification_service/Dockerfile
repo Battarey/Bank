@@ -1,13 +1,14 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-	PYTHONUNBUFFERED=1
+	PYTHONUNBUFFERED=1 \
+	PYTHONPATH=/app
 
 WORKDIR /app
 
-COPY requirements.txt ./
+COPY notification_service/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY notification_service /app/notification_service
 
-CMD ["sleep", "infinity"]
+CMD ["python", "-m", "notification_service.main"]

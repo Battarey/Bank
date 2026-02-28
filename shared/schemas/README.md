@@ -5,12 +5,13 @@ Pydantic-схемы для валидации запросов и формиро
 ## Файловая архитектура
 ```
 schemas/
-├── auth.py            # Аутентификация: логин по PIN, установка PIN
-├── onboarding.py      # Онбординг: Start / Finalize (internal + gateway)
-├── personal_data.py   # ФИО, дата рождения, пол
-├── passport.py        # Паспортные данные
-├── identifiers.py     # ИНН, СНИЛС
-└── contacts.py        # Email, телефон
+├── auth.py                # Аутентификация: логин по PIN, установка PIN
+├── onboarding.py          # Онбординг: Start / Finalize (internal + gateway)
+├── personal_data.py       # ФИО, дата рождения, пол
+├── passport.py            # Паспортные данные
+├── identifiers.py         # ИНН, СНИЛС
+├── contacts.py            # Email, телефон
+└── email_verification.py  # Коды подтверждения email
 ```
 
 ## Схемы по файлам
@@ -79,3 +80,11 @@ FinalizeInternalResponse →   FinalizeResponse
 ```
 
 `customer_service` возвращает внутреннюю схему (с `user_id`), а `gateway` оборачивает её в публичную (с токенами).
+
+### `email_verification.py`
+
+| Схема                    | Тип      | Поля                                           | Описание                             |
+|--------------------------|----------|------------------------------------------------|------------------------------------------|
+| `SendEmailCodeRequest`   | Request  | `email` (EmailStr)                             | Запрос на отправку кода подтверждения |
+| `VerifyEmailCodeRequest` | Request  | `code` (6 цифр, `^\d{6}$`)                    | Запрос на проверку кода               |
+| `EmailCodeResponse`      | Response | `message`, `email_verified` (bool)             | Ответ на отправку / проверку кода   |

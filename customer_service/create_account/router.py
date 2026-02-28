@@ -4,6 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared import schemas
 from shared.database_core.db import get_session
+from shared.rabbitmq import publish, NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.redis_onboarding.email_codes import (
+	generate_code,
+	is_email_verified,
+	save_email_code,
+	verify_email_code,
+)
+from shared.redis_onboarding import drafts as onboarding_drafts
 from . import service
 
 router = APIRouter(
@@ -142,6 +150,78 @@ async def submit_contacts(
 	return await _run_step(
 		lambda: service.store_contacts(session, user_id, payload),
 		session,
+	)
+
+
+# ── Верификация email ──────────────────────────────────────────────────
+
+
+@router.post(
+	"/send-email-code",
+	response_model=schemas.EmailCodeResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Отправить код на email",
+)
+async def send_email_code(user_id: UUID):
+	"""Отправляет 6-значный код на email, указанный в черновике шага контактов.
+
+	Перед вызовом необходимо пройти шаг 4 (contacts).
+	"""
+
+	draft = await onboarding_drafts.load_draft(user_id, "contacts")
+	if draft is None or not draft.get("payload"):
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Сначала заполните контактные данные (шаг 4).",
+		)
+
+	email = draft["payload"].get("email")
+	if not email:
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Email не найден в черновике контактов.",
+		)
+
+	code = generate_code()
+	await save_email_code(user_id, code)
+
+	await publish(
+		NOTIFICATIONS_EXCHANGE,
+		EMAIL_ROUTING_KEY,
+		{
+			"type": "verification_code",
+			"payload": {"to": email, "variables": {"code": code}},
+		},
+	)
+
+	return schemas.EmailCodeResponse(
+		message=f"Код отправлен на {email}.",
+		email_verified=False,
+	)
+
+
+@router.post(
+	"/verify-email",
+	response_model=schemas.EmailCodeResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Подтвердить email",
+)
+async def verify_email(user_id: UUID, payload: schemas.VerifyEmailCodeRequest):
+	"""Проверяет 6-значный код, отправленный на email.
+
+	После успешной верификации можно вызывать `/finalize`.
+	"""
+
+	success = await verify_email_code(user_id, payload.code)
+	if not success:
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Код неверный или истёк. Запросите новый.",
+		)
+
+	return schemas.EmailCodeResponse(
+		message="Email успешно подтверждён.",
+		email_verified=True,
 	)
 
 

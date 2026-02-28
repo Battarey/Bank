@@ -159,6 +159,46 @@ async def submit_contacts(
 
 
 @onboarding_steps_router.post(
+	"/users/me/account/send-email-code",
+	response_model=schemas.EmailCodeResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Отправить код на email",
+)
+async def send_email_code(
+	request: Request,
+	user_id: UUID = Depends(_resolve_onboarding),
+):
+	"""Отправляет 6-значный код подтверждения на email из шага 4 (contacts)."""
+	data = await forward_request(
+		request,
+		"POST",
+		f"/users/{user_id}/account/send-email-code",
+	)
+	return schemas.EmailCodeResponse.model_validate(data)
+
+
+@onboarding_steps_router.post(
+	"/users/me/account/verify-email",
+	response_model=schemas.EmailCodeResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Подтвердить email",
+)
+async def verify_email(
+	payload: schemas.VerifyEmailCodeRequest,
+	request: Request,
+	user_id: UUID = Depends(_resolve_onboarding),
+):
+	"""Проверяет 6-значный код. После успешной верификации можно вызывать finalize."""
+	data = await forward_request(
+		request,
+		"POST",
+		f"/users/{user_id}/account/verify-email",
+		payload.model_dump(mode="json"),
+	)
+	return schemas.EmailCodeResponse.model_validate(data)
+
+
+@onboarding_steps_router.post(
 	"/users/me/account/finalize",
 	response_model=schemas.FinalizeResponse,
 	status_code=status.HTTP_200_OK,

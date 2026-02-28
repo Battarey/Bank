@@ -1,6 +1,6 @@
 # Shared
 
-Общий пакет с переиспользуемой логикой для всех микросервисов: ORM-модели, Pydantic-схемы, подключения к БД и Redis, внутренняя аутентификация.
+Общий пакет с переиспользуемой логикой для всех микросервисов: ORM-модели, Pydantic-схемы, подключения к БД и Redis, RabbitMQ-клиент, внутренняя аутентификация.
 
 ## Файловая архитектура
 ```
@@ -8,7 +8,8 @@ shared/
 ├── database_core/               # Подключение к PostgreSQL (async engine, сессии)
 ├── internal_auth/               # Защита микросервисов от прямого доступа
 ├── models/                      # SQLAlchemy ORM-модели
-├── redis_onboarding/            # Redis Stack — черновики и onboarding-токены
+├── rabbitmq/                    # RabbitMQ-клиент (aio-pika): publish, connect
+├── redis_onboarding/            # Redis Stack — черновики, onboarding-токены, email-коды
 ├── redis_sessions/              # Redis — сессионные токены
 ├── schemas/                     # Pydantic-схемы для запросов и ответов
 └── README.md
@@ -16,11 +17,12 @@ shared/
 
 ## Кто использует
 
-| Подпакет           | gateway | customer | auth |
-|--------------------|---------|----------|------|
-| `database_core`    |         | ✓        | ✓    |
-| `internal_auth`    |         | ✓        | ✓    |
-| `models`           |         | ✓        | ✓    |
-| `redis_onboarding` | ✓       | ✓        |      |
-| `redis_sessions`   | ✓       |          | ✓    |
-| `schemas`          | ✓       | ✓        | ✓    |
+| Подпакет           | gateway | customer | auth | notification |
+|--------------------|---------|----------|------|--------------|
+| `database_core`    |         | ✓        | ✓    |              |
+| `internal_auth`    |         | ✓        | ✓    |              |
+| `models`           |         | ✓        | ✓    |              |
+| `rabbitmq`         |         | ✓        |      |              |
+| `redis_onboarding` | ✓       | ✓        |      |              |
+| `redis_sessions`   | ✓       |          | ✓    |              |
+| `schemas`          | ✓       | ✓        | ✓    |              |

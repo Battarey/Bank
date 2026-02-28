@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared import models, schemas
 from shared.redis_onboarding import drafts as onboarding_drafts
+from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
 
 
 class AccountDataError(Exception):
@@ -303,11 +304,12 @@ async def _store_step(
 	payload: BaseModel,
 	definition: StepDefinition,
 ) -> BaseModel:
-	"""Проводит общий пайплайн шага: проверки → нормализация → сохранение черновика."""
+	"""Проводит общий пайплайн шага: проверки → нормализация → сохранение черновика.
+
+	При повторном вызове шага черновик перезаписывается.
+	"""
 
 	await _ensure_user_exists(session, user_id)
-	await definition.ensure_no_record(session, user_id)
-	await _ensure_no_draft(user_id, definition.step, definition.conflict_message)
 	normalized_payload = definition.normalize(payload)
 	if definition.ensure_unique:
 		await definition.ensure_unique(session, user_id, normalized_payload)
@@ -397,6 +399,12 @@ async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
 			"Заполните их заново перед финализацией."
 		)
 
+	# Проверяем, что email подтверждён
+	if not await is_email_verified(user_id):
+		raise AccountDataError(
+			"Email не подтверждён. Пройдите верификацию перед финализацией."
+		)
+
 	try:
 		for definition in STEP_SEQUENCE:
 			await _persist_step(session, user_id, draft_payloads[definition.step], definition)
@@ -418,6 +426,7 @@ async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
 		raise
 	else:
 		await onboarding_drafts.clear_all(user_id)
+		await clear_email_verification(user_id)
 
 
 __all__ = [

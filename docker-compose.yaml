@@ -52,6 +52,8 @@ services:
         condition: service_completed_successfully
       redis_onboarding:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - backend
       - data
@@ -85,7 +87,7 @@ services:
       migrations:
         condition: service_completed_successfully
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     networks:
       - backend
       - data
@@ -101,13 +103,13 @@ services:
       - data
 
   notification_service:
-    build: ./notification_service
+    build:
+      context: .
+      dockerfile: ./notification_service/Dockerfile
     env_file: ./notification_service/.env
     depends_on:
-      migrations:
-        condition: service_completed_successfully
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     networks:
       - backend
       - data
@@ -168,6 +170,11 @@ services:
     ports:
       - "${RABBITMQ_HOST_PORT}:${RABBITMQ_CONTAINER_PORT}"
       - "${RABBITMQ_WEB_HOST_PORT}:${RABBITMQ_WEB_CONTAINER_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - data
 

@@ -2,3 +2,4 @@ Concept.md
 .env
 *.env
 Draft.md
+.venv/

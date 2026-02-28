@@ -16,7 +16,7 @@ session_token_scheme = APIKeyHeader(
 onboarding_token_scheme = APIKeyHeader(
 	name="X-Onboarding-Token",
 	scheme_name="OnboardingToken",
-	description="Токен онбординга, полученный из /users/start (TTL 30 минут)",
+	description="Токен онбординга, полученный из /users/start (TTL 60 минут)",
 	auto_error=False,
 )
 
