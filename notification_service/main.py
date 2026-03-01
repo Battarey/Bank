@@ -15,6 +15,7 @@ import signal
 import aio_pika
 
 from .smtp import send_email
+from .store import close_mongo, init_mongo, save_notification
 from .templates import get_template
 
 logging.basicConfig(
@@ -42,12 +43,13 @@ async def _process_message(message: aio_pika.abc.AbstractIncomingMessage) -> Non
 
 		msg_type: str = data.get("type", "")
 		payload: dict = data.get("payload", {})
+		variables: dict = payload.get("variables", {})
 
 		logger.info("Получено сообщение: type=%s", msg_type)
 
 		try:
 			template = get_template(msg_type)
-			subject, body = template.render(payload.get("variables", {}))
+			subject, body = template.render(variables)
 
 			await send_email(
 				to=payload["to"],
@@ -56,12 +58,32 @@ async def _process_message(message: aio_pika.abc.AbstractIncomingMessage) -> Non
 			)
 			logger.info("%s → %s", msg_type, payload["to"])
 
+			await save_notification(
+				msg_type=msg_type,
+				to=payload["to"],
+				subject=subject,
+				body=body,
+				variables=variables,
+				status="sent",
+			)
+
 		except ValueError:
 			logger.warning("Неизвестный шаблон: %s", msg_type)
 		except KeyError as exc:
 			logger.error("Не хватает переменной для шаблона %s: %s", msg_type, exc)
-		except Exception:
+		except Exception as exc:
 			logger.exception("Ошибка обработки сообщения type=%s", msg_type)
+
+			# Фиксируем неудачную попытку в журнале
+			await save_notification(
+				msg_type=msg_type,
+				to=payload.get("to", "unknown"),
+				subject="",
+				body="",
+				variables=variables,
+				status="failed",
+				error=str(exc),
+			)
 
 
 MAX_RETRIES = 10
@@ -71,6 +93,10 @@ RETRY_DELAY = 3  # секунды
 async def run() -> None:
 	"""Основной цикл: подключение к RabbitMQ и потребление сообщений."""
 
+	# ── MongoDB ────────────────────────────────────────────────────────
+	await init_mongo()
+
+	# ── RabbitMQ ───────────────────────────────────────────────────────
 	logger.info("Подключение к RabbitMQ: %s", RABBITMQ_URL)
 
 	for attempt in range(1, MAX_RETRIES + 1):
@@ -118,6 +144,9 @@ async def run() -> None:
 				pass
 
 		await stop_event.wait()
+
+	# ── Cleanup ────────────────────────────────────────────────────────
+	await close_mongo()
 
 	logger.info("Notification service остановлен.")
 

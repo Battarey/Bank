@@ -6,7 +6,7 @@
 - **ORM / миграции:** SQLAlchemy 2.0 (async), Alembic
 - **HTTP-клиент:** httpx (AsyncClient)
 - **Валидация:** Pydantic v2
-- **БД:** PostgreSQL 17, Redis 7, Redis Stack
+- **БД:** PostgreSQL 17, Redis 7, Redis Stack, MongoDB 7
 - **Брокер:** RabbitMQ 3.13
 - **Хеширование:** bcrypt (PIN-коды)
 - **Контейнеризация:** Docker, Docker Compose
@@ -26,7 +26,7 @@ bank/
 ├── transaction_service/         # Сервис транзакций (заглушка)
 ├── migrations/                  # Alembic-миграции + dev-скрипт сброса БД
 ├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, утилиты, внутренняя аутентификация
-├── docker-compose.yaml          # 14 сервисов: 9 бизнес + 5 инфраструктура
+├── docker-compose.yaml          # 15 сервисов: 9 бизнес + 6 инфраструктура
 ├── .env                         # Переменные окружения инфраструктуры
 └── README.md
 ```
@@ -53,9 +53,11 @@ bank/
    └─────────────┘ └─────────────┘ │ Notification │
                                    │   Service    │
                                    │  (consumer)  │
-                                   └──────┬───────┘
-                                          ▼
-                                     Gmail SMTP
+                                   └──┬───────┬───┘
+                                      │       │
+                                      ▼       ▼
+                                 Gmail SMTP  MongoDB
+                                            (email_log)
 ```
 
 ### Сети Docker
@@ -74,9 +76,11 @@ bank/
 | `redis_sessions`   | `redis:7-alpine`               | 6379  | Сессионные токены (TTL 30 мин, healthcheck) |
 | `redis_onboarding` | `redis/redis-stack-server`     | 6379  | JSON-черновики + onboarding-токены (healthcheck) |
 | `rabbitmq`         | `rabbitmq:3.13-management`     | 5672  | Брокер сообщений (уведомления, логи)    |
+| `mongodb`          | `mongo:7`                      | 27017 | Журнал уведомлений (email_log, TTL 90 д) |
+| `pgadmin`          | `dpage/pgadmin4`               | 5050  | Веб-интерфейс для PostgreSQL            |
+| `mongo_express`    | `mongo-express:latest`         | 8081  | Веб-интерфейс для MongoDB               |
 
 > Все сервисы запускаются с `restart: unless-stopped`. Redis-сервисы имеют healthcheck (`redis-cli ping`), и зависимые сервисы ждут `condition: service_healthy`.
-| `pgadmin`          | `dpage/pgadmin4`               | 80    | Веб-интерфейс для PostgreSQL            |
 
 ## Аутентификация
 
@@ -117,8 +121,9 @@ bank/
 
 ### Notification Service
 - RabbitMQ consumer (не HTTP-сервис)
-- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`
+- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`, `account_opened`, `account_closed`
 - SMTP-транспорт через aiosmtplib (Gmail)
+- Журнал уведомлений в MongoDB (коллекция `email_log`, TTL 90 дней)
 - Произвольные письма не отправляются — только зарегистрированные шаблоны
 
 ### Shared
@@ -151,6 +156,7 @@ docker compose up --build
 Gateway будет доступен на `http://localhost:8000`.
 Swagger UI: `http://localhost:8000/docs`.
 pgAdmin: `http://localhost:5050`.
+Mongo Express: `http://localhost:8081`.
 
 ## TODO
 
@@ -161,16 +167,16 @@ pgAdmin: `http://localhost:5050`.
 - currency_service — курсы валют
 - metal_service — драг. металлы
 - log_service — логирование через RabbitMQ + ClickHouse
+- Рассмотреть k8s (манифесты для minikube / k3s)
 - Вопрос безопасности
 - Оформление документации как технической, так и простой
 
 ### Локальный
-- MongoDB для email
 - Покрыть тестами (unit/integrations/нагрузка)
 - Реализовать логику "заморозки" / блокировки аккаунта
-- Заполнить файл с паттернами
-- Рассмотреть возможность применения kunerbetes
 - Рассмотреть возможность лицензирования кода
+- Разбор и усовершенствование БД
+- Подумать над "красивым" выводом логов
 
 ### Возможный
 - Перенести Gateway на другой язык, чтобы повысить нагрузку

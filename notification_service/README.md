@@ -12,8 +12,9 @@ notification_service/
 ├── Dockerfile
 ├── main.py             # Точка входа — RabbitMQ consumer
 ├── requirements.txt
-├── .env                # SMTP + RABBITMQ конфиг
+├── .env                # SMTP + RABBITMQ + MONGO конфиг
 ├── smtp/               # SMTP-клиент (транспорт)
+├── store/              # MongoDB-журнал отправленных уведомлений
 ├── templates/           # Реестр email-шаблонов
 └── README.md
 ```
@@ -22,12 +23,35 @@ notification_service/
 
 ```
 customer_service ──(publish)──► RabbitMQ ──(consume)──► notification_service ──(SMTP)──► Gmail
+                                                              │
+                                                              └──(save)──► MongoDB (email_log)
 ```
 
 1. Любой сервис публикует JSON-сообщение в exchange `notifications` с routing key `email.send`
 2. `notification_service` слушает очередь `email_queue` (binding: `email.#`)
 3. Поле `type` определяет **шаблон** — произвольные письма не отправляются
 4. Переменные из `payload.variables` подставляются в шаблон и отправляются через SMTP
+5. Результат (успех/ошибка) сохраняется в MongoDB-коллекцию `email_log`
+
+## Журнал уведомлений (`store/`)
+
+Каждое отправленное (или неудавшееся) письмо сохраняется в MongoDB как документ:
+
+```json
+{
+  "type": "account_opened",
+  "to": "user@example.com",
+  "subject": "Счёт открыт",
+  "body": "Здравствуйте! ...",
+  "variables": { "account_type": "Расчётный", "currency": "RUB", "account_number": "40817810..." },
+  "status": "sent",
+  "error": null,
+  "created_at": "2026-03-01T12:00:00Z"
+}
+```
+
+- **TTL:** документы автоматически удаляются через 90 дней (индекс на `created_at`)
+- **Статус:** `sent` — успешно, `failed` — ошибка (поле `error` содержит описание)
 
 ## Шаблоны (`templates/`)
 
@@ -78,6 +102,7 @@ customer_service ──(publish)──► RabbitMQ ──(consume)──► noti
 | Переменная      | Описание                         | Пример                                    |
 |-----------------|----------------------------------|-------------------------------------------|
 | `RABBITMQ_URL`  | URL подключения к RabbitMQ       | `amqp://guest:guest@rabbitmq:5672/`       |
+| `MONGO_URL`     | URL подключения к MongoDB        | `mongodb://user:pass@mongodb:27017/db?authSource=admin` |
 | `SMTP_HOST`     | SMTP сервер                      | `smtp.gmail.com`                          |
 | `SMTP_PORT`     | Порт SMTP                        | `465`                                     |
 | `SMTP_USER`     | Логин SMTP                       | `user@gmail.com`                          |
@@ -87,8 +112,8 @@ customer_service ──(publish)──► RabbitMQ ──(consume)──► noti
 
 ## Docker
 
-- **Сети**: `backend`, `data`
-- **Зависимости**: `rabbitmq`
+- **Сети**: `frontend`, `backend`, `data`
+- **Зависимости**: `rabbitmq`, `mongodb`
 - **CMD**: `python -m notification_service.main`
 
 ## Расширение
