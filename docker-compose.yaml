@@ -72,6 +72,8 @@ services:
     depends_on:
       migrations:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     networks:
       - backend
       - data

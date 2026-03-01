@@ -1,5 +1,10 @@
 Concept.md
+Patterns.md
+Draft.md
+
 .env
 *.env
-Draft.md
+
 .venv/
+
+__pycache__/

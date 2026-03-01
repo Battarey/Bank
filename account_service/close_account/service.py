@@ -1,30 +1,49 @@
 """Бизнес-логика закрытия банковского счёта."""
 
+import logging
 from datetime import UTC, datetime
-from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
+from shared.rabbitmq.client import publish
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from account_service.exceptions import (
+	AccountConflict,
+	AccountNonZeroBalance,
+	AccountNotFound,
+	AccountNotOpen,
+)
+
+logger = logging.getLogger("account_service")
 
 
-# ── Исключения ─────────────────────────────────────────────────────────
+# ── Уведомления ────────────────────────────────────────────────────────
 
-class CloseAccountError(Exception):
-	"""Базовая ошибка закрытия счёта."""
-
-
-class CloseAccountNotFound(CloseAccountError):
-	"""Счёт не найден или не принадлежит пользователю."""
-
-
-class CloseAccountNotOpen(CloseAccountError):
-	"""Счёт уже закрыт или заморожен."""
-
-
-class CloseAccountNonZeroBalance(CloseAccountError):
-	"""На счёте есть остаток — невозможно закрыть."""
+async def _notify_account_closed(
+	session: AsyncSession,
+	user_id: UUID,
+	account: models.BankAccount,
+) -> None:
+	"""Отправляет email-уведомление о закрытии счёта."""
+	contact = await session.get(models.Contact, user_id)
+	if not contact:
+		return
+	await publish(
+		exchange_name=NOTIFICATIONS_EXCHANGE,
+		routing_key=EMAIL_ROUTING_KEY,
+		body={
+			"type": "account_closed",
+			"payload": {
+				"to": contact.email,
+				"variables": {
+					"account_number": account.account_number,
+				},
+			},
+		},
+	)
 
 
 # ── Операции ───────────────────────────────────────────────────────────
@@ -46,17 +65,17 @@ async def close_account(
 
 	# 1. Существование и принадлежность
 	if account is None or account.client_id != user_id:
-		raise CloseAccountNotFound("Счёт не найден.")
+		raise AccountNotFound("Счёт не найден.")
 
 	# 2. Статус
 	if account.status != "open":
-		raise CloseAccountNotOpen(
+		raise AccountNotOpen(
 			f"Невозможно закрыть счёт со статусом «{account.status}»."
 		)
 
 	# 3. Баланс
-	if account.balance != Decimal("0.00"):
-		raise CloseAccountNonZeroBalance(
+	if account.balance != 0:
+		raise AccountNonZeroBalance(
 			f"На счёте остаток {account.balance} {account.currency}. "
 			"Переведите средства перед закрытием."
 		)
@@ -68,17 +87,17 @@ async def close_account(
 	try:
 		await session.commit()
 		await session.refresh(account)
-	except Exception:
+	except IntegrityError:
 		await session.rollback()
-		raise
+		raise AccountConflict("Конфликт данных при закрытии счёта.")
+
+	logger.info("Счёт закрыт: user=%s, account=%s", user_id, account_id)
+
+	await _notify_account_closed(session, user_id, account)
 
 	return account
 
 
 __all__ = [
-	"CloseAccountError",
-	"CloseAccountNonZeroBalance",
-	"CloseAccountNotFound",
-	"CloseAccountNotOpen",
 	"close_account",
 ]

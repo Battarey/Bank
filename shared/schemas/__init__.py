@@ -10,7 +10,6 @@ from .bank_account import (
 	AccountListResponse,
 	AccountMessageResponse,
 	AccountResponse,
-	CloseAccountRequest,
 	OpenAccountRequest,
 )
 from .contacts import ContactsPayload, ContactsResponse, ContactsUpdate
@@ -30,7 +29,6 @@ __all__ = [
 	"AccountListResponse",
 	"AccountMessageResponse",
 	"AccountResponse",
-	"CloseAccountRequest",
 	"ContactsPayload",
 	"ContactsResponse",
 	"ContactsUpdate",

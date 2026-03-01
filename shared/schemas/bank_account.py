@@ -26,12 +26,6 @@ class OpenAccountRequest(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 
 
-class CloseAccountRequest(BaseModel):
-	"""Пустое тело — идентификатор счёта берётся из пути."""
-
-	model_config = ConfigDict(extra="forbid")
-
-
 # ── Ответы ─────────────────────────────────────────────────────────────
 
 class AccountResponse(BaseModel):
@@ -70,7 +64,6 @@ __all__ = [
 	"AccountResponse",
 	"AccountStatus",
 	"AccountType",
-	"CloseAccountRequest",
 	"Currency",
 	"OpenAccountRequest",
 ]

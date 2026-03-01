@@ -2,12 +2,15 @@
 
 Микросервис управления банковскими счетами: открытие, просмотр и закрытие. Работает только через Gateway (защита `X-Internal-Key`).
 
+При открытии и закрытии счёта отправляет уведомления через RabbitMQ (шаблоны `account_opened`, `account_closed`).
+
 ## Файловая архитектура
 ```
 account_service/
 ├── open_account/            # Открытие счёта, список, детали
 ├── close_account/           # Закрытие счёта
 ├── tests/
+├── exceptions.py            # Единая иерархия исключений
 ├── main.py
 ├── Dockerfile
 ├── requirements.txt

@@ -120,6 +120,31 @@ ACCOUNT_UNLOCKED = EmailTemplate(
 	),
 )
 
+ACCOUNT_OPENED = EmailTemplate(
+	name="account_opened",
+	subject="Счёт открыт",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш {account_type} счёт успешно открыт.\n"
+		"Валюта: {currency}\n"
+		"Номер счёта: {account_number}\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+ACCOUNT_CLOSED = EmailTemplate(
+	name="account_closed",
+	subject="Счёт закрыт",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш счёт {account_number} успешно закрыт.\n"
+		"Если вы не совершали это действие, немедленно свяжитесь с поддержкой.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
 # ── Реестр ──────────────────────────────────────────────────────────────
 
 TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
@@ -130,6 +155,8 @@ TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
 	ACCOUNT_LOCKED,
 	UNLOCK_CODE,
 	ACCOUNT_UNLOCKED,
+	ACCOUNT_OPENED,
+	ACCOUNT_CLOSED,
 )}
 
 

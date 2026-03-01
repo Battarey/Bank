@@ -1,28 +1,26 @@
 """Бизнес-логика открытия банковского счёта."""
 
+import logging
 import secrets
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
+from shared.rabbitmq.client import publish
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from account_service.exceptions import (
+	AccountConflict,
+	AccountError,
+	AccountLimitReached,
+	AccountOwnerNotFound,
+)
 
-
-# ── Исключения ─────────────────────────────────────────────────────────
-
-class AccountError(Exception):
-	"""Базовая ошибка операций со счетами."""
-
-
-class AccountLimitReached(AccountError):
-	"""Превышен лимит счетов данного типа/валюты."""
-
-
-class AccountOwnerNotFound(AccountError):
-	"""Владелец счёта не найден или не активен."""
+logger = logging.getLogger("account_service")
 
 
 # ── Константы ──────────────────────────────────────────────────────────
@@ -45,6 +43,14 @@ _CURRENCY_CODES: dict[str, str] = {
 }
 
 _BRANCH_CODE = "0001"
+
+# Названия типов счетов для уведомлений
+_TYPE_LABELS: dict[str, str] = {
+	"checking": "Расчётный",
+	"savings": "Накопительный",
+	"credit": "Кредитный",
+	"deposit": "Вклад",
+}
 
 
 # ── Генерация номера счёта ─────────────────────────────────────────────
@@ -80,6 +86,34 @@ async def _generate_unique_number(session: AsyncSession, account_type: str, curr
 		if await _is_number_unique(session, number):
 			return number
 	raise AccountError("Не удалось сгенерировать уникальный номер счёта.")
+
+
+# ── Уведомления ────────────────────────────────────────────────────────
+
+async def _notify_account_opened(
+	session: AsyncSession,
+	user_id: UUID,
+	account: models.BankAccount,
+) -> None:
+	"""Отправляет email-уведомление об открытии счёта."""
+	contact = await session.get(models.Contact, user_id)
+	if not contact:
+		return
+	await publish(
+		exchange_name=NOTIFICATIONS_EXCHANGE,
+		routing_key=EMAIL_ROUTING_KEY,
+		body={
+			"type": "account_opened",
+			"payload": {
+				"to": contact.email,
+				"variables": {
+					"account_type": _TYPE_LABELS.get(account.type, account.type),
+					"currency": account.currency,
+					"account_number": account.account_number,
+				},
+			},
+		},
+	)
 
 
 # ── Операции ───────────────────────────────────────────────────────────
@@ -134,9 +168,16 @@ async def open_account(
 	try:
 		await session.commit()
 		await session.refresh(account)
-	except Exception:
+	except IntegrityError:
 		await session.rollback()
-		raise
+		raise AccountConflict("Конфликт данных при создании счёта. Попробуйте снова.")
+
+	logger.info(
+		"Счёт открыт: user=%s, account=%s, type=%s, currency=%s",
+		user_id, account.id, payload.type, payload.currency,
+	)
+
+	await _notify_account_opened(session, user_id, account)
 
 	return account
 
@@ -165,14 +206,12 @@ async def get_account(
 
 	account = await session.get(models.BankAccount, account_id)
 	if account is None or account.client_id != user_id:
-		raise AccountError("Счёт не найден.")
+		from account_service.exceptions import AccountNotFound
+		raise AccountNotFound("Счёт не найден.")
 	return account
 
 
 __all__ = [
-	"AccountError",
-	"AccountLimitReached",
-	"AccountOwnerNotFound",
 	"get_account",
 	"list_accounts",
 	"open_account",

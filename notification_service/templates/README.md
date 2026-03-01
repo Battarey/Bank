@@ -24,6 +24,8 @@ templates/
 | `ACCOUNT_LOCKED`     | `EmailTemplate`              | Уведомление о блокировке аккаунта              |
 | `UNLOCK_CODE`        | `EmailTemplate`              | Код разблокировки аккаунта                       |
 | `ACCOUNT_UNLOCKED`   | `EmailTemplate`              | Уведомление о разблокировке                       |
+| `ACCOUNT_OPENED`     | `EmailTemplate`              | Уведомление об открытии счёта                     |
+| `ACCOUNT_CLOSED`     | `EmailTemplate`              | Уведомление о закрытии счёта                      |
 | `EmailTemplate`      | `dataclass`                  | Класс шаблона (`name`, `subject`, `body`, `render()`) |
 
 ## Шаблоны
@@ -37,6 +39,8 @@ templates/
 | `account_locked`     | Аккаунт заблокирован        | —                 |
 | `unlock_code`        | Код разблокировки аккаунта| `{code}`          |
 | `account_unlocked`   | Аккаунт разблокирован      | —                 |
+| `account_opened`     | Счёт открыт                | `{account_type}`, `{currency}`, `{account_number}` |
+| `account_closed`     | Счёт закрыт                | `{account_number}` |
 
 ## EmailTemplate
 
