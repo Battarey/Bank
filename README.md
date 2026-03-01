@@ -18,7 +18,7 @@ bank/
 ├── gateway_service/             # API Gateway — единая точка входа, маршрутизация, аутентификация
 ├── customer_service/            # Онбординг и управление данными клиента (ФИО, паспорт, контакты)
 ├── auth_service/                # Аутентификация: логин по PIN, сессии, установка PIN
-├── account_service/             # Сервис банковских счетов (заглушка)
+├── account_service/             # Сервис банковских счетов: открытие, просмотр, закрытие
 ├── currency_service/            # Сервис иностранных валют (заглушка)
 ├── log_service/                 # Сервис логирования (заглушка)
 ├── metal_service/               # Сервис драг. металлов (заглушка)
@@ -41,11 +41,11 @@ bank/
           ┌──────────┘    │   └──────────┐
           ▼               ▼              ▼
    ┌─────────────┐ ┌────────────┐ ┌──────────────┐
-   │  Customer   │ │    Auth    │ │  Account...  │
-   │   Service   │ │   Service  │ │  (заглушки)  │
-   └──────┬──────┘ └─────┬──────┘ └──────────────┘
-          │              │
-          ▼              ▼
+   │  Customer   │ │    Auth    │ │   Account    │
+   │   Service   │ │   Service  │ │   Service    │
+   └──────┬──────┘ └─────┬──────┘ └──────┬───────┘
+          │              │               │
+          ▼              ▼               ▼
    ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
    │  PostgreSQL │ │    Redis    │ │   RabbitMQ   │
    │    (core)   │ │ sessions /  │ │              │
@@ -75,7 +75,7 @@ bank/
 | `redis_onboarding` | `redis/redis-stack-server`     | 6379  | JSON-черновики + onboarding-токены (healthcheck) |
 | `rabbitmq`         | `rabbitmq:3.13-management`     | 5672  | Брокер сообщений (уведомления, логи)    |
 
-> Все бизнес-сервисы запускаются с `restart: unless-stopped`. Redis-сервисы имеют healthcheck (`redis-cli ping`), и зависимые сервисы ждут `condition: service_healthy`.
+> Все сервисы запускаются с `restart: unless-stopped`. Redis-сервисы имеют healthcheck (`redis-cli ping`), и зависимые сервисы ждут `condition: service_healthy`.
 | `pgadmin`          | `dpage/pgadmin4`               | 80    | Веб-интерфейс для PostgreSQL            |
 
 ## Аутентификация
@@ -120,7 +120,7 @@ bank/
 - Произвольные письма не отправляются — только зарегистрированные шаблоны
 
 ### Shared
-- ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`
+- ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`, `BankAccount`
 - Pydantic-схемы для всех запросов/ответов
 - Redis-клиенты для сессий и онбординга
 - RabbitMQ-клиент (aio-pika): `connect`, `disconnect`, `publish`
@@ -133,6 +133,13 @@ bank/
 - 7 таблиц + CHECK-ограничения
 - ER-диаграммы в `postgre_core/`
 
+### Account Service
+- Открытие счёта: `POST /accounts` (checking, savings, credit, deposit × RUB, USD, EUR)
+- Генерация 20-значного номера по стандарту (код типа + валюта + контрольная цифра + отделение + индивидуальный)
+- Лимит: не более 3 открытых счетов на комбинацию тип + валюта
+- Просмотр: `GET /accounts`, `GET /accounts/{id}`
+- Закрытие: `POST /accounts/{id}/close` (только при балансе 0)
+
 ## Запуск
 
 ```bash
@@ -144,10 +151,11 @@ Swagger UI: `http://localhost:8000/docs`.
 pgAdmin: `http://localhost:5050`.
 
 ## TODO
-- account_service — открытие / закрытие счетов
 - transaction_service — переводы, пополнения, списания
 - delete_account — удаление аккаунта клиента
-- Покрыть тестами customer_service и auth_service
+- Покрыть тестами customer_service, auth_service и account_service
 - currency_service — курсы валют
 - metal_service — драг. металлы
 - log_service — логирование через RabbitMQ + ClickHouse
+- Переделать onboarding токен
+- Ограничить функционал до установления Pin

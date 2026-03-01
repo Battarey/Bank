@@ -6,6 +6,9 @@
 ```
 gateway_service/
 ├── routes/                      # Маршруты, проксирующие запросы в микросервисы
+│   ├── auth.py                  # Маршруты аутентификации
+│   ├── customer.py              # Маршруты онбординга и обновления данных
+│   └── account.py               # Маршруты банковских счетов
 ├── helpers.py                   # Утилита forward_request для проксирования
 ├── main.py                      # Точка входа: lifespan, CORS, подключение роутеров
 ├── middleware.py                 # Auth middleware + security-схемы для Swagger
@@ -37,8 +40,8 @@ gateway_service/
         │
         ▼
 ┌───────────────┐    ┌───────────────┐    ┌───────────────────┐
-│ customer_svc  │    │   auth_svc    │    │ notification_svc  │
-│  :8000        │    │   :8000       │    │ (через RabbitMQ)  │
+│ customer_svc  │    │   auth_svc    │    │  account_svc      │
+│  :8000        │    │   :8000       │    │   :8000            │
 └───────────────┘    └───────────────┘    └───────────────────┘
 ```
 

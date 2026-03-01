@@ -10,7 +10,8 @@ models/
 ├── personal_data.py   # Таблица personal_data
 ├── passport.py        # Таблица passport
 ├── identifier.py      # Таблица identifiers
-└── contact.py         # Таблица contacts
+├── contact.py         # Таблица contacts
+└── bank_account.py    # Таблица bank_accounts
 ```
 
 ## Модели
@@ -76,13 +77,30 @@ models/
 | `email`     | `String(255)`  | NOT NULL, UNIQUE                    | Email               |
 | `phone`     | `String(20)`   | NOT NULL, UNIQUE                    | Телефон             |
 
+### `BankAccount` — таблица `bank_accounts`
+
+Банковский счёт клиента.
+
+| Колонка          | Тип              | Ограничения                         | Описание              |
+|------------------|------------------|-------------------------------------|-----------------------|
+| `id`             | `UUID`           | PK                                  | UUID счёта            |
+| `client_id`      | `UUID`           | FK → `users.id` ON DELETE CASCADE   | Владелец              |
+| `account_number` | `CHAR(20)`       | NOT NULL, UNIQUE                    | 20-значный номер      |
+| `type`           | `Text`           | NOT NULL                            | Тип (checking, savings, credit, deposit) |
+| `currency`       | `CHAR(3)`        | NOT NULL                            | Валюта (RUB, USD, EUR) |
+| `balance`        | `Numeric(18,2)`  | NOT NULL, default `0`               | Баланс                |
+| `status`         | `Text`           | NOT NULL, default `open`            | Статус (open, closed, frozen) |
+| `opened_at`      | `DateTime(tz)`   | NOT NULL                            | Дата открытия         |
+| `closed_at`      | `DateTime(tz)`   | nullable                            | Дата закрытия         |
+
 ## Связи
 
 ```
 users (1) ──┬── (1) personal_data
              ├── (1) passport
              ├── (1) identifiers
-             └── (1) contacts
+             ├── (1) contacts
+             └── (N) bank_accounts
 ```
 
 Все дочерние таблицы связаны через `client_id` → `users.id` с каскадным удалением (`ON DELETE CASCADE`).

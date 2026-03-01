@@ -121,6 +121,7 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
+      - frontend
       - backend
       - data
 

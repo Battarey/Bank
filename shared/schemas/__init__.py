@@ -6,6 +6,13 @@ from .auth import (
 	MessageResponse,
 	SetPinRequest,
 )
+from .bank_account import (
+	AccountListResponse,
+	AccountMessageResponse,
+	AccountResponse,
+	CloseAccountRequest,
+	OpenAccountRequest,
+)
 from .contacts import ContactsPayload, ContactsResponse, ContactsUpdate
 from .email_verification import EmailCodeResponse, SendEmailCodeRequest, VerifyEmailCodeRequest
 from .identifiers import IdentifiersPayload, IdentifiersResponse
@@ -20,6 +27,10 @@ from .personal_data import PersonalDataPayload, PersonalDataResponse, PersonalDa
 from .unlock import RequestUnlockRequest, UnlockRequest
 
 __all__ = [
+	"AccountListResponse",
+	"AccountMessageResponse",
+	"AccountResponse",
+	"CloseAccountRequest",
 	"ContactsPayload",
 	"ContactsResponse",
 	"ContactsUpdate",
@@ -31,6 +42,7 @@ __all__ = [
 	"LoginPinRequest",
 	"LoginPinResponse",
 	"MessageResponse",
+	"OpenAccountRequest",
 	"PassportPayload",
 	"PassportResponse",
 	"PersonalDataPayload",

@@ -12,7 +12,8 @@ schemas/
 ├── identifiers.py         # ИНН, СНИЛС
 ├── contacts.py            # Email, телефон
 ├── email_verification.py  # Коды подтверждения email
-└── unlock.py              # Разблокировка аккаунта
+├── unlock.py              # Разблокировка аккаунта
+└── bank_account.py        # Банковские счета: открытие, закрытие, список
 ```
 
 ## Схемы по файлам
@@ -96,3 +97,18 @@ FinalizeInternalResponse →   FinalizeResponse
 |--------------------------|----------|--------------------------------------|--------------------------------------------|
 | `RequestUnlockRequest`   | Request  | `email` (EmailStr)                   | Запрос на отправку кода разблокировки |
 | `UnlockRequest`          | Request  | `email` (EmailStr), `code` (`^\d{6}$`) | Проверка кода и разблокировка         |
+
+### `bank_account.py`
+
+**Типы:**
+- `AccountType` — `Literal["checking", "savings", "credit", "deposit"]`
+- `Currency` — `Literal["RUB", "USD", "EUR"]`
+- `AccountStatus` — `Literal["open", "closed", "frozen"]`
+
+| Схема                    | Тип      | Поля                                           | Описание                              |
+|--------------------------|----------|------------------------------------------------|---------------------------------------|
+| `OpenAccountRequest`     | Request  | `type` (AccountType), `currency` (Currency)    | Запрос на открытие счёта              |
+| `CloseAccountRequest`    | Request  | (пустое тело, `extra="forbid"`)                | ID счёта из пути                      |
+| `AccountResponse`        | Response | `id`, `client_id`, `account_number`, `type`, `currency`, `balance`, `status`, `opened_at`, `closed_at` | Полные данные счёта |
+| `AccountListResponse`    | Response | `accounts` (list[AccountResponse]), `total`    | Список счетов пользователя            |
+| `AccountMessageResponse` | Response | `message`, `account` (AccountResponse)         | Результат операции со счётом          |
