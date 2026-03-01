@@ -225,9 +225,9 @@ async def finalize_onboarding(
 	if onb_token:
 		await delete_onboarding_token(onb_token)
 
-	# Автовыдача сессионного токена
+	# Автовыдача сессионного токена (PIN ещё не установлен)
 	session_token = secrets.token_urlsafe(32)
-	await save_session_token(session_token, user_id)
+	await save_session_token(session_token, user_id, payload={"has_pin": "false"})
 
 	return schemas.FinalizeResponse(
 		status=data["status"],

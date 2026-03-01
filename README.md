@@ -93,6 +93,7 @@ bank/
 ### Gateway Service
 - Маршрутизация запросов к микросервисам через httpx
 - Middleware аутентификации (сессии + onboarding-токены)
+- PIN-gate: без установленного PIN доступны только `/auth/set-pin`, `/auth/logout`, `/auth/logout-all`
 - CORS-настройки
 - Swagger UI с двумя схемами авторизации
 
@@ -158,5 +159,4 @@ pgAdmin: `http://localhost:5050`.
 - currency_service — курсы валют
 - metal_service — драг. металлы
 - log_service — логирование через RabbitMQ + ClickHouse
-- Переделать onboarding токен
 - Ограничить функционал до установления Pin

@@ -58,6 +58,13 @@ async def touch_token(
 	await client.expire(_user_sessions_key(user_id), int(ttl.total_seconds()))
 
 
+async def update_token_data(token: str, data: dict[str, str]) -> None:
+	"""Обновить поля в хеше сессионного токена (например, has_pin)."""
+
+	client = get_client()
+	await client.hset(_key(token), mapping=data)
+
+
 async def delete_token(token: str) -> None:
 	"""Удалить токен и его связь с пользователем."""
 
@@ -89,4 +96,5 @@ __all__ = [
 	"revoke_all",
 	"save_token",
 	"touch_token",
+	"update_token_data",
 ]

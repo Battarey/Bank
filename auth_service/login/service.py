@@ -160,7 +160,7 @@ async def login_pin(
 	await rate_limit.reset(phone)
 
 	token = _generate_token()
-	await session_tokens.save_token(token, user.id)
+	await session_tokens.save_token(token, user.id, payload={"has_pin": "true"})
 
 	# Уведомляем о входе
 	await publish(

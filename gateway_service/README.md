@@ -62,6 +62,7 @@ gateway_service/
    - Публичный путь → пропускает без проверки
    - Есть токен → извлекает `user_id` → кладёт в `request.state.user_id`
    - Нет токена / невалидный → `401 Unauthorized`
+   - PIN не установлен (`has_pin != true`) → `403` (доступны только `/auth/set-pin`, `/auth/logout`, `/auth/logout-all`)
 
 ### Публичные пути (без X-Session-Token)
 

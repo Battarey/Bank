@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Request, status
 from shared import schemas
 from shared.schemas.unlock import RequestUnlockRequest, UnlockRequest
+from shared.redis_sessions.tokens import update_token_data
 from ..helpers import forward_request
 from ..middleware import session_token_scheme
 
@@ -87,6 +88,12 @@ async def set_pin(payload: schemas.SetPinRequest, request: Request):
 		payload.model_dump(mode="json"),
 		service="auth",
 	)
+
+	# Обновляем сессию: PIN теперь установлен
+	token = request.headers.get("X-Session-Token")
+	if token:
+		await update_token_data(token, {"has_pin": "true"})
+
 	return schemas.MessageResponse.model_validate(data)
 
 

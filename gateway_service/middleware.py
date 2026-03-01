@@ -43,6 +43,13 @@ PUBLIC_SEGMENTS: tuple[str, ...] = (
 	"/account/",
 )
 
+# Пути, доступные авторизованным пользователям БЕЗ установленного PIN
+PIN_EXEMPT_PATHS: set[str] = {
+	"/auth/set-pin",
+	"/auth/logout",
+	"/auth/logout-all",
+}
+
 
 def _is_public(path: str, method: str) -> bool:
 	"""Определяет, является ли запрос публичным."""
@@ -55,7 +62,11 @@ def _is_public(path: str, method: str) -> bool:
 
 
 async def auth_middleware(request: Request, call_next):
-	"""Проверяет X-Session-Token, извлекает user_id и кладёт его в state."""
+	"""Проверяет X-Session-Token, извлекает user_id и кладёт его в state.
+
+	Если PIN не установлен (has_pin != true), допускает только
+	/auth/set-pin, /auth/logout и /auth/logout-all.
+	"""
 
 	if _is_public(request.url.path, request.method):
 		return await call_next(request)
@@ -68,5 +79,15 @@ async def auth_middleware(request: Request, call_next):
 			status_code=exc.status_code,
 			content={"detail": exc.detail},
 		)
+
 	request.state.user_id = session_data["user_id"]
+
+	# Проверка: PIN установлен?
+	has_pin = session_data.get("has_pin", "false")
+	if has_pin != "true" and request.url.path not in PIN_EXEMPT_PATHS:
+		return JSONResponse(
+			status_code=403,
+			content={"detail": "Необходимо установить PIN-код. POST /auth/set-pin"},
+		)
+
 	return await call_next(request)
