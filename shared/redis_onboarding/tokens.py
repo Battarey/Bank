@@ -6,7 +6,7 @@ from uuid import UUID
 
 from .client import get_client
 
-DEFAULT_ONBOARDING_TTL = timedelta(minutes=60)
+DEFAULT_ONBOARDING_TTL = timedelta(minutes=15)
 
 
 def generate_token() -> str:
@@ -37,6 +37,16 @@ async def load_onboarding_token(token: str) -> UUID | None:
 	return UUID(raw) if raw else None
 
 
+async def touch_onboarding_token(
+	token: str,
+	ttl: timedelta = DEFAULT_ONBOARDING_TTL,
+) -> None:
+	"""Продлить TTL onboarding-токена (скользящая экспирация)."""
+
+	client = get_client()
+	await client.expire(_key(token), int(ttl.total_seconds()))
+
+
 async def delete_onboarding_token(token: str) -> None:
 	"""Удалить onboarding-токен (например, после finalize)."""
 
@@ -50,4 +60,5 @@ __all__ = [
 	"generate_token",
 	"load_onboarding_token",
 	"save_onboarding_token",
+	"touch_onboarding_token",
 ]

@@ -100,7 +100,8 @@ bank/
 - Онбординг: `/users/start` → 4 шага → `/users/me/account/finalize`
 - Шаги: персональные данные, паспорт, идентификаторы (ИНН/СНИЛС), контакты
 - Email-верификация: `send-email-code` → `verify-email` (через RabbitMQ → notification_service)
-- Черновики шагов хранятся в Redis Stack (JSON, TTL 60 мин)
+- Черновики шагов хранятся в Redis Stack (JSON, TTL 24 ч)
+- Onboarding-токен: TTL 15 мин, скользящая экспирация (продлевается при каждом шаге)
 - Повторный ввод шага — черновик перезаписывается
 - При завершении регистрации отправляется приветственное письмо (`welcome`)
 - Обновление данных авторизованного пользователя: `/users/me/personal-data`, `/users/me/passport`, `/users/me/contacts`

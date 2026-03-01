@@ -87,7 +87,7 @@ gateway_service/
   │                                │                              │                  │               │
   │                                │  generate onboarding_token   │                  │               │
   │                                │──────────────────────────────────────────────────▶│ SET token     │
-  │◀───────────────────────────────│  {onboarding_token}          │                  │  TTL 60 мин   │
+  │◀───────────────────────────────│  {onboarding_token}          │                  │  TTL 15 мин   │
   │                                │                              │                  │               │
   │  POST /users/me/account/...    │                              │                  │               │
   │  X-Onboarding-Token: ***       │                              │                  │               │
@@ -95,6 +95,8 @@ gateway_service/
   │                                │  _resolve_onboarding()       │                  │               │
   │                                │──────────────────────────────────────────────────▶│ GET token     │
   │                                │◀──────────────────────────────────────────────────│ user_id       │
+  │                                │  touch_onboarding_token       │                  │               │
+  │                                │──────────────────────────────────────────────────▶│ EXPIRE 15м   │
   │                                │                              │                  │               │
   │                                │  forward → /users/{id}/...   │                  │               │
   │                                │─────────────────────────────▶│                  │               │

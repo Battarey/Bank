@@ -9,6 +9,7 @@ from shared.redis_onboarding.tokens import (
 	generate_token as generate_onboarding_token,
 	load_onboarding_token,
 	save_onboarding_token,
+	touch_onboarding_token,
 )
 from shared.redis_sessions.tokens import save_token as save_session_token
 from ..helpers import forward_request
@@ -44,6 +45,10 @@ async def _resolve_onboarding(
 			status_code=status.HTTP_401_UNAUTHORIZED,
 			detail="Onboarding-токен невалиден или истёк.",
 		)
+
+	# Скользящая экспирация: продлеваем TTL при каждом шаге
+	await touch_onboarding_token(token)
+
 	return user_id
 
 

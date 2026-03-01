@@ -8,7 +8,7 @@ redis_onboarding/
 ├── client.py       # Синглтон-клиент Redis (REDIS_ONBOARDING_URL)
 ├── drafts.py       # CRUD для JSON-черновиков по шагам
 ├── email_codes.py  # Коды подтверждения email (generate, save, verify)
-└── tokens.py       # Onboarding-токены (save / load / delete, TTL 60 мин)
+└── tokens.py       # Onboarding-токены (save / load / touch / delete, TTL 15 мин, скользящая)
 ```
 
 ## Конфигурация
@@ -24,7 +24,7 @@ redis_onboarding/
 | Паттерн                            | Тип    | TTL     | Описание                         |
 |-------------------------------------|--------|---------|----------------------------------|
 | `onboarding:{user_id}:{step}`       | JSON   | 24 ч    | Черновик шага онбординга          |
-| `onboarding:token:{token}`          | String | 60 мин  | Отображение onboarding-token → user_id |
+| `onboarding:token:{token}`          | String | 15 мин  | Отображение onboarding-token → user_id (скользящая экспирация) |
 | `onboarding:{user_id}:email_code`   | String | 10 мин  | 6-значный код подтверждения email    |
 | `onboarding:{user_id}:email_verified` | String | 24 ч | Флаг подтверждения email (`"1"`)  |
 
@@ -53,10 +53,11 @@ redis_onboarding/
 
 | Символ                      | Описание                                      |
 |-----------------------------|-----------------------------------------------|
-| `DEFAULT_ONBOARDING_TTL`    | `timedelta(minutes=60)`                       |
+| `DEFAULT_ONBOARDING_TTL`    | `timedelta(minutes=15)`                       |
 | `generate_token()`          | Генерирует `secrets.token_urlsafe(32)`        |
 | `save_onboarding_token()`   | Сохранить token → user_id с TTL               |
 | `load_onboarding_token()`   | Получить user_id по токену (или `None`)        |
+| `touch_onboarding_token()`  | Продлить TTL (скользящая экспирация)           |
 | `delete_onboarding_token()` | Удалить токен (после finalize)                 |
 
 ### `email_codes.py`
