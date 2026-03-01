@@ -130,12 +130,16 @@ services:
       - data
 
   transaction_service:
-    build: ./transaction_service
+    build:
+      context: .
+      dockerfile: ./transaction_service/Dockerfile
     env_file: ./transaction_service/.env
     restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     networks:
       - backend
       - data

@@ -23,7 +23,7 @@ bank/
 ├── log_service/                 # Сервис логирования (заглушка)
 ├── metal_service/               # Сервис драг. металлов (заглушка)
 ├── notification_service/        # Сервис уведомлений: RabbitMQ consumer → SMTP (email по шаблонам)
-├── transaction_service/         # Сервис транзакций (заглушка)
+├── transaction_service/         # Сервис транзакций: пополнение, снятие, переводы, история
 ├── migrations/                  # Alembic-миграции + dev-скрипт сброса БД
 ├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, утилиты, внутренняя аутентификация
 ├── docker-compose.yaml          # 15 сервисов: 9 бизнес + 6 инфраструктура
@@ -36,16 +36,17 @@ bank/
 ```
                   ┌───────────────┐
    Клиент ──────► │    Gateway    │ :8000
-                  └──┬────┬───┬───┘
-                     │    │   │
-          ┌──────────┘    │   └──────────┐
-          ▼               ▼              ▼
-   ┌─────────────┐ ┌────────────┐ ┌──────────────┐
-   │  Customer   │ │    Auth    │ │   Account    │
-   │   Service   │ │   Service  │ │   Service    │
-   └──────┬──────┘ └─────┬──────┘ └──────┬───────┘
-          │              │               │
-          ▼              ▼               ▼
+                  └──┬────┬───┬───┬┘
+                     │    │   │   │
+          ┌──────────┘    │   │   └────────────┐
+          │              │   │              │
+          ▼              ▼   ▼              ▼
+   ┌─────────────┐ ┌──────────┐ ┌────────────┐ ┌──────────────┐
+   │  Customer   │ │   Auth   │ │  Account   │ │ Transaction  │
+   │   Service   │ │  Service │ │  Service   │ │   Service    │
+   └──────┬──────┘ └─────┬────┘ └──────┬─────┘ └───────┬──────┘
+          │              │              │               │
+          ▼              ▼              ▼               ▼
    ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
    │  PostgreSQL │ │    Redis    │ │   RabbitMQ   │
    │    (core)   │ │ sessions /  │ │              │
@@ -121,13 +122,13 @@ bank/
 
 ### Notification Service
 - RabbitMQ consumer (не HTTP-сервис)
-- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`, `account_opened`, `account_closed`
+- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`, `account_opened`, `account_closed`, `transaction_deposit`, `transaction_withdrawal`, `transaction_transfer`, `transaction_incoming`
 - SMTP-транспорт через aiosmtplib (Gmail)
 - Журнал уведомлений в MongoDB (коллекция `email_log`, TTL 90 дней)
 - Произвольные письма не отправляются — только зарегистрированные шаблоны
 
 ### Shared
-- ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`, `BankAccount`
+- ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`, `BankAccount`, `Transaction`
 - Pydantic-схемы для всех запросов/ответов
 - Redis-клиенты для сессий и онбординга
 - RabbitMQ-клиент (aio-pika): `connect`, `disconnect`, `publish`
@@ -147,6 +148,15 @@ bank/
 - Просмотр: `GET /accounts`, `GET /accounts/{id}`
 - Закрытие: `POST /accounts/{id}/close` (только при балансе 0)
 
+### Transaction Service
+- Пополнение: `POST /accounts/{id}/deposit`
+- Снятие: `POST /accounts/{id}/withdraw` (проверка баланса)
+- Перевод: `POST /accounts/{id}/transfer` (собственные / чужие счета, только одна валюта)
+- История: `GET /accounts/{id}/transactions` (пагинация, фильтры по типу/направлению)
+- Row-level locking (`FOR UPDATE`) на всех мутациях баланса
+- Deadlock prevention: упорядоченная блокировка UUID при переводах
+- Email-уведомления на все операции через RabbitMQ
+
 ## Запуск
 
 ```bash
@@ -161,17 +171,19 @@ Mongo Express: `http://localhost:8081`.
 ## TODO
 
 ### Глобальный
-- transaction_service — переводы, пополнения, списания
 - delete_account — удаление аккаунта клиента
-- Добалвение ещё одной БД для ххранение истории пользователя
+- Добавление ещё одной БД для хранение истории пользователя
 - currency_service — курсы валют
 - metal_service — драг. металлы
 - log_service — логирование через RabbitMQ + ClickHouse
+- Конвертация валют при переводах (интеграция с currency_service)
 - Рассмотреть k8s (манифесты для minikube / k3s)
 - Вопрос безопасности
 - Оформление документации как технической, так и простой
 
 ### Локальный
+- Реализовать при регистрации весокосного года
+- Реализовать при регистрации логику невозможного года рождения и т.д.
 - Покрыть тестами (unit/integrations/нагрузка)
 - Реализовать логику "заморозки" / блокировки аккаунта
 - Рассмотреть возможность лицензирования кода

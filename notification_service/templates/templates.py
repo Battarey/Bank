@@ -145,6 +145,58 @@ ACCOUNT_CLOSED = EmailTemplate(
 	),
 )
 
+TRANSACTION_DEPOSIT = EmailTemplate(
+	name="transaction_deposit",
+	subject="Пополнение счёта",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш счёт {account_number} пополнен на {amount} {currency}.\n"
+		"Текущий баланс: {balance_after} {currency}.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+TRANSACTION_WITHDRAWAL = EmailTemplate(
+	name="transaction_withdrawal",
+	subject="Списание со счёта",
+	body=(
+		"Здравствуйте!\n\n"
+		"Со счёта {account_number} списано {amount} {currency}.\n"
+		"Текущий баланс: {balance_after} {currency}.\n\n"
+		"Если вы не совершали это действие, немедленно свяжитесь с поддержкой.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+TRANSACTION_TRANSFER = EmailTemplate(
+	name="transaction_transfer",
+	subject="Перевод выполнен",
+	body=(
+		"Здравствуйте!\n\n"
+		"Перевод {amount} {currency} выполнен.\n"
+		"Со счёта: {from_account}\n"
+		"На счёт: {to_account}\n"
+		"Баланс счёта-отправителя: {balance_after} {currency}.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+TRANSACTION_INCOMING = EmailTemplate(
+	name="transaction_incoming",
+	subject="Входящий перевод",
+	body=(
+		"Здравствуйте!\n\n"
+		"На ваш счёт {account_number} поступил перевод {amount} {currency} "
+		"со счёта {from_account}.\n"
+		"Текущий баланс: {balance_after} {currency}.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
 # ── Реестр ──────────────────────────────────────────────────────────────
 
 TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
@@ -157,6 +209,10 @@ TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
 	ACCOUNT_UNLOCKED,
 	ACCOUNT_OPENED,
 	ACCOUNT_CLOSED,
+	TRANSACTION_DEPOSIT,
+	TRANSACTION_WITHDRAWAL,
+	TRANSACTION_TRANSFER,
+	TRANSACTION_INCOMING,
 )}
 
 

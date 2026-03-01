@@ -6,6 +6,7 @@ from .contact import Contact
 from .identifier import Identifier
 from .passport import Passport
 from .personal_data import PersonalData
+from .transaction import Transaction
 from .user import User
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
 	"Identifier",
 	"Passport",
 	"PersonalData",
+	"Transaction",
 	"User",
 ]

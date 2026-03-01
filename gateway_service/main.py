@@ -12,10 +12,12 @@ from .routes.account import router as account_router
 from .routes.auth import protected_router as auth_protected_router
 from .routes.auth import public_router as auth_public_router
 from .routes.customer import onboarding_router, onboarding_steps_router, update_router
+from .routes.transaction import router as transaction_router
 
 CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL")
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL")
 ACCOUNT_SERVICE_URL = os.getenv("ACCOUNT_SERVICE_URL")
+TRANSACTION_SERVICE_URL = os.getenv("TRANSACTION_SERVICE_URL")
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "")
 
 
@@ -32,11 +34,13 @@ async def lifespan(app: FastAPI):
 		httpx.AsyncClient(base_url=CUSTOMER_SERVICE_URL, timeout=30.0) as customer,
 		httpx.AsyncClient(base_url=AUTH_SERVICE_URL, timeout=30.0) as auth,
 		httpx.AsyncClient(base_url=ACCOUNT_SERVICE_URL, timeout=30.0) as account,
+		httpx.AsyncClient(base_url=TRANSACTION_SERVICE_URL, timeout=30.0) as transaction,
 	):
 		app.state.services = {
 			"customer": customer,
 			"auth": auth,
 			"account": account,
+			"transaction": transaction,
 		}
 		yield
 	await redis_sessions_client.close_client()
@@ -70,6 +74,10 @@ app = FastAPI(
 			"description": "Банковские счета: открытие, просмотр, закрытие.",
 		},
 		{
+			"name": "transactions",
+			"description": "Операции по счетам: пополнение, снятие, переводы, история.",
+		},
+		{
 			"name": "health",
 			"description": "Проверка работоспособности сервиса.",
 		},
@@ -98,3 +106,4 @@ app.include_router(update_router)
 app.include_router(auth_public_router)
 app.include_router(auth_protected_router)
 app.include_router(account_router)
+app.include_router(transaction_router)

@@ -23,6 +23,14 @@ from .onboarding import (
 )
 from .passport import PassportPayload, PassportResponse
 from .personal_data import PersonalDataPayload, PersonalDataResponse, PersonalDataUpdate
+from .transaction import (
+	DepositRequest,
+	TransactionListResponse,
+	TransactionMessageResponse,
+	TransactionResponse,
+	TransferRequest,
+	WithdrawalRequest,
+)
 from .unlock import RequestUnlockRequest, UnlockRequest
 
 __all__ = [
@@ -32,6 +40,7 @@ __all__ = [
 	"ContactsPayload",
 	"ContactsResponse",
 	"ContactsUpdate",
+	"DepositRequest",
 	"EmailCodeResponse",
 	"FinalizeInternalResponse",
 	"FinalizeResponse",
@@ -51,6 +60,11 @@ __all__ = [
 	"SetPinRequest",
 	"StartInternalResponse",
 	"StartOnboardingResponse",
+	"TransactionListResponse",
+	"TransactionMessageResponse",
+	"TransactionResponse",
+	"TransferRequest",
 	"UnlockRequest",
 	"VerifyEmailCodeRequest",
+	"WithdrawalRequest",
 ]

@@ -26,6 +26,10 @@ templates/
 | `ACCOUNT_UNLOCKED`   | `EmailTemplate`              | Уведомление о разблокировке                       |
 | `ACCOUNT_OPENED`     | `EmailTemplate`              | Уведомление об открытии счёта                     |
 | `ACCOUNT_CLOSED`     | `EmailTemplate`              | Уведомление о закрытии счёта                      |
+| `TRANSACTION_DEPOSIT` | `EmailTemplate`              | Уведомление о пополнении счёта                    |
+| `TRANSACTION_WITHDRAWAL` | `EmailTemplate`           | Уведомление о списании со счёта                   |
+| `TRANSACTION_TRANSFER` | `EmailTemplate`             | Уведомление об исходящем переводе                 |
+| `TRANSACTION_INCOMING` | `EmailTemplate`             | Уведомление о входящем переводе                   |
 | `EmailTemplate`      | `dataclass`                  | Класс шаблона (`name`, `subject`, `body`, `render()`) |
 
 ## Шаблоны
@@ -41,6 +45,10 @@ templates/
 | `account_unlocked`   | Аккаунт разблокирован      | —                 |
 | `account_opened`     | Счёт открыт                | `{account_type}`, `{currency}`, `{account_number}` |
 | `account_closed`     | Счёт закрыт                | `{account_number}` |
+| `transaction_deposit` | Пополнение счёта           | `{account_number}`, `{amount}`, `{currency}`, `{balance_after}` |
+| `transaction_withdrawal` | Списание со счёта       | `{account_number}`, `{amount}`, `{currency}`, `{balance_after}` |
+| `transaction_transfer` | Перевод выполнен          | `{from_account}`, `{to_account}`, `{amount}`, `{currency}`, `{balance_after}` |
+| `transaction_incoming` | Входящий перевод          | `{account_number}`, `{from_account}`, `{amount}`, `{currency}`, `{balance_after}` |
 
 ## EmailTemplate
 
