@@ -1,3 +1,5 @@
+"""Pydantic-схемы персональных данных."""
+
 from datetime import date
 from typing import Literal
 from uuid import UUID

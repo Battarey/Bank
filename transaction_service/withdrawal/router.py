@@ -23,6 +23,8 @@ router = APIRouter(
 )
 
 
+# ── Маппинг исключений → HTTP ──────────────────────────────────────────
+
 def _raise(exc: TransactionError) -> None:
 	"""Маппинг бизнес-исключений → HTTP-ошибки."""
 	if isinstance(exc, AccountNotFound):
@@ -33,6 +35,8 @@ def _raise(exc: TransactionError) -> None:
 		raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
 	raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
+
+# ── Эндпоинты ──────────────────────────────────────────────────────
 
 @router.post(
 	"/{account_id}/withdraw",

@@ -1,3 +1,5 @@
+"""ORM-модель пользователя."""
+
 from datetime import datetime
 from uuid import UUID
 from sqlalchemy import Boolean, DateTime, Text

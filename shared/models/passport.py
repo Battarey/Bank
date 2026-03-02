@@ -1,3 +1,5 @@
+"""ORM-модель паспортных данных."""
+
 from datetime import date
 from uuid import UUID
 from sqlalchemy import Date, ForeignKey, Text, String

@@ -1,3 +1,5 @@
+"""Роутер онбординга — пошаговая регистрация клиента."""
+
 from typing import Awaitable, Callable, TypeVar
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status

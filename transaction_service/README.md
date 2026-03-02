@@ -11,6 +11,7 @@ transaction_service/
 ├── withdrawal/           # Снятие со счёта
 ├── transfer/             # Перевод между счетами
 ├── history/              # История операций с пагинацией
+├── tests/
 ├── exceptions.py         # Единая иерархия исключений
 ├── main.py
 ├── Dockerfile

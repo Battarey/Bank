@@ -1,3 +1,5 @@
+"""Pydantic-схемы паспортных данных."""
+
 from datetime import date
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, constr, model_validator

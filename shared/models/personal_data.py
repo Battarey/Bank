@@ -1,3 +1,5 @@
+"""ORM-модель персональных данных (ФИО, дата рождения, пол)."""
+
 from datetime import date
 from uuid import UUID
 from sqlalchemy import CheckConstraint, Date, ForeignKey, String

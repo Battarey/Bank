@@ -18,13 +18,13 @@ shared/
 
 ## Кто использует
 
-| Подпакет           | gateway | customer | auth | notification |
-|--------------------|---------|----------|------|--------------|
-| `database_core`    |         | ✓        | ✓    |              |
-| `internal_auth`    |         | ✓        | ✓    |              |
-| `models`           |         | ✓        | ✓    |              |
-| `rabbitmq`         |         | ✓        | ✓    |              |
-| `redis_onboarding` | ✓       | ✓        |      |              |
-| `redis_sessions`   | ✓       |          | ✓    |              |
-| `schemas`          | ✓       | ✓        | ✓    |              |
-| `utils`            |         | ✓        |      |              |
+| Подпакет           | gateway | customer | auth | account | transaction | notification |
+|--------------------|---------|----------|------|---------|-------------|--------------|
+| `database_core`    |         | ✓        | ✓    | ✓       | ✓           |              |
+| `internal_auth`    |         | ✓        | ✓    | ✓       | ✓           |              |
+| `models`           |         | ✓        | ✓    | ✓       | ✓           |              |
+| `rabbitmq`         |         | ✓        | ✓    | ✓       | ✓           |              |
+| `redis_onboarding` | ✓       | ✓        |      |         |             |              |
+| `redis_sessions`   | ✓       |          | ✓    |         |             |              |
+| `schemas`          | ✓       | ✓        | ✓    | ✓       | ✓           |              |
+| `utils`            |         | ✓        |      |         |             |              |

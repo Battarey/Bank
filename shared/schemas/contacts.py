@@ -1,3 +1,5 @@
+"""Pydantic-схемы контактных данных."""
+
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, constr
 

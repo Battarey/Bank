@@ -1,3 +1,5 @@
+"""Бизнес-логика онбординга — сохранение шагов, валидация, финализация."""
+
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Awaitable, Callable, Dict

@@ -1,3 +1,5 @@
+"""Gateway Service — единая точка входа, маршрутизация и аутентификация."""
+
 import os
 from contextlib import asynccontextmanager
 

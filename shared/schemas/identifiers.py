@@ -1,3 +1,5 @@
+"""Pydantic-схемы идентификаторов (ИНН, СНИЛС)."""
+
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, constr
 

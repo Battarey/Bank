@@ -1,3 +1,5 @@
+"""Customer Service — онбординг, управление данными клиента, удаление аккаунта."""
+
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from shared.rabbitmq import connect as rmq_connect, disconnect as rmq_disconnect

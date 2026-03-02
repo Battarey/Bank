@@ -1,3 +1,5 @@
+"""ORM-модель идентификаторов (ИНН, СНИЛС)."""
+
 from uuid import UUID
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID

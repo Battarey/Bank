@@ -1,3 +1,5 @@
+"""Роутер удаления аккаунта клиента (заглушка)."""
+
 from fastapi import APIRouter, Depends
 from shared.internal_auth import require_user_id
 

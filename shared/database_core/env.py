@@ -1,3 +1,5 @@
+"""Переменные окружения для подключения к базе данных."""
+
 import os
 from typing import Final
 
