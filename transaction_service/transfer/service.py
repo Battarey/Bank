@@ -13,15 +13,20 @@ from shared import models
 from shared.rabbitmq.client import publish
 from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
 from transaction_service.exceptions import (
+	AccountFrozen,
 	AccountNotFound,
 	AccountNotOpen,
 	CurrencyMismatch,
 	InsufficientFunds,
 	SameAccountTransfer,
+	SecurityViolation,
 	TransactionConflict,
 )
 
 logger = logging.getLogger("transaction_service")
+
+# Мягкая заморозка: входящие переводы разрешены на frozen-счета
+_RECEIVE_ALLOWED_STATUSES = {"open", "frozen"}
 
 
 async def _notify_transfer(
@@ -89,6 +94,35 @@ async def _notify_incoming_transfer(
 	)
 
 
+async def _notify_security_freeze(
+	session: AsyncSession,
+	user_id: UUID,
+	account: models.BankAccount,
+	rules: str,
+) -> None:
+	"""Отправляет email-уведомление о заморозке счёта по AML-правилам."""
+
+	contact = await session.get(models.Contact, user_id)
+	if not contact:
+		return
+
+	await publish(
+		exchange_name=NOTIFICATIONS_EXCHANGE,
+		routing_key=EMAIL_ROUTING_KEY,
+		body={
+			"type": "security_freeze",
+			"payload": {
+				"to": contact.email,
+				"variables": {
+					"account_number": account.account_number,
+					"rule": rules,
+					"details": "Операция отклонена автоматической системой безопасности.",
+				},
+			},
+		},
+	)
+
+
 async def transfer(
 	session: AsyncSession,
 	user_id: UUID,
@@ -130,10 +164,13 @@ async def transfer(
 	if to_account is None:
 		raise AccountNotFound("Счёт-получатель не найден.")
 
+	if from_account.status == "frozen":
+		raise AccountFrozen("Счёт-отправитель заморожен — исходящие операции запрещены.")
+
 	if from_account.status != "open":
 		raise AccountNotOpen(f"Счёт-отправитель в статусе «{from_account.status}».")
 
-	if to_account.status != "open":
+	if to_account.status not in _RECEIVE_ALLOWED_STATUSES:
 		raise AccountNotOpen(f"Счёт-получатель в статусе «{to_account.status}».")
 
 	if from_account.currency != to_account.currency:
@@ -145,6 +182,31 @@ async def transfer(
 	if from_account.balance < amount:
 		raise InsufficientFunds(
 			f"Недостаточно средств. Доступно: {from_account.balance} {from_account.currency}."
+		)
+
+	# AML-проверка через Security Service
+	from transaction_service import security_client
+	allowed, violations = await security_client.check_transaction(
+		from_account_id, "transfer", amount, from_account.currency,
+	)
+	if not allowed:
+		from_account.status = "frozen"
+		from_account.frozen_by = "system"
+		from_account.frozen_at = datetime.now(UTC)
+		from_account.freeze_reason = ", ".join(v["rule"] for v in violations)
+		try:
+			await session.commit()
+			await session.refresh(from_account)
+		except Exception:
+			await session.rollback()
+			raise
+		rules = from_account.freeze_reason
+
+		# Уведомление о заморозке по результатам AML
+		await _notify_security_freeze(session, user_id, from_account, rules)
+
+		raise SecurityViolation(
+			f"Операция отклонена системой безопасности. Счёт заморожен. Правила: {rules}"
 		)
 
 	# 3. Обновляем балансы

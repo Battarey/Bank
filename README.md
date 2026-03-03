@@ -17,16 +17,17 @@
 bank/
 ├── gateway_service/             # API Gateway — единая точка входа, маршрутизация, аутентификация
 ├── customer_service/            # Онбординг и управление данными клиента (ФИО, паспорт, контакты)
-├── auth_service/                # Аутентификация: логин по PIN, сессии, установка PIN
-├── account_service/             # Сервис банковских счетов: открытие, просмотр, закрытие
+├── auth_service/                # Аутентификация: логин по PIN, сессии, установка PIN, самоблокировка
+├── account_service/             # Сервис банковских счетов: открытие, просмотр, закрытие, заморозка
 ├── currency_service/            # Сервис иностранных валют (заглушка)
 ├── log_service/                 # Сервис логирования (заглушка)
 ├── metal_service/               # Сервис драг. металлов (заглушка)
 ├── notification_service/        # Сервис уведомлений: RabbitMQ consumer → SMTP (email по шаблонам)
-├── transaction_service/         # Сервис транзакций: пополнение, снятие, переводы, история
+├── transaction_service/         # Сервис транзакций: пополнение, снятие, переводы, история + AML-проверка
+├── security_service/            # AML / антифрод: 6 правил, автозаморозка, журнал в MongoDB
 ├── migrations/                  # Alembic-миграции + dev-скрипт сброса БД
 ├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, утилиты, внутренняя аутентификация
-├── docker-compose.yaml          # 16 сервисов: 9 бизнес + 7 инфраструктура
+├── docker-compose.yaml          # 18 сервисов: 10 бизнес + 1 миграция + 7 инфраструктура
 ├── .env                         # Переменные окружения инфраструктуры
 └── README.md
 ```
@@ -46,7 +47,15 @@ bank/
    │   Service   │ │  Service │ │  Service   │ │   Service    │
    └──────┬──────┘ └─────┬────┘ └──────┬─────┘ └───────┬──────┘
           │              │              │               │
-          ▼              ▼              ▼               ▼
+          │              │              │          ┌────┘
+          │              │              │          ▼
+          │              │              │   ┌──────────────┐
+          │              │              │   │   Security   │
+          │              │              │   │   Service    │
+          │              │              │   │  (AML/CFT)   │
+          │              │              │   └──────┬───────┘
+          │              │              │          │
+          ▼              ▼              ▼          ▼
    ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
    │  PostgreSQL │ │    Redis    │ │   RabbitMQ   │
    │    (core)   │ │ sessions /  │ │              │
@@ -58,7 +67,8 @@ bank/
                                       │       │
                                       ▼       ▼
                                  Gmail SMTP  MongoDB
-                                            (email_log)
+                                            (email_log +
+                                          security_events)
 ```
 
 ### Сети Docker
@@ -116,20 +126,21 @@ bank/
 - Логин по PIN: `/auth/login-pin` + email-уведомление о входе (`login_alert`)
 - Установка / смена PIN: `/auth/set-pin` + email-уведомление (`pin_changed`)
 - Выход: `/auth/logout`, `/auth/logout-all`
+- **Самоблокировка:** `/auth/self-block` — блокирует аккаунт, каскадно замораживает все счета, завершает все сессии
 - bcrypt для хеширования PIN, сессии в Redis (TTL 30 мин, скользящая экспирация)
-- **Rate-limiting PIN:** 5 неудач → кулдаун 5 мин, 3× = 15 неудач → блокировка аккаунта + email-уведомление
-- **Разблокировка:** `/auth/request-unlock` → код на email → `/auth/unlock`
+- **Rate-limiting PIN:** 5 неудач → кулдаун 5 мин, 3× = 15 неудач → блокировка аккаунта + каскадная заморозка счетов + email-уведомление
+- **Разблокировка:** `/auth/request-unlock` → код на email → `/auth/unlock` + каскадная разморозка системных заморозок
 
 ### Notification Service
 - RabbitMQ consumer (не HTTP-сервис)
-- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`, `account_opened`, `account_closed`, `transaction_deposit`, `transaction_withdrawal`, `transaction_transfer`, `transaction_incoming`
+- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`, `account_opened`, `account_closed`, `account_frozen`, `account_unfrozen`, `account_self_blocked`, `security_freeze`, `transaction_deposit`, `transaction_withdrawal`, `transaction_transfer`, `transaction_incoming`
 - SMTP-транспорт через aiosmtplib (Gmail)
 - Журнал уведомлений в MongoDB (коллекция `email_log`, TTL 90 дней)
 - Произвольные письма не отправляются — только зарегистрированные шаблоны
 
 ### Shared
-- ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`, `BankAccount`, `Transaction`
-- Pydantic-схемы для всех запросов/ответов
+- ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`, `BankAccount` (+ frozen_by/frozen_at/freeze_reason), `Transaction` (+ balance_before/balance_after)
+- Pydantic-схемы для всех запросов/ответов (11 файлов: auth, bank_account, contacts, email_verification, identifiers, onboarding, passport, personal_data, transaction, unlock, schemas)
 - Redis-клиенты для сессий и онбординга
 - RabbitMQ-клиент (aio-pika): `connect`, `disconnect`, `publish`
 - Зависимости: `verify_internal_key()` (timing-safe), `require_user_id()`
@@ -138,7 +149,7 @@ bank/
 ### Migrations
 - Alembic с синхронным драйвером `psycopg`
 - Dev-скрипт `reset_and_upgrade.py` для полного сброса
-- 7 таблиц + CHECK-ограничения
+- 5 миграций, 7 таблиц + CHECK-ограничения
 - ER-диаграммы в `postgre_core/`
 
 ### Account Service
@@ -147,6 +158,9 @@ bank/
 - Лимит: не более 3 открытых счетов на комбинацию тип + валюта
 - Просмотр: `GET /accounts`, `GET /accounts/{id}`
 - Закрытие: `POST /accounts/{id}/close` (только при балансе 0)
+- **Заморозка:** `POST /accounts/{id}/freeze` — soft-freeze (входящие разрешены, исходящие заблокированы)
+- **Разморозка:** `POST /accounts/{id}/unfreeze` — доступна только для user-frozen (не системных)
+- Каскадная заморозка / разморозка при блокировке / разблокировке аккаунта
 
 ### Transaction Service
 - Пополнение: `POST /accounts/{id}/deposit`
@@ -155,7 +169,16 @@ bank/
 - История: `GET /accounts/{id}/transactions` (пагинация, фильтры по типу/направлению)
 - Row-level locking (`FOR UPDATE`) на всех мутациях баланса
 - Deadlock prevention: упорядоченная блокировка UUID при переводах
+- **AML-проверка:** перед каждым снятием / переводом вызывается security_service (fail-open)
+- **Автозаморозка:** при срабатывании AML-правил счёт замораживается (`frozen_by = "system"`)
 - Email-уведомления на все операции через RabbitMQ
+
+### Security Service
+- Внутренний сервис AML / антифрод-проверок (не доступен через Gateway)
+- 6 AML-правил: крупная транзакция, суточный объём, суточный лимит операций, rapid-fire, дробление (structuring), серия круглых сумм
+- Пороговые значения настраиваются через переменные окружения
+- Журнал событий в MongoDB (`bank_security_db.security_events`, TTL 365 дней)
+- Fail-open: при недоступности сервиса транзакции проходят
 
 ## Запуск
 
@@ -178,7 +201,6 @@ Mongo Express: `http://localhost:8081`.
 - log_service — логирование через RabbitMQ + ClickHouse
 - Конвертация валют при переводах (интеграция с currency_service)
 - Рассмотреть k8s (манифесты для minikube / k3s)
-- Вопрос безопасности
 - Оформление документации как технической, так и простой
 
 ### Локальный
@@ -186,7 +208,6 @@ Mongo Express: `http://localhost:8081`.
 - Реализовать при регистрации проверку високосного года
 - Реализовать при регистрации логику невозможного года рождения и т.д.
 - Покрыть тестами (unit/integrations/нагрузка)
-- Реализовать логику "заморозки" / блокировки аккаунта
 - Рассмотреть возможность лицензирования кода
 - Разбор и усовершенствование БД
 - Подумать над "красивым" выводом логов

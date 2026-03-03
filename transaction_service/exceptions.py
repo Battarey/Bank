@@ -13,6 +13,14 @@ class AccountNotOpen(TransactionError):
 	"""Счёт не в статусе open — операция невозможна."""
 
 
+class AccountFrozen(TransactionError):
+	"""Счёт заморожен — исходящие операции запрещены."""
+
+
+class SecurityViolation(TransactionError):
+	"""Операция отклонена антифрод-системой."""
+
+
 class InsufficientFunds(TransactionError):
 	"""Недостаточно средств на счёте."""
 
@@ -30,11 +38,13 @@ class TransactionConflict(TransactionError):
 
 
 __all__ = [
+	"AccountFrozen",
 	"AccountNotFound",
 	"AccountNotOpen",
 	"CurrencyMismatch",
 	"InsufficientFunds",
 	"SameAccountTransfer",
+	"SecurityViolation",
 	"TransactionConflict",
 	"TransactionError",
 ]

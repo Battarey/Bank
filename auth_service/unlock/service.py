@@ -97,6 +97,25 @@ async def unlock_account(session: AsyncSession, email: str, code: str) -> None:
 
 	# Разблокируем
 	user.status = "active"
+
+	# Каскадная разморозка системно-замороженных счетов
+	stmt_freeze = (
+		select(models.BankAccount)
+		.where(
+			models.BankAccount.client_id == user.id,
+			models.BankAccount.status == "frozen",
+			models.BankAccount.frozen_by == "system",
+		)
+		.with_for_update()
+	)
+	result_freeze = await session.execute(stmt_freeze)
+	frozen_accounts = result_freeze.scalars().all()
+	for acc in frozen_accounts:
+		acc.status = "open"
+		acc.frozen_by = None
+		acc.frozen_at = None
+		acc.freeze_reason = None
+
 	try:
 		await session.commit()
 	except Exception:

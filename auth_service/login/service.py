@@ -88,8 +88,28 @@ async def _lock_account(
 	user: models.User,
 	email: str,
 ) -> None:
-	"""Блокирует аккаунт пользователя (status → blocked) и отправляет уведомление."""
+	"""Блокирует аккаунт пользователя (status → blocked), замораживает счета, уведомляет."""
 	user.status = "blocked"
+
+	# Каскадная заморозка all open-счетов
+	from sqlalchemy import select
+	stmt = (
+		select(models.BankAccount)
+		.where(
+			models.BankAccount.client_id == user.id,
+			models.BankAccount.status == "open",
+		)
+		.with_for_update()
+	)
+	result = await session.execute(stmt)
+	accounts = result.scalars().all()
+	now = datetime.now(UTC)
+	for acc in accounts:
+		acc.status = "frozen"
+		acc.frozen_by = "system"
+		acc.frozen_at = now
+		acc.freeze_reason = "Блокировка аккаунта (15 неудачных PIN)"
+
 	try:
 		await session.commit()
 	except Exception:

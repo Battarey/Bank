@@ -9,11 +9,13 @@ from shared import schemas
 from shared.database_core.db import get_session
 from shared.internal_auth import require_user_id
 from transaction_service.exceptions import (
+	AccountFrozen,
 	AccountNotFound,
 	AccountNotOpen,
 	CurrencyMismatch,
 	InsufficientFunds,
 	SameAccountTransfer,
+	SecurityViolation,
 	TransactionConflict,
 	TransactionError,
 )
@@ -31,6 +33,8 @@ def _raise(exc: TransactionError) -> None:
 	"""Маппинг бизнес-исключений → HTTP-ошибки."""
 	if isinstance(exc, AccountNotFound):
 		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
+	if isinstance(exc, (AccountFrozen, SecurityViolation)):
+		raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(exc))
 	if isinstance(exc, InsufficientFunds):
 		raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 	if isinstance(exc, CurrencyMismatch):

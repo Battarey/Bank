@@ -85,3 +85,37 @@ async def close_account(account_id: UUID, request: Request):
 		service="account",
 	)
 	return data
+
+
+@router.post(
+	"/{account_id}/freeze",
+	response_model=schemas.AccountMessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Заморозить счёт",
+)
+async def freeze_account(account_id: UUID, request: Request):
+	"""Замораживает счёт. Исходящие операции блокируются, входящие — разрешены."""
+	data = await forward_request(
+		request,
+		"POST",
+		f"/accounts/{account_id}/freeze",
+		service="account",
+	)
+	return data
+
+
+@router.post(
+	"/{account_id}/unfreeze",
+	response_model=schemas.AccountMessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Разморозить счёт",
+)
+async def unfreeze_account(account_id: UUID, request: Request):
+	"""Размораживает счёт. Доступно только если заморозка инициирована пользователем."""
+	data = await forward_request(
+		request,
+		"POST",
+		f"/accounts/{account_id}/unfreeze",
+		service="account",
+	)
+	return data

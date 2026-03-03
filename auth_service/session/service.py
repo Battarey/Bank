@@ -1,8 +1,10 @@
 """Бизнес-логика управления сессиями и PIN-кодом."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 import bcrypt
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
@@ -19,6 +21,10 @@ class SessionError(Exception):
 
 class SessionNotFound(SessionError):
 	"""Пользователь не найден."""
+
+
+class SessionAlreadyBlocked(SessionError):
+	"""Аккаунт уже заблокирован."""
 
 
 # ── Вспомогательные ────────────────────────────────────────────────────
@@ -72,10 +78,76 @@ async def logout_all(user_id: UUID) -> None:
 	await session_tokens.revoke_all(user_id)
 
 
+async def self_block(session: AsyncSession, user_id: UUID, token: str) -> None:
+	"""Самоблокировка аккаунта по запросу пользователя.
+
+	1. Устанавливает user.status → blocked.
+	2. Каскадно замораживает все open-счета (frozen_by=system).
+	3. Завершает все сессии.
+	4. Отправляет email-уведомление.
+	"""
+
+	user = await session.get(models.User, user_id)
+	if user is None:
+		raise SessionNotFound("Пользователь не найден.")
+
+	if user.status == "blocked":
+		raise SessionAlreadyBlocked("Аккаунт уже заблокирован.")
+
+	user.status = "blocked"
+
+	# Каскадная заморозка open-счетов
+	stmt = (
+		select(models.BankAccount)
+		.where(
+			models.BankAccount.client_id == user_id,
+			models.BankAccount.status == "open",
+		)
+		.with_for_update()
+	)
+	result = await session.execute(stmt)
+	accounts = result.scalars().all()
+	now = datetime.now(UTC)
+	for acc in accounts:
+		acc.status = "frozen"
+		acc.frozen_by = "system"
+		acc.frozen_at = now
+		acc.freeze_reason = "Самоблокировка аккаунта"
+
+	try:
+		await session.commit()
+	except Exception:
+		await session.rollback()
+		raise
+
+	# Завершаем все сессии
+	await session_tokens.revoke_all(user_id)
+
+	# Уведомляем
+	contact = await session.get(models.Contact, user_id)
+	if contact:
+		try:
+			await publish(
+				exchange_name=NOTIFICATIONS_EXCHANGE,
+				routing_key=EMAIL_ROUTING_KEY,
+				body={
+					"type": "account_self_blocked",
+					"payload": {
+						"to": contact.email,
+						"variables": {},
+					},
+				},
+			)
+		except Exception:
+			pass  # уведомление не критично
+
+
 __all__ = [
+	"SessionAlreadyBlocked",
 	"SessionError",
 	"SessionNotFound",
 	"logout",
 	"logout_all",
+	"self_block",
 	"set_pin",
 ]

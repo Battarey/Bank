@@ -25,16 +25,36 @@ class AccountNonZeroBalance(AccountError):
 	"""На счёте есть остаток — невозможно закрыть."""
 
 
+class AccountFrozen(AccountError):
+	"""Счёт заморожен — операция невозможна."""
+
+
+class AccountAlreadyFrozen(AccountError):
+	"""Счёт уже заморожен."""
+
+
+class AccountNotFrozen(AccountError):
+	"""Счёт не заморожен — разморозка невозможна."""
+
+
+class UnfreezeNotAllowed(AccountError):
+	"""Разморозка невозможна — счёт заморожен системой."""
+
+
 class AccountConflict(AccountError):
 	"""Конфликт данных (например, дублирование номера счёта)."""
 
 
 __all__ = [
+	"AccountAlreadyFrozen",
 	"AccountConflict",
 	"AccountError",
+	"AccountFrozen",
 	"AccountLimitReached",
 	"AccountNonZeroBalance",
 	"AccountNotFound",
+	"AccountNotFrozen",
 	"AccountNotOpen",
 	"AccountOwnerNotFound",
+	"UnfreezeNotAllowed",
 ]

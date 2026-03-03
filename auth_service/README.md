@@ -21,6 +21,7 @@ auth_service/
 | POST   | `/set-pin`          | X-User-ID       | Установка / смена PIN-кода                     |
 | POST   | `/logout`           | X-Session-Token | Завершение текущего сеанса                     |
 | POST   | `/logout-all`       | X-User-ID       | Завершение всех сеансов пользователя           |
+| POST   | `/self-block`       | X-User-ID       | Самоблокировка + каскадная заморозка счетов   |
 | POST   | `/request-unlock`   | Публичный       | Отправка кода разблокировки на email           |
 | POST   | `/unlock`           | Публичный       | Проверка кода и разблокировка аккаунта         |
 

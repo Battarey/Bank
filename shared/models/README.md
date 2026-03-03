@@ -11,7 +11,8 @@ models/
 ├── passport.py        # Таблица passport
 ├── identifier.py      # Таблица identifiers
 ├── contact.py         # Таблица contacts
-└── bank_account.py    # Таблица bank_accounts
+├── bank_account.py    # Таблица bank_accounts
+└── transaction.py     # Таблица transactions
 ```
 
 ## Модели
@@ -92,6 +93,28 @@ models/
 | `status`         | `Text`           | NOT NULL, default `open`            | Статус (open, closed, frozen) |
 | `opened_at`      | `DateTime(tz)`   | NOT NULL                            | Дата открытия         |
 | `closed_at`      | `DateTime(tz)`   | nullable                            | Дата закрытия         |
+| `frozen_by`      | `Text`           | nullable                            | Кто заморозил (`user` / `system`) |
+| `frozen_at`      | `DateTime(tz)`   | nullable                            | Дата заморозки        |
+| `freeze_reason`  | `Text`           | nullable                            | Причина заморозки      |
+
+### `Transaction` — таблица `transactions`
+
+Запись о финансовой операции по счёту.
+
+| Колонка              | Тип              | Ограничения                         | Описание              |
+|------------------|------------------|-------------------------------------|----------------------|
+| `id`             | `UUID`           | PK                                  | UUID транзакции    |
+| `account_id`     | `UUID`           | FK → `bank_accounts.id`, indexed    | Счёт операции     |
+| `type`           | `Text`           | NOT NULL, CHECK `IN ('deposit','withdrawal','transfer')` | Тип операции |
+| `amount`         | `Numeric(18,2)`  | NOT NULL                            | Сумма              |
+| `direction`      | `Text`           | NOT NULL, CHECK `IN ('incoming','outgoing')` | Направление      |
+| `status`         | `Text`           | NOT NULL, CHECK `IN ('pending','posted','failed')` | Статус |
+| `balance_before` | `Numeric(18,2)`  | NOT NULL                            | Баланс до          |
+| `balance_after`  | `Numeric(18,2)`  | NOT NULL                            | Баланс после       |
+| `related_account_id` | `UUID`       | FK → `bank_accounts.id`, nullable   | Второй счёт (перевод) |
+| `external_ref`   | `Text`           | nullable                            | Внешняя ссылка     |
+| `description`    | `Text`           | nullable                            | Описание            |
+| `created_at`     | `DateTime(tz)`   | NOT NULL                            | Дата создания       |
 
 ## Связи
 
@@ -101,6 +124,7 @@ users (1) ──┬── (1) personal_data
              ├── (1) identifiers
              ├── (1) contacts
              └── (N) bank_accounts
+                         └── (N) transactions
 ```
 
-Все дочерние таблицы связаны через `client_id` → `users.id` с каскадным удалением (`ON DELETE CASCADE`).
+Все дочерние таблицы связаны через `client_id` → `users.id` с каскадным удалением (`ON DELETE CASCADE`). Транзакции связаны через `account_id` → `bank_accounts.id`.

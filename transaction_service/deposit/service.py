@@ -20,6 +20,9 @@ from transaction_service.exceptions import (
 
 logger = logging.getLogger("transaction_service")
 
+# Мягкая заморозка: пополнение разрешено на open и frozen счетах
+_DEPOSIT_ALLOWED_STATUSES = {"open", "frozen"}
+
 
 async def _notify_deposit(
 	session: AsyncSession,
@@ -78,7 +81,7 @@ async def deposit(
 	if account is None or account.client_id != user_id:
 		raise AccountNotFound("Счёт не найден.")
 
-	if account.status != "open":
+	if account.status not in _DEPOSIT_ALLOWED_STATUSES:
 		raise AccountNotOpen(f"Счёт в статусе «{account.status}» — пополнение невозможно.")
 
 	# 2. Обновляем баланс

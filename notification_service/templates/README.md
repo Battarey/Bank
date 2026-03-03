@@ -30,6 +30,10 @@ templates/
 | `TRANSACTION_WITHDRAWAL` | `EmailTemplate`           | Уведомление о списании со счёта                   |
 | `TRANSACTION_TRANSFER` | `EmailTemplate`             | Уведомление об исходящем переводе                 |
 | `TRANSACTION_INCOMING` | `EmailTemplate`             | Уведомление о входящем переводе                   |
+| `ACCOUNT_FROZEN`       | `EmailTemplate`             | Уведомление о заморозке счёта                     |
+| `ACCOUNT_UNFROZEN`     | `EmailTemplate`             | Уведомление о разморозке счёта                    |
+| `ACCOUNT_SELF_BLOCKED` | `EmailTemplate`             | Уведомление о самоблокировке аккаунта              |
+| `SECURITY_FREEZE`      | `EmailTemplate`             | Уведомление о заморозке по проверке безопасности   |
 | `EmailTemplate`      | `dataclass`                  | Класс шаблона (`name`, `subject`, `body`, `render()`) |
 
 ## Шаблоны
@@ -49,6 +53,10 @@ templates/
 | `transaction_withdrawal` | Списание со счёта       | `{account_number}`, `{amount}`, `{currency}`, `{balance_after}` |
 | `transaction_transfer` | Перевод выполнен          | `{from_account}`, `{to_account}`, `{amount}`, `{currency}`, `{balance_after}` |
 | `transaction_incoming` | Входящий перевод          | `{account_number}`, `{from_account}`, `{amount}`, `{currency}`, `{balance_after}` |
+| `account_frozen`     | Счёт заморожен              | `{account_number}`, `{frozen_by}`, `{reason}` |
+| `account_unfrozen`   | Счёт разморожен             | `{account_number}` |
+| `account_self_blocked` | Аккаунт заблокирован по запросу | — |
+| `security_freeze`    | Счёт заморожен по проверке безопасности | `{account_number}`, `{rule}`, `{details}` |
 
 ## EmailTemplate
 

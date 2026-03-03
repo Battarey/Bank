@@ -12,12 +12,15 @@ from .deposit.router import router as deposit_router
 from .withdrawal.router import router as withdrawal_router
 from .transfer.router import router as transfer_router
 from .history.router import router as history_router
+from . import security_client
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 	await rmq_connect()
+	await security_client.connect()
 	yield
+	await security_client.disconnect()
 	await rmq_disconnect()
 	await engine.dispose()
 

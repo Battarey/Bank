@@ -197,6 +197,66 @@ TRANSACTION_INCOMING = EmailTemplate(
 	),
 )
 
+ACCOUNT_FROZEN = EmailTemplate(
+	name="account_frozen",
+	subject="Счёт заморожен",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш счёт {account_number} был заморожен.\n"
+		"Инициатор: {frozen_by}\n"
+		"Причина: {reason}\n\n"
+		"Исходящие операции по счёту временно заблокированы.\n"
+		"Входящие переводы и пополнения по-прежнему доступны.\n\n"
+		"Если заморозка инициирована вами, вы можете разморозить счёт "
+		"через /accounts/{{id}}/unfreeze.\n"
+		"При системной заморозке свяжитесь с поддержкой.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+ACCOUNT_UNFROZEN = EmailTemplate(
+	name="account_unfrozen",
+	subject="Счёт разморожен",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш счёт {account_number} успешно разморожен.\n"
+		"Все операции по счёту снова доступны.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+ACCOUNT_SELF_BLOCKED = EmailTemplate(
+	name="account_self_blocked",
+	subject="Аккаунт заблокирован по вашему запросу",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш аккаунт был заблокирован по вашему запросу.\n"
+		"Все активные сеансы завершены, все счета заморожены.\n\n"
+		"Для разблокировки отправьте запрос через /auth/request-unlock "
+		"и введите 6-значный код, который придёт на этот email.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
+SECURITY_FREEZE = EmailTemplate(
+	name="security_freeze",
+	subject="Счёт заморожен по результатам проверки безопасности",
+	body=(
+		"Здравствуйте!\n\n"
+		"Система безопасности обнаружила подозрительную активность по вашему "
+		"счёту {account_number}.\n\n"
+		"Нарушенное правило: {rule}\n"
+		"Описание: {details}\n\n"
+		"Счёт временно заморожен для вашей защиты.\n"
+		"Для разморозки свяжитесь со службой поддержки.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
 # ── Реестр ──────────────────────────────────────────────────────────────
 
 TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
@@ -209,6 +269,10 @@ TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
 	ACCOUNT_UNLOCKED,
 	ACCOUNT_OPENED,
 	ACCOUNT_CLOSED,
+	ACCOUNT_FROZEN,
+	ACCOUNT_UNFROZEN,
+	ACCOUNT_SELF_BLOCKED,
+	SECURITY_FREEZE,
 	TRANSACTION_DEPOSIT,
 	TRANSACTION_WITHDRAWAL,
 	TRANSACTION_TRANSFER,
@@ -232,11 +296,15 @@ def get_template(name: str) -> EmailTemplate:
 
 
 __all__ = [
+	"ACCOUNT_FROZEN",
 	"ACCOUNT_LOCKED",
+	"ACCOUNT_SELF_BLOCKED",
+	"ACCOUNT_UNFROZEN",
 	"ACCOUNT_UNLOCKED",
 	"EmailTemplate",
 	"LOGIN_ALERT",
 	"PIN_CHANGED",
+	"SECURITY_FREEZE",
 	"TEMPLATES",
 	"UNLOCK_CODE",
 	"VERIFICATION_CODE",

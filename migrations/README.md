@@ -10,7 +10,10 @@ migrations/
 │   ├── script.py.mako                # Шаблон новой миграции
 │   └── versions/                     # Файлы миграций
 │       ├── postgre_core_init.py      # Инициализация схемы (7 таблиц)
-│       └── add_pin_hash.py           # Добавление pin_hash в users
+│       ├── add_pin_hash.py           # Добавление pin_hash в users
+│       ├── add_bank_accounts_client_id_idx.py  # Индекс bank_accounts.client_id
+│       ├── add_transactions_account_id_idx.py  # Индекс transactions.account_id
+│       └── add_freeze_columns.py     # Колонки frozen_by/frozen_at/freeze_reason в bank_accounts
 ├── postgre_core/                     # Документация таблиц (md-файл = таблица)
 │   ├── users.md
 │   ├── personal_data.md
@@ -136,6 +139,9 @@ erDiagram
         TEXT status
         TIMESTAMP opened_at
         TIMESTAMP closed_at
+        TEXT frozen_by
+        TIMESTAMP frozen_at
+        TEXT freeze_reason
     }
     TRANSACTIONS {
         UUID id PK
@@ -172,13 +178,16 @@ erDiagram
 ### Цепочка ревизий
 
 ```
-(None) → postgre_core_init → add_pin_hash  ← HEAD
+(None) → postgre_core_init → add_pin_hash → add_bank_accounts_client_id_idx → add_transactions_account_id_idx → add_freeze_columns  ← HEAD
 ```
 
 | Ревизия              | Описание                                                   |
 |----------------------|-------------------------------------------------------------|
 | `postgre_core_init`  | Создание 7 таблиц: users, personal_data, passport, identifiers, contacts, bank_accounts, transactions |
 | `add_pin_hash`       | Добавление колонки `pin_hash` (Text, nullable) в `users`    |
+| `add_bank_accounts_client_id_idx` | Индекс `ix_bank_accounts_client_id` на `bank_accounts.client_id` |
+| `add_transactions_account_id_idx` | Индекс `ix_transactions_account_id` на `transactions.account_id` |
+| `add_freeze_columns` | Добавление `frozen_by`, `frozen_at`, `freeze_reason` в `bank_accounts` |
 
 ### CHECK-ограничения
 

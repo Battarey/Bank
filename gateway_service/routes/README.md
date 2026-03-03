@@ -5,8 +5,8 @@
 ## Файловая архитектура
 ```
 routes/
-├── account.py                   # Банковские счета (открытие, просмотр, закрытие)
-├── auth.py                      # Аутентификация (login, set-pin, logout, unlock)
+├── account.py                   # Банковские счета (открытие, просмотр, закрытие, заморозка)
+├── auth.py                      # Аутентификация (login, set-pin, logout, unlock, self-block)
 ├── customer.py                  # Онбординг + обновление данных пользователя
 ├── transaction.py               # Операции по счетам (пополнение, снятие, перевод, история)
 └── README.md
@@ -43,6 +43,7 @@ routes/
 | POST   | `/auth/set-pin`           | `X-Session-Token`  | Установка / смена PIN-кода               |
 | POST   | `/auth/logout`            | `X-Session-Token`  | Выход (удаление текущей сессии)          |
 | POST   | `/auth/logout-all`        | `X-Session-Token`  | Выход со всех устройств                  |
+| POST   | `/auth/self-block`        | `X-Session-Token`  | Самоблокировка аккаунта + заморозка счетов|
 
 ### Банковские счета (`account.py`)
 
@@ -52,6 +53,8 @@ routes/
 | GET    | `/accounts`                | `X-Session-Token`  | Список счетов текущего пользователя     |
 | GET    | `/accounts/{id}`           | `X-Session-Token`  | Детали конкретного счёта                |
 | POST   | `/accounts/{id}/close`     | `X-Session-Token`  | Закрыть счёт (баланс должен быть 0)    |
+| POST   | `/accounts/{id}/freeze`    | `X-Session-Token`  | Заморозить счёт (блокировка исходящих)  |
+| POST   | `/accounts/{id}/unfreeze`  | `X-Session-Token`  | Разморозить счёт (только user-frozen)   |
 
 ### Операции по счетам (`transaction.py`)
 

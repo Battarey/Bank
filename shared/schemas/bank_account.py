@@ -28,6 +28,9 @@ class OpenAccountRequest(BaseModel):
 
 # ── Ответы ─────────────────────────────────────────────────────────────
 
+FreezeInitiator = Literal["user", "system"]
+
+
 class AccountResponse(BaseModel):
 	"""Полные данные банковского счёта."""
 
@@ -40,6 +43,9 @@ class AccountResponse(BaseModel):
 	status: AccountStatus = Field(description="Статус счёта")
 	opened_at: datetime = Field(description="Дата/время открытия")
 	closed_at: datetime | None = Field(default=None, description="Дата/время закрытия")
+	frozen_by: FreezeInitiator | None = Field(default=None, description="Кто заморозил: user | system")
+	frozen_at: datetime | None = Field(default=None, description="Дата/время заморозки")
+	freeze_reason: str | None = Field(default=None, description="Причина заморозки")
 
 	model_config = ConfigDict(from_attributes=True)
 
@@ -65,5 +71,6 @@ __all__ = [
 	"AccountStatus",
 	"AccountType",
 	"Currency",
+	"FreezeInitiator",
 	"OpenAccountRequest",
 ]

@@ -18,6 +18,8 @@ router = APIRouter(tags=["auth-session"])
 def _raise(exc: service.SessionError) -> None:
 	if isinstance(exc, service.SessionNotFound):
 		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
+	if isinstance(exc, service.SessionAlreadyBlocked):
+		raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
 	raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
@@ -53,3 +55,17 @@ async def logout_all(
 	"""Завершает все сеансы пользователя."""
 	await service.logout_all(user_id)
 	return MessageResponse(message="Все сеансы завершены.")
+
+
+@router.post("/self-block", response_model=MessageResponse, summary="Самоблокировка аккаунта")
+async def self_block(
+	user_id: UUID = Depends(require_user_id),
+	x_session_token: str = Header(..., alias="X-Session-Token"),
+	session: AsyncSession = Depends(get_session),
+):
+	"""Блокирует аккаунт по запросу владельца. Замораживает все счета, завершает все сессии."""
+	try:
+		await service.self_block(session, user_id, x_session_token)
+	except service.SessionError as exc:
+		_raise(exc)
+	return MessageResponse(message="Аккаунт заблокирован. Используйте /auth/request-unlock для разблокировки.")

@@ -129,3 +129,20 @@ async def logout_all(request: Request):
 		service="auth",
 	)
 	return schemas.MessageResponse.model_validate(data)
+
+
+@protected_router.post(
+	"/self-block",
+	response_model=schemas.MessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Самоблокировка аккаунта",
+)
+async def self_block(request: Request):
+	"""Блокирует аккаунт по запросу владельца. Замораживает все счета и завершает все сеансы."""
+	data = await forward_request(
+		request,
+		"POST",
+		"/self-block",
+		service="auth",
+	)
+	return schemas.MessageResponse.model_validate(data)

@@ -13,9 +13,11 @@ from shared import models
 from shared.rabbitmq.client import publish
 from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
 from transaction_service.exceptions import (
+	AccountFrozen,
 	AccountNotFound,
 	AccountNotOpen,
 	InsufficientFunds,
+	SecurityViolation,
 	TransactionConflict,
 )
 
@@ -53,6 +55,35 @@ async def _notify_withdrawal(
 	)
 
 
+async def _notify_security_freeze(
+	session: AsyncSession,
+	user_id: UUID,
+	account: models.BankAccount,
+	rules: str,
+) -> None:
+	"""Отправляет email-уведомление о заморозке счёта по AML-правилам."""
+
+	contact = await session.get(models.Contact, user_id)
+	if not contact:
+		return
+
+	await publish(
+		exchange_name=NOTIFICATIONS_EXCHANGE,
+		routing_key=EMAIL_ROUTING_KEY,
+		body={
+			"type": "security_freeze",
+			"payload": {
+				"to": contact.email,
+				"variables": {
+					"account_number": account.account_number,
+					"rule": rules,
+					"details": "Операция отклонена автоматической системой безопасности.",
+				},
+			},
+		},
+	)
+
+
 async def withdraw(
 	session: AsyncSession,
 	user_id: UUID,
@@ -80,21 +111,50 @@ async def withdraw(
 	if account is None or account.client_id != user_id:
 		raise AccountNotFound("Счёт не найден.")
 
+	if account.status == "frozen":
+		raise AccountFrozen("Счёт заморожен — исходящие операции запрещены.")
+
 	if account.status != "open":
 		raise AccountNotOpen(f"Счёт в статусе «{account.status}» — снятие невозможно.")
 
-	# 2. Проверяем баланс
+	# 2. AML-проверка через Security Service
+	from transaction_service import security_client
+	allowed, violations = await security_client.check_transaction(
+		account_id, "withdrawal", amount, account.currency,
+	)
+	if not allowed:
+		# Автозаморозка счёта
+		account.status = "frozen"
+		account.frozen_by = "system"
+		account.frozen_at = datetime.now(UTC)
+		account.freeze_reason = ", ".join(v["rule"] for v in violations)
+		try:
+			await session.commit()
+			await session.refresh(account)
+		except Exception:
+			await session.rollback()
+			raise
+		rules = account.freeze_reason
+
+		# Уведомление о заморозке по результатам AML
+		await _notify_security_freeze(session, account.client_id, account, rules)
+
+		raise SecurityViolation(
+			f"Операция отклонена системой безопасности. Счёт заморожен. Правила: {rules}"
+		)
+
+	# 3. Проверяем баланс
 	if account.balance < amount:
 		raise InsufficientFunds(
 			f"Недостаточно средств. Доступно: {account.balance} {account.currency}."
 		)
 
-	# 3. Обновляем баланс
+	# 4. Обновляем баланс
 	balance_before = account.balance
 	balance_after = balance_before - amount
 	account.balance = balance_after
 
-	# 4. Создаём транзакцию
+	# 5. Создаём транзакцию
 	now = datetime.now(UTC)
 	tx = models.Transaction(
 		id=uuid4(),

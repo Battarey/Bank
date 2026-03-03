@@ -10,6 +10,7 @@ from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_dis
 
 from .open_account.router import router as open_account_router
 from .close_account.router import router as close_account_router
+from .freeze_account.router import router as freeze_account_router
 
 
 @asynccontextmanager
@@ -36,3 +37,4 @@ async def health_check() -> dict[str, str]:
 
 app.include_router(open_account_router)
 app.include_router(close_account_router)
+app.include_router(freeze_account_router)

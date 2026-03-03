@@ -29,6 +29,9 @@ class BankAccount(Base):
 	status: Mapped[str] = mapped_column(Text, nullable=False, default="open")
 	opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 	closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+	frozen_by: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+	frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+	freeze_reason: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
 
 __all__ = ["BankAccount"]
