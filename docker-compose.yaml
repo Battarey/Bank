@@ -90,13 +90,17 @@ services:
       - data
 
   log_service:
-    build: ./log_service
+    build:
+      context: .
+      dockerfile: ./log_service/Dockerfile
     env_file: ./log_service/.env
     restart: unless-stopped
     depends_on:
-      migrations:
-        condition: service_completed_successfully
       rabbitmq:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      postgres_history:
         condition: service_healthy
     networks:
       - backend
@@ -201,6 +205,27 @@ services:
     networks:
       - data
 
+  postgres_history:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_HISTORY_DB}
+      POSTGRES_USER: ${POSTGRES_HISTORY_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_HISTORY_PASSWORD}
+    env_file:
+      - ./.env
+    volumes:
+      - pg_history_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HISTORY_HOST_PORT}:${POSTGRES_HISTORY_CONTAINER_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_HISTORY_USER} -d ${POSTGRES_HISTORY_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data
+
   rabbitmq:
     image: rabbitmq:3.13-management
     restart: unless-stopped
@@ -273,6 +298,28 @@ services:
     networks:
       - data
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:24
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    env_file:
+      - ./.env
+    volumes:
+      - ch_data:/var/lib/clickhouse
+    ports:
+      - "${CLICKHOUSE_HOST_PORT}:${CLICKHOUSE_CONTAINER_PORT}"
+      - "${CLICKHOUSE_TCP_HOST_PORT}:${CLICKHOUSE_TCP_CONTAINER_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data
+
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
@@ -285,6 +332,8 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       postgres_core:
+        condition: service_healthy
+      postgres_history:
         condition: service_healthy
     networks:
       - data
@@ -322,7 +371,9 @@ networks:
 
 volumes:
   pg_core_data:
+  pg_history_data:
   redis_sessions_data:
   redis_onboarding_data:
   mongo_data:
+  ch_data:
   pgadmin_data:

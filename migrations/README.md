@@ -63,12 +63,17 @@ postgres_core (healthy) → migrations → customer_service, auth_service, ...
 
 Хранение JSON-черновиков шагов регистрации и onboarding-токенов (TTL 30 мин). Инстанс: `redis_onboarding` (Redis Stack).
 
-### Планируется
+### PostgreSQL History — `postgres_history`
 
-| Хранилище   | Назначение                      |
-|-------------|----------------------------------|
-| ClickHouse  | Хранение логов                   |
-| PostgreSQL  | История операций (отдельная БД)  |
+Отдельный экземпляр PostgreSQL (порт 5433) для аудит-лога действий пользователей. Таблица `user_actions` создаётся автоматически через `HistoryBase.metadata.create_all` при запуске `log_service` (не через Alembic).
+
+Модуль: `shared/history_core`.
+
+### ClickHouse — `bank_logs`
+
+Колоночная БД для аналитики бизнес-событий. Таблица `business_events` (MergeTree, партиционирование по месяцам, TTL 2 года). DDL создаётся автоматически при вызове `init_clickhouse()` в `log_service`.
+
+Модуль: `shared/clickhouse_core`.
 
 ### MongoDB
 

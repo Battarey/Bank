@@ -2,7 +2,7 @@
 
 Микросервис финансовых операций: пополнение, снятие, переводы между счетами и история транзакций. Работает только через Gateway (защита `X-Internal-Key`).
 
-При каждой операции отправляет email-уведомления через RabbitMQ (шаблоны `transaction_deposit`, `transaction_withdrawal`, `transaction_transfer`, `transaction_incoming`).
+При каждой операции отправляет email-уведомления через RabbitMQ (шаблоны `transaction_deposit`, `transaction_withdrawal`, `transaction_transfer`, `transaction_incoming`) и публикует бизнес-события в exchange `logs` (routing key `log.transaction`) для аудит-лога и аналитики.
 
 ## Файловая архитектура
 ```

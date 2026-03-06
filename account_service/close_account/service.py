@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_ACCOUNT_KEY
 from account_service.exceptions import (
 	AccountConflict,
 	AccountNonZeroBalance,
@@ -94,6 +94,26 @@ async def close_account(
 	logger.info("Счёт закрыт: user=%s, account=%s", user_id, account_id)
 
 	await _notify_account_closed(session, user_id, account)
+
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_ACCOUNT_KEY,
+			body={
+				"type": "account",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "close_account",
+					"service": "account_service",
+					"entity_id": str(account.id),
+					"entity_type": "bank_account",
+					"status": "success",
+					"details": f"Закрыт счёт {account.account_number}",
+				},
+			},
+		)
+	except Exception:
+		logger.exception("Не удалось отправить лог о закрытии счёта (account=%s)", account_id)
 
 	return account
 

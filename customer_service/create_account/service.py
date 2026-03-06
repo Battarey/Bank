@@ -9,6 +9,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared import models, schemas
+from shared.rabbitmq.client import publish
+from shared.rabbitmq.constants import LOGS_EXCHANGE, LOG_AUTH_KEY
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
 from shared.utils.normalize import normalize_name, normalize_email, normalize_phone, digits_only
@@ -406,6 +408,26 @@ async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
 	else:
 		await onboarding_drafts.clear_all(user_id)
 		await clear_email_verification(user_id)
+
+		# Логируем успешную регистрацию
+		try:
+			await publish(
+				exchange_name=LOGS_EXCHANGE,
+				routing_key=LOG_AUTH_KEY,
+				body={
+					"type": "auth",
+					"payload": {
+						"user_id": str(user_id),
+						"action": "registration",
+						"service": "customer_service",
+						"entity_type": "user",
+						"status": "success",
+						"details": "Регистрация завершена (онбординг финализирован)",
+					},
+				},
+			)
+		except Exception:
+			pass
 
 
 __all__ = [

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_ACCOUNT_KEY
 from account_service.exceptions import (
 	AccountAlreadyFrozen,
 	AccountNotFound,
@@ -138,6 +138,26 @@ async def freeze_account(
 	except Exception:
 		logger.exception("Не удалось отправить уведомление о заморозке (account=%s)", account_id)
 
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_ACCOUNT_KEY,
+			body={
+				"type": "account",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "freeze_account",
+					"service": "account_service",
+					"entity_id": str(account.id),
+					"entity_type": "bank_account",
+					"status": "success",
+					"details": f"Заморозка счёта {account.account_number} ({frozen_by}: {reason})",
+				},
+			},
+		)
+	except Exception:
+		logger.exception("Не удалось отправить лог о заморозке (account=%s)", account_id)
+
 	return account
 
 
@@ -192,6 +212,26 @@ async def unfreeze_account(
 		await _notify_unfrozen(session, user_id, account)
 	except Exception:
 		logger.exception("Не удалось отправить уведомление о разморозке (account=%s)", account_id)
+
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_ACCOUNT_KEY,
+			body={
+				"type": "account",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "unfreeze_account",
+					"service": "account_service",
+					"entity_id": str(account.id),
+					"entity_type": "bank_account",
+					"status": "success",
+					"details": f"Разморозка счёта {account.account_number}",
+				},
+			},
+		)
+	except Exception:
+		logger.exception("Не удалось отправить лог о разморозке (account=%s)", account_id)
 
 	return account
 

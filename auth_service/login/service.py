@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_AUTH_KEY
 from shared.redis_sessions import tokens as session_tokens
 from shared.redis_sessions import rate_limit
 
@@ -129,6 +129,26 @@ async def _lock_account(
 		},
 	)
 
+	# Логируем блокировку аккаунта
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_AUTH_KEY,
+			body={
+				"type": "auth",
+				"payload": {
+					"user_id": str(user.id),
+					"action": "account_locked",
+					"service": "auth_service",
+					"entity_type": "user",
+					"status": "success",
+					"details": "Аккаунт заблокирован (15 неудачных PIN)",
+				},
+			},
+		)
+	except Exception:
+		pass
+
 
 # ── Операции ───────────────────────────────────────────────────────────
 
@@ -196,6 +216,26 @@ async def login_pin(
 			},
 		},
 	)
+
+	# Логируем успешный вход
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_AUTH_KEY,
+			body={
+				"type": "auth",
+				"payload": {
+					"user_id": str(user.id),
+					"action": "login",
+					"service": "auth_service",
+					"entity_type": "session",
+					"status": "success",
+					"details": "Вход по PIN-коду",
+				},
+			},
+		)
+	except Exception:
+		pass
 
 	return token, user.id
 

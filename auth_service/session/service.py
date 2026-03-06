@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_AUTH_KEY
 from shared.redis_sessions import tokens as session_tokens
 
 
@@ -64,6 +64,26 @@ async def set_pin(session: AsyncSession, user_id: UUID, pin: str) -> None:
 				},
 			},
 		)
+
+	# Логируем изменение PIN
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_AUTH_KEY,
+			body={
+				"type": "auth",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "set_pin",
+					"service": "auth_service",
+					"entity_type": "user",
+					"status": "success",
+					"details": "PIN-код установлен / изменён",
+				},
+			},
+		)
+	except Exception:
+		pass
 
 
 async def logout(token: str) -> None:
@@ -140,6 +160,26 @@ async def self_block(session: AsyncSession, user_id: UUID, token: str) -> None:
 			)
 		except Exception:
 			pass  # уведомление не критично
+
+	# Логируем самоблокировку
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_AUTH_KEY,
+			body={
+				"type": "auth",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "self_block",
+					"service": "auth_service",
+					"entity_type": "user",
+					"status": "success",
+					"details": "Самоблокировка аккаунта",
+				},
+			},
+		)
+	except Exception:
+		pass
 
 
 __all__ = [

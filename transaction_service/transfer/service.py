@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_TRANSACTION_KEY
 from transaction_service.exceptions import (
 	AccountFrozen,
 	AccountNotFound,
@@ -278,5 +278,27 @@ async def transfer(
 			await _notify_incoming_transfer(session, to_account, from_account, amount, to_balance_after)
 		except Exception:
 			logger.exception("Не удалось отправить уведомление получателю (account=%s)", to_account_id)
+
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_TRANSACTION_KEY,
+			body={
+				"type": "transaction",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "transfer",
+					"service": "transaction_service",
+					"entity_id": str(tx_out.id),
+					"entity_type": "transaction",
+					"amount": str(amount),
+					"currency": from_account.currency,
+					"status": "success",
+					"details": f"Перевод {from_account.account_number} → {to_account.account_number}",
+				},
+			},
+		)
+	except Exception:
+		logger.exception("Не удалось отправить лог о переводе (account=%s)", from_account_id)
 
 	return tx_out

@@ -6,7 +6,7 @@
 - **ORM / миграции:** SQLAlchemy 2.0 (async), Alembic
 - **HTTP-клиент:** httpx (AsyncClient)
 - **Валидация:** Pydantic v2
-- **БД:** PostgreSQL 17, Redis 7, Redis Stack, MongoDB 7
+- **БД:** PostgreSQL 17 (основная + история), Redis 7, Redis Stack, MongoDB 7, ClickHouse 24
 - **Брокер:** RabbitMQ 3.13
 - **Хеширование:** bcrypt (PIN-коды)
 - **Контейнеризация:** Docker, Docker Compose
@@ -20,14 +20,14 @@ bank/
 ├── auth_service/                # Аутентификация: логин по PIN, сессии, установка PIN, самоблокировка
 ├── account_service/             # Сервис банковских счетов: открытие, просмотр, закрытие, заморозка
 ├── currency_service/            # Сервис иностранных валют (заглушка)
-├── log_service/                 # Сервис логирования (заглушка)
+├── log_service/                 # Сервис логирования: RabbitMQ consumer → PostgreSQL (history) + ClickHouse (analytics)
 ├── metal_service/               # Сервис драг. металлов (заглушка)
 ├── notification_service/        # Сервис уведомлений: RabbitMQ consumer → SMTP (email по шаблонам)
 ├── transaction_service/         # Сервис транзакций: пополнение, снятие, переводы, история + AML-проверка
 ├── security_service/            # AML / антифрод: 6 правил, автозаморозка, журнал в MongoDB
 ├── migrations/                  # Alembic-миграции + dev-скрипт сброса БД
 ├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, утилиты, внутренняя аутентификация
-├── docker-compose.yaml          # 18 сервисов: 10 бизнес + 1 миграция + 7 инфраструктура
+├── docker-compose.yaml          # 20 сервисов: 10 бизнес + 1 миграция + 9 инфраструктура
 ├── .env                         # Переменные окружения инфраструктуры
 └── README.md
 ```
@@ -56,19 +56,26 @@ bank/
           │              │              │   └──────┬───────┘
           │              │              │          │
           ▼              ▼              ▼          ▼
-   ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
-   │  PostgreSQL │ │    Redis    │ │   RabbitMQ   │
-   │    (core)   │ │ sessions /  │ │              │
-   │             │ │ onboarding  │ │      ▼       │
-   └─────────────┘ └─────────────┘ │ Notification │
-                                   │   Service    │
-                                   │  (consumer)  │
-                                   └──┬───────┬───┘
-                                      │       │
-                                      ▼       ▼
-                                 Gmail SMTP  MongoDB
-                                            (email_log +
-                                          security_events)
+   ┌─────────────┐ ┌─────────────┐ ┌──────────────────────┐
+   │  PostgreSQL │ │    Redis    │ │      RabbitMQ         │
+   │   (core)    │ │ sessions /  │ │                       │
+   │             │ │ onboarding  │ │   ┌─────────┐ ┌──────┐│
+   └─────────────┘ └─────────────┘ │   │notifica-│ │ logs ││
+                                   │   │  tions  │ │      ││
+                                   │   └────┬────┘ └──┬───┘│
+                                   └────────┼─────────┼────┘
+                                            │         │
+                                            ▼         ▼
+                                   ┌────────────┐ ┌──────────┐
+                                   │Notification│ │   Log    │
+                                   │  Service   │ │  Service │
+                                   │ (consumer) │ │(consumer)│
+                                   └──┬───────┬─┘ └──┬────┬──┘
+                                      │       │      │    │
+                                      ▼       ▼      ▼    ▼
+                                Gmail SMTP  MongoDB  PG   ClickHouse
+                                           (email_log  (history)
+                                         + security)
 ```
 
 ### Сети Docker
@@ -77,7 +84,7 @@ bank/
 |------------|--------------------------------------|------------------------------------|
 | `frontend` | Внешний доступ (клиент → gateway)    | gateway                           |
 | `backend`  | Связь gateway ↔ микросервисы         | gateway, все бизнес-сервисы       |
-| `data`     | Доступ к БД и кэшам                 | все сервисы, PostgreSQL, Redis, RabbitMQ |
+| `data`     | Доступ к БД и кэшам                 | все сервисы, PostgreSQL, Redis, RabbitMQ, MongoDB, ClickHouse |
 
 ### Инфраструктура
 
@@ -88,6 +95,8 @@ bank/
 | `redis_onboarding` | `redis/redis-stack-server`     | 6379  | JSON-черновики + onboarding-токены (healthcheck) |
 | `rabbitmq`         | `rabbitmq:3.13-management`     | 5672  | Брокер сообщений (уведомления, логи)    |
 | `mongodb`          | `mongo:7`                      | 27017 | Журнал уведомлений (email_log, TTL 90 д) |
+| `postgres_history`  | `postgres:17`                  | 5433  | БД истории действий пользователей (user_actions) |
+| `clickhouse`        | `clickhouse-server:24`         | 8123  | Аналитика бизнес-событий (TTL 2 года)     |
 | `pgadmin`          | `dpage/pgadmin4`               | 5050  | Веб-интерфейс для PostgreSQL            |
 | `mongo_express`    | `mongo-express:latest`         | 8081  | Веб-интерфейс для MongoDB               |
 
@@ -138,11 +147,22 @@ bank/
 - Журнал уведомлений в MongoDB (коллекция `email_log`, TTL 90 дней)
 - Произвольные письма не отправляются — только зарегистрированные шаблоны
 
+### Log Service
+- RabbitMQ consumer (не HTTP-сервис), аналогично notification_service
+- Подписка на exchange `logs` (binding `log.#`)
+- Дуальная запись каждого события:
+  - **PostgreSQL (history):** таблица `user_actions` — полный аудит действий пользователей
+  - **ClickHouse:** таблица `business_events` — аналитика (MergeTree, TTL 2 года, партиционирование по месяцам)
+- События: аутентификация, регистрация, операции со счетами, транзакции
+- Shared-модули: `shared/history_core` (SQLAlchemy async), `shared/clickhouse_core` (clickhouse-connect)
+
 ### Shared
 - ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`, `BankAccount` (+ frozen_by/frozen_at/freeze_reason), `Transaction` (+ balance_before/balance_after)
 - Pydantic-схемы для всех запросов/ответов (11 файлов: auth, bank_account, contacts, email_verification, identifiers, onboarding, passport, personal_data, transaction, unlock, schemas)
 - Redis-клиенты для сессий и онбординга
 - RabbitMQ-клиент (aio-pika): `connect`, `disconnect`, `publish`
+- History Core: async-клиент PostgreSQL для истории действий (модель `UserAction`)
+- ClickHouse Core: async-клиент для аналитики бизнес-событий
 - Зависимости: `verify_internal_key()` (timing-safe), `require_user_id()`
 - Утилиты нормализации: `normalize_name`, `normalize_email`, `normalize_phone`, `digits_only`
 
@@ -195,10 +215,8 @@ Mongo Express: `http://localhost:8081`.
 
 ### Глобальный
 - delete_account — удаление аккаунта клиента
-- Добавление ещё одной БД для хранение истории пользователя
 - currency_service — курсы валют
 - metal_service — драг. металлы
-- log_service — логирование через RabbitMQ + ClickHouse
 - Конвертация валют при переводах (интеграция с currency_service)
 - Рассмотреть k8s (манифесты для minikube / k3s)
 - Оформление документации как технической, так и простой

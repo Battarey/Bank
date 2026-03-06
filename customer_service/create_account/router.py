@@ -9,7 +9,6 @@ from shared.database_core.db import get_session
 from shared.rabbitmq import publish, NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
 from shared.redis_onboarding.email_codes import (
 	generate_code,
-	is_email_verified,
 	save_email_code,
 	verify_email_code,
 )

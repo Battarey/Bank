@@ -2,7 +2,7 @@
 
 Микросервис управления банковскими счетами: открытие, просмотр, закрытие, заморозка и разморозка. Работает только через Gateway (защита `X-Internal-Key`).
 
-При операциях со счетами отправляет уведомления через RabbitMQ (шаблоны `account_opened`, `account_closed`, `account_frozen`, `account_unfrozen`).
+При операциях со счетами отправляет уведомления через RabbitMQ (шаблоны `account_opened`, `account_closed`, `account_frozen`, `account_unfrozen`) и публикует бизнес-события в exchange `logs` (routing key `log.account`) для аудит-лога и аналитики.
 
 ## Файловая архитектура
 ```

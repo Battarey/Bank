@@ -2,6 +2,8 @@
 
 Сервис аутентификации: вход по PIN-коду, управление сессиями, установка PIN, rate-limiting и разблокировка аккаунта.
 
+Публикует бизнес-события в exchange `logs` (routing key `log.auth`) для аудит-лога: login, set_pin, self_block, account_locked, unlock.
+
 ## Файловая архитектура
 ```
 auth_service/

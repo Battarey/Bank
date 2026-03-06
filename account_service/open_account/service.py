@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_ACCOUNT_KEY
 from account_service.exceptions import (
 	AccountConflict,
 	AccountError,
@@ -178,6 +178,27 @@ async def open_account(
 	)
 
 	await _notify_account_opened(session, user_id, account)
+
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_ACCOUNT_KEY,
+			body={
+				"type": "account",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "open_account",
+					"service": "account_service",
+					"entity_id": str(account.id),
+					"entity_type": "bank_account",
+					"currency": account.currency,
+					"status": "success",
+					"details": f"Открыт счёт {account.account_number} ({payload.type}, {payload.currency})",
+				},
+			},
+		)
+	except Exception:
+		logger.exception("Не удалось отправить лог об открытии счёта (account=%s)", account.id)
 
 	return account
 

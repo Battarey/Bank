@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_AUTH_KEY
 from shared.redis_sessions import rate_limit
 from shared.redis_sessions import unlock_codes
 
@@ -137,6 +137,26 @@ async def unlock_account(session: AsyncSession, email: str, code: str) -> None:
 			},
 		},
 	)
+
+	# Логируем разблокировку
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_AUTH_KEY,
+			body={
+				"type": "auth",
+				"payload": {
+					"user_id": str(user.id),
+					"action": "unlock",
+					"service": "auth_service",
+					"entity_type": "user",
+					"status": "success",
+					"details": "Аккаунт разблокирован по коду",
+				},
+			},
+		)
+	except Exception:
+		pass
 
 
 __all__ = [

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY
+from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_TRANSACTION_KEY
 from transaction_service.exceptions import (
 	AccountNotFound,
 	AccountNotOpen,
@@ -124,5 +124,27 @@ async def deposit(
 		await _notify_deposit(session, user_id, account, amount, balance_after)
 	except Exception:
 		logger.exception("Не удалось отправить уведомление о пополнении (account=%s)", account_id)
+
+	try:
+		await publish(
+			exchange_name=LOGS_EXCHANGE,
+			routing_key=LOG_TRANSACTION_KEY,
+			body={
+				"type": "transaction",
+				"payload": {
+					"user_id": str(user_id),
+					"action": "deposit",
+					"service": "transaction_service",
+					"entity_id": str(tx.id),
+					"entity_type": "transaction",
+					"amount": str(amount),
+					"currency": account.currency,
+					"status": "success",
+					"details": f"Пополнение счёта {account.account_number}",
+				},
+			},
+		)
+	except Exception:
+		logger.exception("Не удалось отправить лог о пополнении (account=%s)", account_id)
 
 	return tx

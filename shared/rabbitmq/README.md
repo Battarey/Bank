@@ -28,8 +28,13 @@ async def lifespan(app: FastAPI):
 
 ## Константы (`constants.py`)
 
-| Константа                | Значение          | Описание                        |
-|--------------------------|-------------------|---------------------------------|
-| `NOTIFICATIONS_EXCHANGE` | `notifications`   | Topic exchange для уведомлений  |
-| `EMAIL_ROUTING_KEY`      | `email.send`      | Routing key для email-сообщений |
-| `EMAIL_QUEUE`            | `email_queue`     | Очередь email (используется consumer) |
+| Константа                | Значение          | Описание                             |
+|--------------------------|-------------------|--------------------------------------|
+| `NOTIFICATIONS_EXCHANGE` | `notifications`   | Topic exchange для уведомлений       |
+| `EMAIL_ROUTING_KEY`      | `email.send`      | Routing key для email-сообщений      |
+| `EMAIL_QUEUE`            | `email_queue`     | Очередь email (notification_service) |
+| `LOGS_EXCHANGE`          | `logs`            | Topic exchange для бизнес-логов      |
+| `LOG_AUTH_KEY`           | `log.auth`        | Routing key: события аутентификации  |
+| `LOG_ACCOUNT_KEY`        | `log.account`     | Routing key: операции со счетами     |
+| `LOG_TRANSACTION_KEY`    | `log.transaction` | Routing key: финансовые операции     |
+| `LOG_QUEUE`              | `log_queue`       | Очередь логов (log_service)          |
