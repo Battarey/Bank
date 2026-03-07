@@ -19,12 +19,12 @@ customer_service─┘
 
 ## Типы событий
 
-| Routing Key       | Источник              | Примеры действий                              |
-|--------------------|-----------------------|-----------------------------------------------|
+| Routing Key        | Источник              | Примеры действий                                   |
+|--------------------|-----------------------|----------------------------------------------------|
 | `log.auth`         | auth_service          | login, set_pin, self_block, account_locked, unlock |
-| `log.auth`         | customer_service      | registration (финализация онбординга)          |
-| `log.account`      | account_service       | open_account, close_account, freeze, unfreeze  |
-| `log.transaction`  | transaction_service   | deposit, withdrawal, transfer                  |
+| `log.auth`         | customer_service      | registration (финализация онбординга)              |
+| `log.account`      | account_service       | open_account, close_account, freeze, unfreeze      |
+| `log.transaction`  | transaction_service   | deposit, withdrawal, transfer                      |
 
 ## Формат сообщения
 
@@ -59,12 +59,12 @@ customer_service─┘
 
 ## Переменные окружения
 
-| Переменная           | Значение по умолчанию                                                  |
-|----------------------|------------------------------------------------------------------------|
-| `RABBITMQ_URL`       | `amqp://guest:guest@rabbitmq:5672/`                                    |
+| Переменная           | Значение по умолчанию                                                                |
+|----------------------|--------------------------------------------------------------------------------------|
+| `RABBITMQ_URL`       | `amqp://guest:guest@rabbitmq:5672/`                                                  |
 | `HISTORY_DATABASE_URL` | `postgresql+asyncpg://bank_history_user:...@postgres_history:5432/bank_history_db` |
-| `CLICKHOUSE_HOST`    | `clickhouse`                                                           |
-| `CLICKHOUSE_PORT`    | `8123`                                                                 |
-| `CLICKHOUSE_USER`    | `default`                                                              |
-| `CLICKHOUSE_PASSWORD`| (из .env)                                                              |
-| `CLICKHOUSE_DB`      | `bank_logs`                                                            |
+| `CLICKHOUSE_HOST`    | `clickhouse`                                                                         |
+| `CLICKHOUSE_PORT`    | `8123`                                                                               |
+| `CLICKHOUSE_USER`    | `default`                                                                            | 
+| `CLICKHOUSE_PASSWORD`| (из .env)                                                                            |
+| `CLICKHOUSE_DB`      | `bank_logs`                                                                          |

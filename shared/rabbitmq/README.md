@@ -12,20 +12,6 @@ shared/rabbitmq/
 └── README.md
 ```
 
-## Использование
-
-### Подключение (в lifespan сервиса)
-
-```python
-from shared.rabbitmq import connect, disconnect
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await connect()
-    yield
-    await disconnect()
-```
-
 ## Константы (`constants.py`)
 
 | Константа                | Значение          | Описание                             |

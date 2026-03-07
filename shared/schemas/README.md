@@ -20,12 +20,12 @@ schemas/
 
 ### `auth.py`
 
-| Схема              | Тип     | Поля                        | Описание                      |
-|--------------------|---------|-----------------------------|-----------  --------------------|
-| `LoginPinRequest`  | Request | `phone` (Phone), `pin` (Pin) | Запрос логина по PIN          |
-| `LoginPinResponse` | Response| `session_token`, `user_id`   | Ответ с сессионным токеном    |
-| `SetPinRequest`    | Request | `pin` (Pin)                  | Установка / смена PIN         |
-| `MessageResponse`  | Response| `message`                    | Универсальный текстовый ответ |
+| Схема              | Тип      | Поля                         | Описание                      |
+|--------------------|----------|------------------------------|-------------------------------|
+| `LoginPinRequest`  | Request  | `phone` (Phone), `pin` (Pin) | Запрос логина по PIN          |
+| `LoginPinResponse` | Response | `session_token`, `user_id`   | Ответ с сессионным токеном    |
+| `SetPinRequest`    | Request  | `pin` (Pin)                  | Установка / смена PIN         |
+| `MessageResponse`  | Response | `message`                    | Универсальный текстовый ответ |
 
 **Типы:**
 - `Phone` — `str`, паттерн `^\+7\d{10}$`
@@ -33,42 +33,42 @@ schemas/
 
 ### `onboarding.py`
 
-| Схема                     | Используется   | Поля                              | Описание                          |
-|---------------------------|----------------|-----------------------------------|------------------------------------|
-| `StartInternalResponse`   | customer_service | `user_id`, `status="pending"`    | Внутренний ответ на `/start`       |
-| `StartOnboardingResponse` | gateway         | `onboarding_token`, `status`     | Ответ клиенту (токен вместо user_id) |
-| `FinalizeInternalResponse`| customer_service | `status="completed"`, `message`  | Внутренний ответ на `/finalize`    |
-| `FinalizeResponse`        | gateway         | + `session_token`, `user_id`     | Ответ клиенту (с сессией)          |
+| Схема                     | Используется     | Поля                              | Описание                            |
+|---------------------------|------------------|-----------------------------------|-------------------------------------|
+| `StartInternalResponse`   | customer_service | `user_id`, `status="pending"`    | Внутренний ответ на `/start`         |
+| `StartOnboardingResponse` | gateway          | `onboarding_token`, `status`     | Ответ клиенту (токен вместо user_id) |
+| `FinalizeInternalResponse`| customer_service | `status="completed"`, `message`  | Внутренний ответ на `/finalize`      |
+| `FinalizeResponse`        | gateway          | + `session_token`, `user_id`     | Ответ клиенту (с сессией)            |
 
 ### `personal_data.py`
 
-| Схема                | Тип     | Описание                                        |
-|----------------------|---------|-------------------------------------------------|
-| `PersonalDataPayload`| Request | ФИО, `birth_date`, `gender` (M/F). `extra="forbid"` |
-| `PersonalDataResponse`| Response| + `client_id`. `from_attributes=True`           |
+| Схема                | Тип     | Описание                                                       |
+|----------------------|---------|----------------------------------------------------------------|
+| `PersonalDataPayload`| Request | ФИО, `birth_date`, `gender` (M/F). `extra="forbid"`            |
+| `PersonalDataResponse`| Response| + `client_id`. `from_attributes=True`                         |
 | `PersonalDataUpdate` | Request | Частичное обновление ФИО (`birth_date` и `gender` неизменяемы) |
 
 ### `passport.py`
 
-| Схема             | Тип      | Описание                                                      |
-|-------------------|----------|----------------------------------------------------------------|
+| Схема             | Тип      | Описание                                                                                          |
+|-------------------|----------|---------------------------------------------------------------------------------------------------|
 | `PassportPayload` | Request  | Серия, номер, код подразделения, кем выдан, даты, адрес. Валидатор: `expiration_date > issued_at` |
-| `PassportResponse`| Response | + `client_id`. `from_attributes=True`                         |
+| `PassportResponse`| Response | + `client_id`. `from_attributes=True`                                                             |
 
 ### `identifiers.py`
 
 | Схема                | Тип      | Описание                                  |
 |----------------------|----------|-------------------------------------------|
-| `IdentifiersPayload` | Request  | `inn` (12 цифр), `snils` (11 цифр)       |
+| `IdentifiersPayload` | Request  | `inn` (12 цифр), `snils` (11 цифр)        |
 | `IdentifiersResponse`| Response | + `client_id`. `from_attributes=True`     |
 
 ### `contacts.py`
 
 | Схема             | Тип      | Описание                                                |
 |-------------------|----------|---------------------------------------------------------|
-| `ContactsPayload` | Request  | `email` (EmailStr), `phone` (`^\+7\d{10}$`)    |
+| `ContactsPayload` | Request  | `email` (EmailStr), `phone` (`^\+7\d{10}$`)             |
 | `ContactsResponse`| Response | + `client_id`. `from_attributes=True`                   |
-| `ContactsUpdate`  | Request  | Частичное обновление email и/или phone                   |
+| `ContactsUpdate`  | Request  | Частичное обновление email и/или phone                  |
 
 ## Паттерн Internal / Gateway
 
@@ -85,17 +85,17 @@ FinalizeInternalResponse →   FinalizeResponse
 
 ### `email_verification.py`
 
-| Схема                    | Тип      | Поля                                           | Описание                             |
-|--------------------------|----------|------------------------------------------------|------------------------------------------|
-| `SendEmailCodeRequest`   | Request  | `email` (EmailStr)                             | Запрос на отправку кода подтверждения |
-| `VerifyEmailCodeRequest` | Request  | `code` (6 цифр, `^\d{6}$`)                    | Запрос на проверку кода               |
-| `EmailCodeResponse`      | Response | `message`, `email_verified` (bool)             | Ответ на отправку / проверку кода   |
+| Схема                    | Тип      | Поля                                  | Описание                              |
+|--------------------------|----------|---------------------------------------|---------------------------------------|
+| `SendEmailCodeRequest`   | Request  | `email` (EmailStr)                    | Запрос на отправку кода подтверждения |
+| `VerifyEmailCodeRequest` | Request  | `code` (6 цифр, `^\d{6}$`)            | Запрос на проверку кода               |
+| `EmailCodeResponse`      | Response | `message`, `email_verified` (bool)    | Ответ на отправку / проверку кода     |
 
 ### `unlock.py`
 
-| Схема                    | Тип      | Поля                                | Описание                                |
-|--------------------------|----------|--------------------------------------|--------------------------------------------|
-| `RequestUnlockRequest`   | Request  | `email` (EmailStr)                   | Запрос на отправку кода разблокировки |
+| Схема                    | Тип      | Поля                                   | Описание                                |
+|--------------------------|----------|----------------------------------------|--------------------------------------------|
+| `RequestUnlockRequest`   | Request  | `email` (EmailStr)                     | Запрос на отправку кода разблокировки |
 | `UnlockRequest`          | Request  | `email` (EmailStr), `code` (`^\d{6}$`) | Проверка кода и разблокировка         |
 
 ### `bank_account.py`

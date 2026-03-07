@@ -5,8 +5,6 @@
 2. POST /unlock {phone, code} — проверяет код, снимает блокировку.
 """
 
-from uuid import UUID
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

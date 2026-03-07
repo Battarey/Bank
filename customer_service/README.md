@@ -26,24 +26,24 @@ customer_service/
 
 ### Онбординг (create_account)
 
-| Метод | Путь                                    | Описание                             |
-|--------|------------------------------------------|------------------------------------------|
-| POST   | `/users/start`                           | Создание пользователя (`pending`)        |
-| POST   | `/users/{user_id}/account/personal-data` | ФИО, дата рождения, пол              |
-| POST   | `/users/{user_id}/account/passport`      | Паспортные данные (KYC)             |
-| POST   | `/users/{user_id}/account/identifiers`   | ИНН, СНИЛС                            |
-| POST   | `/users/{user_id}/account/contacts`      | Телефон и email                       |
-| POST   | `/users/{user_id}/account/send-email-code` | Отправить код подтверждения на email |
-| POST   | `/users/{user_id}/account/verify-email`  | Проверить код подтверждения email    |
-| POST   | `/users/{user_id}/account/finalize`      | Перенос из Redis в PostgreSQL, `active` + welcome email |
+| Метод  | Путь                                       | Описание                                                |
+|--------|--------------------------------------------|---------------------------------------------------------|
+| POST   | `/users/start`                             | Создание пользователя (`pending`)                       |
+| POST   | `/users/{user_id}/account/personal-data`   | ФИО, дата рождения, пол                                 |
+| POST   | `/users/{user_id}/account/passport`        | Паспортные данные (KYC)                                 |
+| POST   | `/users/{user_id}/account/identifiers`     | ИНН, СНИЛС                                              |
+| POST   | `/users/{user_id}/account/contacts`        | Телефон и email                                         |
+| POST   | `/users/{user_id}/account/send-email-code` | Отправить код подтверждения на email                    |
+| POST   | `/users/{user_id}/account/verify-email`    | Проверить код подтверждения email                       |
+| POST   | `/users/{user_id}/account/finalize`        | Перенос из Redis в PostgreSQL, `active` + welcome email |
 
 ### Обновление данных (update_user_data)
 
-| Метод | Путь                    | Описание                         |
-|--------|--------------------------|--------------------------------------|
-| PATCH  | `/users/personal-data`   | Частичное обновление ФИО            |
+| Метод  | Путь                     | Описание                        |
+|--------|--------------------------|---------------------------------|
+| PATCH  | `/users/personal-data`   | Частичное обновление ФИО        |
 | PUT    | `/users/passport`        | Полная замена паспортных данных |
-| PATCH  | `/users/contacts`        | Частичное обновление контактов   |
+| PATCH  | `/users/contacts`        | Частичное обновление контактов  |
 
 > `user_id` извлекается из заголовка `X-User-ID`, проброшенного gateway.
 

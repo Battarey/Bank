@@ -73,22 +73,22 @@ transaction_service ──POST /check──▶ security_service
 
 ## Переменные окружения
 
-| Переменная                 | Обязательная | Описание                                  |
-|----------------------------|:------------:|-------------------------------------------|
-| `DATABASE_URL`             | ✓            | URL PostgreSQL (чтение транзакций)        |
-| `INTERNAL_API_KEY`         | ✓            | Ключ для inter-service авторизации        |
-| `RABBITMQ_URL`             | ✓            | URL брокера для email-уведомлений         |
-| `MONGO_URL`                | ✓            | URL MongoDB для журнала событий           |
-| `LARGE_TX_THRESHOLD`       |              | Порог крупной операции (default: 600000)  |
-| `DAILY_AMOUNT_LIMIT`       |              | Лимит суммы за 24 ч (default: 1000000)   |
-| `DAILY_TX_COUNT`           |              | Лимит операций за 24 ч (default: 20)     |
-| `RAPID_FIRE_COUNT`         |              | Лимит rapid-fire (default: 5)            |
-| `RAPID_FIRE_WINDOW_MIN`    |              | Окно rapid-fire в минутах (default: 3)   |
-| `STRUCTURING_RATIO`        |              | Коэффициент дробления (default: 0.9)     |
-| `STRUCTURING_MIN_HITS`     |              | Минимум попаданий structuring (default: 3)|
-| `ROUND_AMOUNT_FLOOR`       |              | Нижний порог круглых сумм (default: 100000)|
-| `ROUND_AMOUNT_STEP`        |              | Шаг кратности (default: 10000)           |
-| `ROUND_AMOUNT_MIN_HITS`    |              | Минимум круглых сумм (default: 3)        |
+| Переменная                 | Обязательная | Описание                                    |
+|----------------------------|:------------:|---------------------------------------------|
+| `DATABASE_URL`             | ✓           | URL PostgreSQL (чтение транзакций)          |
+| `INTERNAL_API_KEY`         | ✓           | Ключ для inter-service авторизации          |
+| `RABBITMQ_URL`             | ✓           | URL брокера для email-уведомлений           |
+| `MONGO_URL`                | ✓           | URL MongoDB для журнала событий             |
+| `LARGE_TX_THRESHOLD`       |              | Порог крупной операции (default: 600000)    |
+| `DAILY_AMOUNT_LIMIT`       |              | Лимит суммы за 24 ч (default: 1000000)      |
+| `DAILY_TX_COUNT`           |              | Лимит операций за 24 ч (default: 20)        |
+| `RAPID_FIRE_COUNT`         |              | Лимит rapid-fire (default: 5)               |
+| `RAPID_FIRE_WINDOW_MIN`    |              | Окно rapid-fire в минутах (default: 3)      |
+| `STRUCTURING_RATIO`        |              | Коэффициент дробления (default: 0.9)        |
+| `STRUCTURING_MIN_HITS`     |              | Минимум попаданий structuring (default: 3)  |
+| `ROUND_AMOUNT_FLOOR`       |              | Нижний порог круглых сумм (default: 100000) |
+| `ROUND_AMOUNT_STEP`        |              | Шаг кратности (default: 10000)              |
+| `ROUND_AMOUNT_MIN_HITS`    |              | Минимум круглых сумм (default: 3)           |
 
 ## Зависимости
 

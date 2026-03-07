@@ -92,7 +92,6 @@ async def _lock_account(
 	user.status = "blocked"
 
 	# Каскадная заморозка all open-счетов
-	from sqlalchemy import select
 	stmt = (
 		select(models.BankAccount)
 		.where(

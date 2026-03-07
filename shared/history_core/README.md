@@ -11,17 +11,9 @@ history_core/
 └── README.md
 ```
 
-## Конфигурация
-
-| Переменная             | Обязательна | Описание                                                 |
-|------------------------|-------------|----------------------------------------------------------|
-| `HISTORY_DATABASE_URL` | Да          | Async-URL PostgreSQL (`postgresql+asyncpg://...`)        |
-
-Если переменная не задана, при импорте модуля выбрасывается `RuntimeError`.
-
 ## Экспорт
 
-| Символ                | Тип                                   | Описание                                           |
+| Символ                | Тип                                    | Описание                                           |
 |-----------------------|----------------------------------------|----------------------------------------------------|
 | `HistoryBase`         | `DeclarativeBase`                      | Базовый класс для моделей postgres_history         |
 | `UserAction`          | `DeclarativeBase`                      | ORM-модель аудит-лога (таблица `user_actions`)     |
@@ -35,14 +27,14 @@ history_core/
 
 | Колонка       | Тип             | Ограничения                    | Описание                                    |
 |---------------|-----------------|--------------------------------|---------------------------------------------|
-| `id`          | `UUID`          | PK, default `uuid4`           | Уникальный идентификатор записи             |
+| `id`          | `UUID`          | PK, default `uuid4`            | Уникальный идентификатор записи             |
 | `user_id`     | `UUID`          | NOT NULL, indexed              | Кто выполнил действие                       |
 | `action`      | `Text`          | NOT NULL, indexed              | Тип действия (login, deposit и др.)         |
 | `service`     | `Text`          | NOT NULL                       | Сервис-источник                             |
 | `details`     | `Text`          | nullable                       | Произвольные детали действия                |
 | `entity_id`   | `UUID`          | nullable                       | UUID связанной сущности (счёт, транзакция)  |
 | `entity_type` | `Text`          | nullable                       | Тип сущности (bank_account, transaction)    |
-| `amount`      | `Numeric(18,2)` | nullable                       | Сумма (для финансовых операций)              |
+| `amount`      | `Numeric(18,2)` | nullable                       | Сумма (для финансовых операций)             |
 | `currency`    | `Text`          | nullable                       | Валюта                                      |
 | `status`      | `Text`          | NOT NULL, default `success`    | Результат (success, failed, blocked)        |
 | `ip_address`  | `Text`          | nullable                       | IP-адрес клиента                            |
@@ -50,20 +42,10 @@ history_core/
 
 ## Отличие от database_core
 
-| Аспект          | `database_core`            | `history_core`                  |
-|-----------------|----------------------------|---------------------------------|
-| БД              | `postgres_core` (порт 5432) | `postgres_history` (порт 5433) |
-| Назначение      | Учётные данные клиентов     | Аудит-лог действий              |
-| Таблицы         | 7 (через Alembic)           | 1 (`user_actions`, auto-create) |
+| Аспект          | `database_core`             | `history_core`                    |
+|-----------------|-----------------------------|-----------------------------------|
+| БД              | `postgres_core` (порт 5432) | `postgres_history` (порт 5433)    |
+| Назначение      | Учётные данные клиентов     | Аудит-лог действий                |
+| Таблицы         | 7 (через Alembic)           | 1 (`user_actions`, auto-create)   |
 | Управление DDL  | Alembic-миграции            | `HistoryBase.metadata.create_all` |
-| Кто использует  | Все бизнес-сервисы          | `log_service`                   |
-
-## Использование
-
-```python
-from shared.history_core import HistorySessionLocal, UserAction
-
-async with HistorySessionLocal() as session:
-    session.add(UserAction(user_id=..., action="login", service="auth_service"))
-    await session.commit()
-```
+| Кто использует  | Все бизнес-сервисы          | `log_service`                     |

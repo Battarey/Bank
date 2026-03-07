@@ -32,21 +32,21 @@ clickhouse_core/
 
 Создаётся автоматически при вызове `init_clickhouse()`.
 
-| Колонка       | Тип ClickHouse                      | Описание                           |
-|---------------|-------------------------------------|-------------------------------------|
-| `id`          | `UUID` (default `generateUUIDv4()`) | Уникальный идентификатор           |
+| Колонка       | Тип ClickHouse                      | Описание                              |
+|---------------|-------------------------------------|---------------------------------------|
+| `id`          | `UUID` (default `generateUUIDv4()`) | Уникальный идентификатор              |
 | `event_type`  | `LowCardinality(String)`           | Категория (auth, account, transaction) |
-| `service`     | `LowCardinality(String)`           | Сервис-источник                    |
-| `user_id`     | `UUID`                             | UUID пользователя                  |
-| `entity_id`   | `Nullable(UUID)`                   | UUID связанной сущности            |
-| `entity_type` | `LowCardinality(Nullable(String))` | Тип сущности                       |
-| `action`      | `LowCardinality(String)`           | Действие (login, deposit и др.)    |
-| `amount`      | `Nullable(Decimal(18, 2))`         | Сумма операции                     |
-| `currency`    | `LowCardinality(Nullable(String))` | Валюта                             |
-| `status`      | `LowCardinality(String)`           | Результат (success, failed)        |
-| `details`     | `Nullable(String)`                 | Дополнительная информация          |
-| `ip_address`  | `Nullable(String)`                 | IP-адрес клиента                   |
-| `created_at`  | `DateTime64(3, 'UTC')`             | Время события (default now64)      |
+| `service`     | `LowCardinality(String)`           | Сервис-источник                        |
+| `user_id`     | `UUID`                             | UUID пользователя                      |
+| `entity_id`   | `Nullable(UUID)`                   | UUID связанной сущности                |
+| `entity_type` | `LowCardinality(Nullable(String))` | Тип сущности                           |
+| `action`      | `LowCardinality(String)`           | Действие (login, deposit и др.)        |
+| `amount`      | `Nullable(Decimal(18, 2))`         | Сумма операции                         |
+| `currency`    | `LowCardinality(Nullable(String))` | Валюта                                 |
+| `status`      | `LowCardinality(String)`           | Результат (success, failed)            |
+| `details`     | `Nullable(String)`                 | Дополнительная информация              |
+| `ip_address`  | `Nullable(String)`                 | IP-адрес клиента                       |
+| `created_at`  | `DateTime64(3, 'UTC')`             | Время события (default now64)          |
 
 ### Параметры таблицы
 - **Engine:** `MergeTree()`
@@ -65,26 +65,3 @@ clickhouse_core/
 | Партиции     | Нет                                      | По месяцам                             |
 | Оптимизация  | Гибкость схемы                           | Быстрые аналитические запросы          |
 | Драйвер      | `motor` (async)                          | `clickhouse-connect` (async)           |
-
-## Использование
-
-```python
-from shared.clickhouse_core import init_clickhouse, close_clickhouse, insert_log_event
-
-# При старте
-await init_clickhouse()
-
-# Запись события
-await insert_log_event(
-    event_type="transaction",
-    service="transaction_service",
-    user_id="...",
-    action="deposit",
-    amount=1000.00,
-    currency="RUB",
-    status="success",
-)
-
-# При остановке
-await close_clickhouse()
-```

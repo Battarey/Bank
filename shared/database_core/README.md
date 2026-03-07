@@ -9,37 +9,19 @@ database_core/
 └── env.py         # Чтение DATABASE_URL из окружения
 ```
 
-## Конфигурация
-
-| Переменная       | Обязательна | Описание                                      |
-|------------------|-------------|-----------------------------------------------|
-| `DATABASE_URL`   | Да          | Async-URL PostgreSQL (`postgresql+asyncpg://`) |
-
-Если `DATABASE_URL` не задан, при импорте модуля выбрасывается `RuntimeError`.
-
 ## Экспорт
 
 ### `env.py`
 
-| Символ                       | Тип          | Описание                                 |
-|------------------------------|--------------|------------------------------------------|
+| Символ                       | Тип          | Описание                                  |
+|------------------------------|--------------|-------------------------------------------|
 | `POSTGRES_CORE_DATABASE_URL` | `Final[str]` | URL базы данных, прочитанный из окружения |
 
 ### `db.py`
 
-| Символ         | Тип                                    | Описание                                          |
-|----------------|----------------------------------------|---------------------------------------------------|
-| `engine`       | `AsyncEngine`                          | Асинхронный движок SQLAlchemy                     |
+| Символ         | Тип                                    | Описание                                                     |
+|----------------|----------------------------------------|--------------------------------------------------------------|
+| `engine`       | `AsyncEngine`                          | Асинхронный движок SQLAlchemy                                |
 | `SessionLocal` | `async_sessionmaker[AsyncSession]`     | Фабрика сессий (`autoflush=False`, `expire_on_commit=False`) |
-| `get_session`  | `AsyncGenerator[AsyncSession, None]`   | FastAPI Depends — открывает и закрывает сессию    |
+| `get_session`  | `AsyncGenerator[AsyncSession, None]`   | FastAPI Depends — открывает и закрывает сессию               |
 
-## Использование
-
-```python
-from shared.database_core.db import get_session, AsyncSession
-from fastapi import Depends
-
-@router.post("/example")
-async def example(session: AsyncSession = Depends(get_session)):
-    ...
-```

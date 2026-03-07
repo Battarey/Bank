@@ -12,19 +12,19 @@ utils/
 
 ## Экспорт (`normalize.py`)
 
-| Функция            | Сигнатура                   | Описание                          |
-|--------------------|-----------------------------|------------------------------------|
-| `normalize_name`   | `(str \| None) → str \| None` | `.strip().upper()` (ФИО)          |
-| `normalize_email`  | `(str) → str`               | `.lower()`                        |
-| `normalize_phone`  | `(str) → str`               | Удаление пробелов                 |
-| `digits_only`      | `(str) → str`               | Только цифры (ИНН, СНИЛС)        |
+| Функция            | Сигнатура                     | Описание                        |
+|--------------------|-------------------------------|---------------------------------|
+| `normalize_name`   | `(str \| None) → str \| None` | `.strip().upper()` (ФИО)        |
+| `normalize_email`  | `(str) → str`                 | `.lower()`                      |
+| `normalize_phone`  | `(str) → str`                 | Удаление пробелов               |
+| `digits_only`      | `(str) → str`                 | Только цифры (ИНН, СНИЛС)       |
 
 ## Кто использует
 
-| Модуль                                 | Функции                                                |
-|----------------------------------------|--------------------------------------------------------|
+| Модуль                                 | Функции                                                               |
+|----------------------------------------|-----------------------------------------------------------------------|
 | `customer_service/create_account`      | `normalize_name`, `normalize_email`, `normalize_phone`, `digits_only` |
-| `customer_service/update_user_data`    | `normalize_name`, `normalize_email`, `normalize_phone` |
+| `customer_service/update_user_data`    | `normalize_name`, `normalize_email`, `normalize_phone`                |
 
 ## Использование
 

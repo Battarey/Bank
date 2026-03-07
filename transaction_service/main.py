@@ -14,7 +14,6 @@ from .transfer.router import router as transfer_router
 from .history.router import router as history_router
 from . import security_client
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 	await rmq_connect()

@@ -129,12 +129,6 @@ async def _ensure_no_contacts_record(session: AsyncSession, user_id: UUID) -> No
 		raise AccountDataConflict("Contact data already captured for this user.")
 
 
-async def _ensure_no_draft(user_id: UUID, step: onboarding_drafts.StepName, message: str) -> None:
-	"""Блокирует дублирующие черновики в Redis."""
-	if await onboarding_drafts.load_draft(user_id, step):
-		raise AccountDataConflict(message)
-
-
 async def _ensure_passport_unique(
 	session: AsyncSession,
 	user_id: UUID,

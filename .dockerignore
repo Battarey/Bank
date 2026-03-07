@@ -8,3 +8,11 @@ Draft.md
 .venv/
 
 __pycache__/
+
+*.md
+
+tests/
+
+.dockerignore
+Dockerfile
+docker-compose.yaml

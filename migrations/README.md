@@ -15,18 +15,10 @@ migrations/
 │       ├── add_transactions_account_id_idx.py  # Индекс transactions.account_id
 │       └── add_freeze_columns.py     # Колонки frozen_by/frozen_at/freeze_reason в bank_accounts
 ├── postgre_core/                     # Документация таблиц (md-файл = таблица)
-│   ├── users.md
-│   ├── personal_data.md
-│   ├── passport.md
-│   ├── identifiers.md
-│   ├── contacts.md
-│   ├── bank_accounts.md
-│   └── transactions.md
 ├── alembic.ini                       # Конфигурация Alembic
 ├── reset_and_upgrade.py              # Dev-скрипт: DROP → CREATE SCHEMA → upgrade head
 ├── Dockerfile                        # python:3.12-slim, CMD: alembic upgrade head
 ├── requirements.txt                  # alembic, SQLAlchemy, psycopg, python-dotenv
-├── .env                              # ALEMBIC_DATABASE_URL и параметры PostgreSQL
 └── README.md
 ```
 
@@ -186,13 +178,13 @@ erDiagram
 (None) → postgre_core_init → add_pin_hash → add_bank_accounts_client_id_idx → add_transactions_account_id_idx → add_freeze_columns  ← HEAD
 ```
 
-| Ревизия              | Описание                                                   |
-|----------------------|-------------------------------------------------------------|
-| `postgre_core_init`  | Создание 7 таблиц: users, personal_data, passport, identifiers, contacts, bank_accounts, transactions |
-| `add_pin_hash`       | Добавление колонки `pin_hash` (Text, nullable) в `users`    |
-| `add_bank_accounts_client_id_idx` | Индекс `ix_bank_accounts_client_id` на `bank_accounts.client_id` |
-| `add_transactions_account_id_idx` | Индекс `ix_transactions_account_id` на `transactions.account_id` |
-| `add_freeze_columns` | Добавление `frozen_by`, `frozen_at`, `freeze_reason` в `bank_accounts` |
+| Ревизия                           | Описание                                                   |
+|-----------------------------------|-------------------------------------------------------------------------------------------------------|
+| `postgre_core_init`               | Создание 7 таблиц: users, personal_data, passport, identifiers, contacts, bank_accounts, transactions |
+| `add_pin_hash`                    | Добавление колонки `pin_hash` (Text, nullable) в `users`                                              |
+| `add_bank_accounts_client_id_idx` | Индекс `ix_bank_accounts_client_id` на `bank_accounts.client_id`                                      |
+| `add_transactions_account_id_idx` | Индекс `ix_transactions_account_id` на `transactions.account_id`                                      |
+| `add_freeze_columns`              | Добавление `frozen_by`, `frozen_at`, `freeze_reason` в `bank_accounts`                                |
 
 ### CHECK-ограничения
 
