@@ -11,7 +11,7 @@ from shared.redis_onboarding.tokens import (
 	save_onboarding_token,
 	touch_onboarding_token,
 )
-from shared.redis_sessions.tokens import save_token as save_session_token
+from shared.redis_sessions.tokens import revoke_all, save_token as save_session_token
 from ..helpers import forward_request
 from ..middleware import onboarding_token_scheme, session_token_scheme
 
@@ -298,3 +298,27 @@ async def update_contacts(
 		payload.model_dump(mode="json", exclude_unset=True),
 	)
 	return schemas.ContactsResponse.model_validate(data)
+
+# ── Удаление аккаунта ──────────────────────────────────────────────────
+
+
+@update_router.delete(
+	"/users/me",
+	response_model=schemas.MessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Удалить аккаунт",
+)
+async def delete_account(request: Request):
+	"""Soft delete: статус → deleted, счета заморожены, все сессии отозваны. Данные сохраняются."""
+	data = await forward_request(
+		request,
+		"DELETE",
+		"/users/delete",
+	)
+
+	# Отзыв всех сессий (gateway владеет Redis Sessions)
+	user_id = getattr(request.state, "user_id", None)
+	if user_id:
+		await revoke_all(user_id)
+
+	return schemas.MessageResponse.model_validate(data)

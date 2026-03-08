@@ -35,11 +35,11 @@ bank/
 ```
                   ┌───────────────┐
    Клиент ──────► │    Gateway    │ :8000
-                  └──┬───┬────┬───┬┘
-                     │   │   │   │
-          ┌──────────┘   │   │   └────────────┐
-          │              │   │                │
-          ▼              ▼   ▼                ▼
+                  └──┬───┬─────┬─┬┘
+                     │   │     │ └────────┐ 
+          ┌──────────┘   │     └──────┐   └────────────┐
+          │              │            │                │
+          ▼              ▼            ▼                ▼
    ┌─────────────┐ ┌──────────┐ ┌────────────┐ ┌──────────────┐
    │  Customer   │ │   Auth   │ │  Account   │ │ Transaction  │
    │   Service   │ │  Service │ │  Service   │ │   Service    │
@@ -128,6 +128,7 @@ bank/
 - Повторный ввод шага — черновик перезаписывается
 - При завершении регистрации отправляется приветственное письмо (`welcome`)
 - Обновление данных авторизованного пользователя: `/users/me/personal-data`, `/users/me/passport`, `/users/me/contacts`
+- **Удаление аккаунта (soft delete):** `DELETE /users/me` — статус → `deleted`, каскадная заморозка счетов, отзыв сессий, email-уведомление. Данные сохраняются в БД
 
 ### Auth Service
 - Логин по PIN: `/auth/login-pin` + email-уведомление о входе (`login_alert`)
@@ -140,7 +141,7 @@ bank/
 
 ### Notification Service
 - RabbitMQ consumer (не HTTP-сервис)
-- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`, `account_opened`, `account_closed`, `account_frozen`, `account_unfrozen`, `account_self_blocked`, `security_freeze`, `transaction_deposit`, `transaction_withdrawal`, `transaction_transfer`, `transaction_incoming`
+- Email-шаблоны: `verification_code`, `welcome`, `pin_changed`, `login_alert`, `account_locked`, `unlock_code`, `account_unlocked`, `account_opened`, `account_closed`, `account_frozen`, `account_unfrozen`, `account_self_blocked`, `account_deleted`, `security_freeze`, `transaction_deposit`, `transaction_withdrawal`, `transaction_transfer`, `transaction_incoming`
 - SMTP-транспорт через aiosmtplib (Gmail)
 - Журнал уведомлений в MongoDB (коллекция `email_log`, TTL 90 дней)
 - Произвольные письма не отправляются — только зарегистрированные шаблоны
@@ -212,7 +213,6 @@ Mongo Express: `http://localhost:8081`.
 ## TODO
 
 ### Глобальный
-- delete_account — удаление аккаунта клиента
 - currency_service — курсы валют
 - metal_service — драг. металлы
 - Конвертация валют при переводах (интеграция с currency_service)

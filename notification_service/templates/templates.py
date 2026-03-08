@@ -257,6 +257,20 @@ SECURITY_FREEZE = EmailTemplate(
 	),
 )
 
+ACCOUNT_DELETED = EmailTemplate(
+	name="account_deleted",
+	subject="Аккаунт удалён",
+	body=(
+		"Здравствуйте!\n\n"
+		"Ваш аккаунт в Bank App был удалён по вашему запросу.\n"
+		"Все счета заморожены, все активные сеансы завершены.\n\n"
+		"Данные вашего аккаунта сохранены в соответствии с требованиями законодательства.\n\n"
+		"Если вы не совершали это действие, немедленно свяжитесь с поддержкой.\n\n"
+		"С уважением,\n"
+		"Команда Bank App"
+	),
+)
+
 # ── Реестр ──────────────────────────────────────────────────────────────
 
 TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
@@ -273,6 +287,7 @@ TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
 	ACCOUNT_UNFROZEN,
 	ACCOUNT_SELF_BLOCKED,
 	SECURITY_FREEZE,
+	ACCOUNT_DELETED,
 	TRANSACTION_DEPOSIT,
 	TRANSACTION_WITHDRAWAL,
 	TRANSACTION_TRANSFER,
@@ -296,6 +311,7 @@ def get_template(name: str) -> EmailTemplate:
 
 
 __all__ = [
+	"ACCOUNT_DELETED",
 	"ACCOUNT_FROZEN",
 	"ACCOUNT_LOCKED",
 	"ACCOUNT_SELF_BLOCKED",
