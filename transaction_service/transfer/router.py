@@ -14,6 +14,7 @@ from transaction_service.exceptions import (
 	AccountNotOpen,
 	CurrencyMismatch,
 	InsufficientFunds,
+	RateUnavailable,
 	SameAccountTransfer,
 	SecurityViolation,
 	TransactionConflict,
@@ -39,6 +40,8 @@ def _raise(exc: TransactionError) -> None:
 		raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 	if isinstance(exc, CurrencyMismatch):
 		raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+	if isinstance(exc, RateUnavailable):
+		raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 	if isinstance(exc, (AccountNotOpen, SameAccountTransfer, TransactionConflict)):
 		raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
 	raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))

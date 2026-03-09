@@ -184,7 +184,7 @@ bank/
 ### Transaction Service
 - Пополнение: `POST /accounts/{id}/deposit`
 - Снятие: `POST /accounts/{id}/withdraw` (проверка баланса)
-- Перевод: `POST /accounts/{id}/transfer` (собственные / чужие счета, только одна валюта)
+- Перевод: `POST /accounts/{id}/transfer` (собственные / чужие счета, автоконвертация при разных валютах через Currency Service)
 - История: `GET /accounts/{id}/transactions` (пагинация, фильтры по типу/направлению)
 - Row-level locking (`FOR UPDATE`) на всех мутациях баланса
 - Deadlock prevention: упорядоченная блокировка UUID при переводах
@@ -225,7 +225,6 @@ Mongo Express: `http://localhost:8081`.
 ## TODO
 
 ### Глобальный
-- Конвертация валют при переводах (интеграция с currency_service)
 - Рассмотреть k8s (манифесты для minikube / k3s)
 - Оформление документации как технической, так и простой
 

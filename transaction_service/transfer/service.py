@@ -2,7 +2,7 @@
 
 import logging
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -16,8 +16,8 @@ from transaction_service.exceptions import (
 	AccountFrozen,
 	AccountNotFound,
 	AccountNotOpen,
-	CurrencyMismatch,
 	InsufficientFunds,
+	RateUnavailable,
 	SameAccountTransfer,
 	SecurityViolation,
 	TransactionConflict,
@@ -36,12 +36,22 @@ async def _notify_transfer(
 	to_account: models.BankAccount,
 	amount: Decimal,
 	balance_after: Decimal,
+	converted_amount: Decimal | None = None,
+	rate: Decimal | None = None,
 ) -> None:
 	"""Уведомление отправителю о переводе."""
 
 	contact = await session.get(models.Contact, user_id)
 	if not contact:
 		return
+
+	if converted_amount is not None and rate is not None:
+		amount_text = (
+			f"{amount} {from_account.currency} → "
+			f"{converted_amount} {to_account.currency} (курс {rate})"
+		)
+	else:
+		amount_text = str(amount)
 
 	await publish(
 		exchange_name=NOTIFICATIONS_EXCHANGE,
@@ -53,7 +63,7 @@ async def _notify_transfer(
 				"variables": {
 					"from_account": from_account.account_number,
 					"to_account": to_account.account_number,
-					"amount": str(amount),
+					"amount": amount_text,
 					"currency": from_account.currency,
 					"balance_after": str(balance_after),
 				},
@@ -68,12 +78,22 @@ async def _notify_incoming_transfer(
 	from_account: models.BankAccount,
 	amount: Decimal,
 	balance_after: Decimal,
+	original_amount: Decimal | None = None,
+	rate: Decimal | None = None,
 ) -> None:
 	"""Уведомление получателю о входящем переводе."""
 
 	contact = await session.get(models.Contact, to_account.client_id)
 	if not contact:
 		return
+
+	if original_amount is not None and rate is not None:
+		amount_text = (
+			f"{original_amount} {from_account.currency} → "
+			f"{amount} {to_account.currency} (курс {rate})"
+		)
+	else:
+		amount_text = str(amount)
 
 	await publish(
 		exchange_name=NOTIFICATIONS_EXCHANGE,
@@ -85,7 +105,7 @@ async def _notify_incoming_transfer(
 				"variables": {
 					"account_number": to_account.account_number,
 					"from_account": from_account.account_number,
-					"amount": str(amount),
+					"amount": amount_text,
 					"currency": to_account.currency,
 					"balance_after": str(balance_after),
 				},
@@ -173,16 +193,28 @@ async def transfer(
 	if to_account.status not in _RECEIVE_ALLOWED_STATUSES:
 		raise AccountNotOpen(f"Счёт-получатель в статусе «{to_account.status}».")
 
-	if from_account.currency != to_account.currency:
-		raise CurrencyMismatch(
-			f"Валюты не совпадают: {from_account.currency} → {to_account.currency}. "
-			f"Конвертация не поддерживается."
-		)
-
 	if from_account.balance < amount:
 		raise InsufficientFunds(
 			f"Недостаточно средств. Доступно: {from_account.balance} {from_account.currency}."
 		)
+
+	# Конвертация валюты (если валюты различаются)
+	cross_currency = from_account.currency != to_account.currency
+	rate: Decimal | None = None
+	credited_amount = amount  # сумма зачисления в валюте получателя
+
+	if cross_currency:
+		from transaction_service import currency_client
+		try:
+			rate = await currency_client.get_rate(from_account.currency, to_account.currency)
+		except Exception as exc:
+			logger.exception(
+				"Ошибка получения курса %s→%s", from_account.currency, to_account.currency,
+			)
+			raise RateUnavailable(
+				f"Не удалось получить курс {from_account.currency}/{to_account.currency}: {exc}"
+			) from exc
+		credited_amount = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 	# AML-проверка через Security Service
 	from transaction_service import security_client
@@ -217,38 +249,45 @@ async def transfer(
 	from_account.balance = from_balance_after
 
 	to_balance_before = to_account.balance
-	to_balance_after = to_balance_before + amount
+	to_balance_after = to_balance_before + credited_amount
 	to_account.balance = to_balance_after
 
 	# 4. Создаём транзакции (outgoing для отправителя, incoming для получателя)
+	tx_description = description
+	if cross_currency:
+		tx_description = (
+			f"{description or 'Перевод'} "
+			f"({from_account.currency}→{to_account.currency}, курс {rate})"
+		)
+
 	tx_out = models.Transaction(
 		id=uuid4(),
 		account_id=from_account_id,
 		type="transfer",
 		amount=amount,
 		created_at=now,
-		description=description,
+		description=tx_description,
 		related_account_id=to_account_id,
 		direction="outgoing",
 		status="posted",
 		balance_before=from_balance_before,
 		balance_after=from_balance_after,
-		external_ref=None,
+		external_ref=str(rate) if cross_currency else None,
 	)
 
 	tx_in = models.Transaction(
 		id=uuid4(),
 		account_id=to_account_id,
 		type="transfer",
-		amount=amount,
+		amount=credited_amount,
 		created_at=now,
-		description=description,
+		description=tx_description,
 		related_account_id=from_account_id,
 		direction="incoming",
 		status="posted",
 		balance_before=to_balance_before,
 		balance_after=to_balance_after,
-		external_ref=None,
+		external_ref=str(rate) if cross_currency else None,
 	)
 
 	session.add_all([tx_out, tx_in])
@@ -263,19 +302,28 @@ async def transfer(
 		raise TransactionConflict("Конфликт при проведении перевода. Попробуйте снова.")
 
 	logger.info(
-		"Перевод: %s → %s, amount=%s %s",
+		"Перевод: %s → %s, amount=%s %s%s",
 		from_account_id, to_account_id, amount, from_account.currency,
+		f" → {credited_amount} {to_account.currency} (курс {rate})" if cross_currency else "",
 	)
 
 	try:
-		await _notify_transfer(session, user_id, from_account, to_account, amount, from_balance_after)
+		await _notify_transfer(
+			session, user_id, from_account, to_account, amount, from_balance_after,
+			converted_amount=credited_amount if cross_currency else None,
+			rate=rate,
+		)
 	except Exception:
 		logger.exception("Не удалось отправить уведомление отправителю (account=%s)", from_account_id)
 
 	# Уведомление получателю (если это другой клиент)
 	if to_account.client_id != user_id:
 		try:
-			await _notify_incoming_transfer(session, to_account, from_account, amount, to_balance_after)
+			await _notify_incoming_transfer(
+				session, to_account, from_account, credited_amount, to_balance_after,
+				original_amount=amount if cross_currency else None,
+				rate=rate,
+			)
 		except Exception:
 			logger.exception("Не удалось отправить уведомление получателю (account=%s)", to_account_id)
 
@@ -294,7 +342,10 @@ async def transfer(
 					"amount": str(amount),
 					"currency": from_account.currency,
 					"status": "success",
-					"details": f"Перевод {from_account.account_number} → {to_account.account_number}",
+					"details": (
+						f"Перевод {from_account.account_number} → {to_account.account_number}"
+						+ (f", {amount} {from_account.currency} → {credited_amount} {to_account.currency}, курс {rate}" if cross_currency else "")
+					),
 				},
 			},
 		)

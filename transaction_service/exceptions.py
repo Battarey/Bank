@@ -30,7 +30,11 @@ class SameAccountTransfer(TransactionError):
 
 
 class CurrencyMismatch(TransactionError):
-	"""Валюты счетов не совпадают (конвертация не поддерживается)."""
+	"""Валюты счетов не совпадают."""
+
+
+class RateUnavailable(TransactionError):
+	"""Не удалось получить актуальный курс валют."""
 
 
 class TransactionConflict(TransactionError):
@@ -43,6 +47,7 @@ __all__ = [
 	"AccountNotOpen",
 	"CurrencyMismatch",
 	"InsufficientFunds",
+	"RateUnavailable",
 	"SameAccountTransfer",
 	"SecurityViolation",
 	"TransactionConflict",
