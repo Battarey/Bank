@@ -19,15 +19,15 @@ bank/
 ├── customer_service/            # Онбординг и управление данными клиента (ФИО, паспорт, контакты)
 ├── auth_service/                # Аутентификация: логин по PIN, сессии, установка PIN, самоблокировка
 ├── account_service/             # Сервис банковских счетов: открытие, просмотр, закрытие, заморозка
-├── currency_service/            # Сервис иностранных валют (заглушка)
+├── currency_service/            # Сервис валютных операций: курсы (ExchangeRate API), обмен между счетами
 ├── log_service/                 # Сервис логирования: RabbitMQ consumer → PostgreSQL (history) + ClickHouse (analytics)
-├── metal_service/               # Сервис драг. металлов (заглушка)
+├── metal_service/               # Сервис драгоценных металлов: цены (Metals.Dev API)
 ├── notification_service/        # Сервис уведомлений: RabbitMQ consumer → SMTP (email по шаблонам)
 ├── transaction_service/         # Сервис транзакций: пополнение, снятие, переводы, история + AML-проверка
 ├── security_service/            # AML / антифрод: 6 правил, автозаморозка, журнал в MongoDB
 ├── migrations/                  # Alembic-миграции + dev-скрипт сброса БД
 ├── shared/                      # Общий пакет: модели, схемы, Redis-клиенты, утилиты, внутренняя аутентификация
-└── docker-compose.yaml          # 20 сервисов: 10 бизнес + 1 миграция + 9 инфраструктура
+└── docker-compose.yaml          # 22 сервиса: 12 бизнес + 1 миграция + 9 инфраструктура
 ```
 
 ## Архитектура
@@ -63,17 +63,17 @@ bank/
                                    │   └────┬────┘ └──┬───┘│
                                    └────────┼─────────┼────┘
                                             │         │
-                                            ▼         ▼
-                                   ┌────────────┐ ┌──────────┐
-                                   │Notification│ │   Log    │
-                                   │  Service   │ │  Service │
-                                   │ (consumer) │ │(consumer)│
-                                   └──┬───────┬─┘ └──┬────┬──┘
-                                      │       │      │    │
-                                      ▼       ▼      ▼    ▼
-                                Gmail SMTP  MongoDB  PG   ClickHouse
-                                           (email_log  (history)
-                                         + security)
+   ┌──────────────┐ ┌──────────────┐        ▼         ▼
+   │   Currency   │ │    Metal     │ ┌────────────┐ ┌──────────┐
+   │   Service    │ │   Service    │ │Notification│ │   Log    │
+   │ (ExchangeRate│ │ (Metals.Dev  │ │  Service   │ │  Service │
+   │     API)     │ │     API)     │ │ (consumer) │ │(consumer)│
+   └──────────────┘ └──────────────┘ └──┬───────┬─┘ └──┬────┬──┘
+                                        │       │      │    │
+                                        ▼       ▼      ▼    ▼
+                                  Gmail SMTP  MongoDB  PG   ClickHouse
+                                             (email_log  (history)
+                                           + security)
 ```
 
 ### Сети Docker
@@ -157,7 +157,7 @@ bank/
 
 ### Shared
 - ORM-модели: `User`, `PersonalData`, `Passport`, `Identifier`, `Contact`, `BankAccount` (+ frozen_by/frozen_at/freeze_reason), `Transaction` (+ balance_before/balance_after)
-- Pydantic-схемы для всех запросов/ответов (11 файлов: auth, bank_account, contacts, email_verification, identifiers, onboarding, passport, personal_data, transaction, unlock, schemas)
+- Pydantic-схемы для всех запросов/ответов (13 файлов: auth, bank_account, contacts, currency, email_verification, identifiers, metal, onboarding, passport, personal_data, transaction, unlock, schemas)
 - Redis-клиенты для сессий и онбординга
 - RabbitMQ-клиент (aio-pika): `connect`, `disconnect`, `publish`
 - History Core: async-клиент PostgreSQL для истории действий (модель `UserAction`)
@@ -168,7 +168,7 @@ bank/
 ### Migrations
 - Alembic с синхронным драйвером `psycopg`
 - Dev-скрипт `reset_and_upgrade.py` для полного сброса
-- 5 миграций, 7 таблиц + CHECK-ограничения
+- 6 миграций, 7 таблиц + CHECK-ограничения
 - ER-диаграммы в `postgre_core/`
 
 ### Account Service
@@ -192,6 +192,18 @@ bank/
 - **Автозаморозка:** при срабатывании AML-правил счёт замораживается (`frozen_by = "system"`)
 - Email-уведомления на все операции через RabbitMQ
 
+### Currency Service
+- Просмотр курсов: `GET /rates?base=RUB` (все валюты), `GET /rates/{base}/{target}` (пара)
+- Обмен между счетами: `POST /exchange` — конвертация между RUB/USD/EUR счетами пользователя
+- Данные из ExchangeRate API, in-memory кэш (TTL 30 сек для просмотра, 60 сек для обмена)
+- Row-level locking на обоих счетах при обмене, deadlock prevention (упорядоченная блокировка UUID)
+- Email-уведомления и логирование через RabbitMQ
+
+### Metal Service
+- Просмотр цен: `GET /metals/rates?base=RUB` — цены XAU/XAG/XPT/XPD за грамм
+- Данные из Metals.Dev API (`unit=g`), in-memory кэш (TTL 30 сек)
+- Не использует БД — чистый API-прокси
+
 ### Security Service
 - Внутренний сервис AML / антифрод-проверок (не доступен через Gateway)
 - 6 AML-правил: крупная транзакция, суточный объём, суточный лимит операций, rapid-fire, дробление (structuring), серия круглых сумм
@@ -213,13 +225,12 @@ Mongo Express: `http://localhost:8081`.
 ## TODO
 
 ### Глобальный
-- currency_service — курсы валют
-- metal_service — драг. металлы
 - Конвертация валют при переводах (интеграция с currency_service)
 - Рассмотреть k8s (манифесты для minikube / k3s)
 - Оформление документации как технической, так и простой
 
 ### Локальный
+- Создать тестовые env
 - Покрыть тестами (unit/integrations/нагрузка)
 - Рассмотреть возможность лицензирования кода
 - Разбор и усовершенствование БД

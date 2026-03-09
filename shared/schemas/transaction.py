@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # ── Типы ───────────────────────────────────────────────────────────────
 
-TransactionType = Literal["deposit", "withdrawal", "transfer"]
+TransactionType = Literal["deposit", "withdrawal", "transfer", "exchange"]
 TransactionDirection = Literal["incoming", "outgoing"]
 TransactionStatus = Literal["pending", "posted", "failed"]
 

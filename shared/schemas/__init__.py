@@ -13,8 +13,18 @@ from .bank_account import (
 	OpenAccountRequest,
 )
 from .contacts import ContactsPayload, ContactsResponse, ContactsUpdate
+from .currency import (
+	ExchangeRatePairResponse,
+	ExchangeRatesResponse,
+	ExchangeRequest,
+	ExchangeResponse,
+)
 from .email_verification import EmailCodeResponse, SendEmailCodeRequest, VerifyEmailCodeRequest
 from .identifiers import IdentifiersPayload, IdentifiersResponse
+from .metal import (
+	MetalRateResponse,
+	MetalRatesListResponse,
+)
 from .onboarding import (
 	FinalizeInternalResponse,
 	FinalizeResponse,
@@ -42,6 +52,10 @@ __all__ = [
 	"ContactsUpdate",
 	"DepositRequest",
 	"EmailCodeResponse",
+	"ExchangeRatePairResponse",
+	"ExchangeRatesResponse",
+	"ExchangeRequest",
+	"ExchangeResponse",
 	"FinalizeInternalResponse",
 	"FinalizeResponse",
 	"IdentifiersPayload",
@@ -49,6 +63,8 @@ __all__ = [
 	"LoginPinRequest",
 	"LoginPinResponse",
 	"MessageResponse",
+	"MetalRateResponse",
+	"MetalRatesListResponse",
 	"OpenAccountRequest",
 	"PassportPayload",
 	"PassportResponse",

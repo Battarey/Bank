@@ -79,12 +79,16 @@ services:
       - data
 
   currency_service:
-    build: ./currency_service
+    build:
+      context: .
+      dockerfile: ./currency_service/Dockerfile
     env_file: ./currency_service/.env
     restart: unless-stopped
     depends_on:
       migrations:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     networks:
       - backend
       - data
@@ -107,7 +111,9 @@ services:
       - data
 
   metal_service:
-    build: ./metal_service
+    build:
+      context: .
+      dockerfile: ./metal_service/Dockerfile
     env_file: ./metal_service/.env
     restart: unless-stopped
     depends_on:

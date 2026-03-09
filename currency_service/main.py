@@ -1,0 +1,41 @@
+"""Currency Service — курсы валют и обмен между счетами."""
+
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI
+
+from shared.database_core.db import engine
+from shared.internal_auth import verify_internal_key
+from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+
+from . import exchange_client
+from .rates.router import router as rates_router
+from .exchange.router import router as exchange_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	await rmq_connect()
+	await exchange_client.connect()
+	yield
+	await exchange_client.disconnect()
+	await rmq_disconnect()
+	await engine.dispose()
+
+
+app = FastAPI(
+	title="Currency Service",
+	version="0.1.0",
+	description="Внутренний сервис валютных операций: курсы и обмен между счетами.",
+	lifespan=lifespan,
+	dependencies=[Depends(verify_internal_key)],
+)
+
+
+@app.get("/health", tags=["health"])
+async def health_check() -> dict[str, str]:
+	return {"status": "ok"}
+
+
+app.include_router(rates_router)
+app.include_router(exchange_router)
