@@ -52,6 +52,7 @@ class UserAction(HistoryBase):
 	entity_id: Mapped[uuid.UUID | None] = mapped_column(
 		PGUUID(as_uuid=True),
 		nullable=True,
+		index=True,
 	)
 
 	# Тип связанного объекта (account, transaction)

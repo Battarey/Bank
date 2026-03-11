@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, Text
+from sqlalchemy import DateTime, ForeignKey, Numeric, Text, Index, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,12 +31,17 @@ class Transaction(Base):
 		PGUUID(as_uuid=True),
 		ForeignKey("bank_accounts.id", ondelete="SET NULL"),
 		nullable=True,
+		index=True,
 	)
 	direction: Mapped[str] = mapped_column(Text, nullable=False)
 	status: Mapped[str] = mapped_column(Text, nullable=False)
 	balance_before: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
 	balance_after: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
 	external_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+	__table_args__ = (
+		Index("ix_transactions_acc_created", "account_id", text("created_at DESC")),
+	)
 
 
 __all__ = ["Transaction"]

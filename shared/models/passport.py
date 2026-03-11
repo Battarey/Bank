@@ -2,7 +2,7 @@
 
 from datetime import date
 from uuid import UUID
-from sqlalchemy import Date, ForeignKey, Text, String
+from sqlalchemy import Date, ForeignKey, Text, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
@@ -26,5 +26,9 @@ class Passport(Base):
 	issued_at: Mapped[date] = mapped_column(Date, nullable=False)
 	expiration_date: Mapped[date] = mapped_column(Date, nullable=False)
 	registration_address: Mapped[str] = mapped_column(Text, nullable=False)
+
+	__table_args__ = (
+		UniqueConstraint("series", "number", name="uq_passport_series_number"),
+	)
 
 __all__ = ["Passport"]
