@@ -1,142 +1,119 @@
-# Gateway Service
+# Gateway Service (Go)
 
-Единая точка входа для всех клиентских запросов. Проксирует запросы во внутренние микросервисы, управляет аутентификацией и выдачей токенов.
+API Gateway банковского приложения — единая точка входа для клиентских запросов.
 
-## Файловая архитектура
+## Стек
+- **Язык:** Go 1.23
+- **Фреймворк:** Echo v4
+- **Redis-клиент:** go-redis v9
+- **HTTP-клиент:** net/http (stdlib)
+
+## Что делает
+
+1. Принимает HTTP-запрос от клиента
+2. **Middleware** проверяет `X-Session-Token` → Redis lookup → скользящая экспирация (TTL 30 мин)
+3. **PIN-gate**: без установленного PIN доступны только `set-pin`, `logout`, `logout-all`
+4. **Reverse proxy** пересылает запрос во внутренний сервис с инъекцией заголовков:
+   - `X-Internal-Key` — защита от прямого доступа
+   - `X-User-ID` — идентификатор пользователя из сессии
+   - `X-Session-Token` — пробрасывается для auth_service
+
+## Файловая структура
+
 ```
 gateway_service/
-├── routes/                      # Маршруты, проксирующие запросы в микросервисы
-├── helpers.py                   # Утилита forward_request для проксирования
-├── main.py                      # Точка входа: lifespan, CORS, подключение роутеров
-├── middleware.py                 # Auth middleware + security-схемы для Swagger
-├── Dockerfile
-├── requirements.txt
-└── README.md
+├── main.go                 # Точка входа: конфиг, Echo, middleware, маршруты, graceful shutdown
+├── config/                 # Загрузка переменных окружения
+├── middleware/             # Auth middleware + PIN-gate
+├── proxy/                  # Reverse-proxy (ForwardRequest / ForwardRaw)
+├── redis/                  # Работа с Redis-клиентами сессий и онбординга
+├── routes/                 # Утилита forwardAndParse, где хранятся пути к роутам
+├── Dockerfile              # Multi-stage build (golang:1.23-alpine → alpine:3.19)
+├── .env                    # Переменные окружения
+├── go.mod                  # Go-модуль
+└── go.sum                  # Хеши зависимостей
 ```
 
-## Архитектура проксирования
+## Эндпоинты
 
-```
-Клиент (браузер / приложение)
-    │
-    ▼
-┌──────────────────────────────────────────────┐
-│              Gateway Service                 │
-│                                              │
-│  middleware.py    Проверка X-Session-Token   │
-│       │            → Redis Sessions          │
-│       ▼            → request.state.user_id   │
-│                                              │
-│  routes/*.py       Проксирование запроса     │
-│       │                                      │
-│  helpers.py        forward_request()         │
-│       │            + X-Internal-Key          │
-│       │            + X-User-ID               │
-│       │           + X-Session-Token          │
-└───────┼──────────────────────────────────────┘
-        │
-        ▼
-┌───────────────┐    ┌───────────────┐    ┌───────────────────┐    ┌───────────────────┐
-│ customer_svc  │    │   auth_svc    │    │  account_svc      │    │ transaction_svc  │
-│  :8000        │    │   :8000       │    │   :8000            │    │   :8000           │
-└───────────────┘    └───────────────┘    └───────────────────┘    └───────────────────┘
-```
+### Публичные (без авторизации)
 
-### Пробрасываемые заголовки
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/health` | Healthcheck |
+| POST | `/users/start` | Начать регистрацию |
+| POST | `/auth/login-pin` | Вход по PIN |
+| POST | `/auth/request-unlock` | Запрос кода разблокировки |
+| POST | `/auth/unlock` | Разблокировка аккаунта |
+| GET | `/currency/rates` | Курсы валют |
+| GET | `/currency/rates/:base/:target` | Курс пары |
+| GET | `/metals/rates` | Цены на металлы |
 
-| Заголовок         | Откуда                        | Назначение                              |
-|-------------------|-------------------------------|-----------------------------------------|
-| `X-Internal-Key`  | Переменная окружения          | Подтверждение, что запрос от gateway    |
-| `X-User-ID`       | Из Redis-сессии (middleware)  | ID пользователя для внутреннего сервиса |
-| `X-Session-Token` | Из заголовка клиента          | Нужен auth_service для logout           |
+### Онбординг (X-Onboarding-Token)
 
-## Middleware
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/users/me/account/personal-data` | Шаг 1: ФИО |
+| POST | `/users/me/account/passport` | Шаг 2: Паспорт |
+| POST | `/users/me/account/identifiers` | Шаг 3: ИНН/СНИЛС |
+| POST | `/users/me/account/contacts` | Шаг 4: Контакты |
+| POST | `/users/me/account/send-email-code` | Код на email |
+| POST | `/users/me/account/verify-email` | Подтверждение email |
+| POST | `/users/me/account/finalize` | Завершение регистрации |
 
-### Цепочка обработки запроса
+### Защищённые (X-Session-Token)
 
-1. **CORS** — разрешает cross-origin запросы с указанных origins (env `CORS_ALLOWED_ORIGINS` парсится как список через запятую)
-2. **auth_middleware** — проверяет `X-Session-Token` через Redis:
-   - Публичный путь → пропускает без проверки
-   - Есть токен → извлекает `user_id` → кладёт в `request.state.user_id`
-   - Нет токена / невалидный → `401 Unauthorized`
-   - PIN не установлен (`has_pin != true`) → `403` (доступны только `/auth/set-pin`, `/auth/logout`, `/auth/logout-all`)
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/auth/set-pin` | Установить PIN |
+| POST | `/auth/logout` | Выход |
+| POST | `/auth/logout-all` | Выход со всех устройств |
+| POST | `/auth/self-block` | Самоблокировка |
+| POST | `/accounts` | Открыть счёт |
+| GET | `/accounts` | Список счетов |
+| GET | `/accounts/:id` | Детали счёта |
+| POST | `/accounts/:id/close` | Закрыть счёт |
+| POST | `/accounts/:id/freeze` | Заморозить счёт |
+| POST | `/accounts/:id/unfreeze` | Разморозить счёт |
+| POST | `/accounts/:id/deposit` | Пополнить |
+| POST | `/accounts/:id/withdraw` | Снять |
+| POST | `/accounts/:id/transfer` | Перевести |
+| GET | `/accounts/:id/transactions` | История операций |
+| POST | `/currency/exchange` | Обменять валюту |
+| PATCH | `/users/me/personal-data` | Обновить ФИО |
+| PUT | `/users/me/passport` | Заменить паспорт |
+| PATCH | `/users/me/contacts` | Обновить контакты |
+| DELETE | `/users/me` | Удалить аккаунт |
 
-### Публичные пути (без X-Session-Token)
+## Переменные окружения
 
-| Правило           | Примеры                                                                                                                  | Причина                          |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------|----------------------------------|
-| Точное совпадение | `/health`, `/docs`, `/openapi.json`, `/redoc`, `/favicon.ico`, `/auth/login-pin`, `/auth/request-unlock`, `/auth/unlock` | Системные + вход + разблокировка |
-| Префикс           | `/users/start`                                                                                                           | Начало онбординга                |
-| Подстрока         | любой путь с `/account/`                                                                                                 | Шаги онбординга                  |
-| Метод             | `OPTIONS`                                                                                                                | CORS preflight                   |
+| Переменная | Описание |
+|------------|----------|
+| `CUSTOMER_SERVICE_URL` | URL customer_service |
+| `AUTH_SERVICE_URL` | URL auth_service |
+| `ACCOUNT_SERVICE_URL` | URL account_service |
+| `TRANSACTION_SERVICE_URL` | URL transaction_service |
+| `CURRENCY_SERVICE_URL` | URL currency_service |
+| `METAL_SERVICE_URL` | URL metal_service |
+| `REDIS_SESSIONS_URL` | URL Redis для сессий |
+| `REDIS_ONBOARDING_URL` | URL Redis для онбординга |
+| `INTERNAL_API_KEY` | Ключ для межсервисной авторизации |
+| `CORS_ALLOWED_ORIGINS` | Разрешённые origins через запятую |
+| `GATEWAY_PORT` | Порт сервера (по умолчанию 8000) |
 
-> Шаги онбординга публичны для middleware, но защищены `X-Onboarding-Token` на уровне роутера.
-`X-Onboarding-Token` - токен, который выдаётся на время ввода данных пользователя о себе. После успешной регистрации или окончания времени токен не валиден.
+## Docker
 
-## Поток 
+Multi-stage build: итоговый образ ~15 MB (Alpine).
 
-```
-Клиент                          Gateway                    customer_service       Redis           RabbitMQ
-  │                                │                              │                  │               │
-  │  POST /users/start             │                              │                  │               │
-  │──────────────────────────────▶│  forward_request()           │                  │               │
-  │                                │─────────────────────────────▶│                  │               │
-  │                                │◀─────────────────────────────│ {user_id}        │               │
-  │                                │                              │                  │               │
-  │                                │  generate onboarding_token   │                  │               │
-  │                                │──────────────────────────────────────────────────▶│ SET token     │
-  │◀───────────────────────────────│  {onboarding_token}          │                  │  TTL 15 мин   │
-  │                                │                              │                  │               │
-  │  POST /users/me/account/...    │                              │                  │               │
-  │  X-Onboarding-Token: ***       │                              │                  │               │
-  │──────────────────────────────▶│                              │                  │               │
-  │                                │  _resolve_onboarding()       │                  │               │
-  │                                │──────────────────────────────────────────────────▶│ GET token     │
-  │                                │◀──────────────────────────────────────────────────│ user_id       │
-  │                                │  touch_onboarding_token       │                  │               │
-  │                                │──────────────────────────────────────────────────▶│ EXPIRE 15м   │
-  │                                │                              │                  │               │
-  │                                │  forward → /users/{id}/...   │                  │               │
-  │                                │─────────────────────────────▶│                  │               │
-  │◀───────────────────────────────│◀─────────────────────────────│                  │               │
-  │                                │                              │                  │               │
-  │  POST /users/me/account/send-email-code                       │                  │               │
-  │──────────────────────────────▶│  forward → send-email-code   │                  │               │
-  │                                │─────────────────────────────▶│ generate code    │               │
-  │                                │                              │──────────────────▶│ SET code      │
-  │                                │                              │──────────────────────────────────▶│ publish email
-  │◀───────────────────────────────│◀─────────────────────────────│                  │               │
-  │                                │                              │                  │               │
-  │  POST /users/me/account/verify-email                          │                  │               │
-  │──────────────────────────────▶│  forward → verify-email      │                  │               │
-  │                                │─────────────────────────────▶│ verify code      │               │
-  │                                │                              │──────────────────▶│ check + flag  │
-  │◀───────────────────────────────│◀─────────────────────────────│                  │               │
-  │                                │                              │                  │               │
-  │  POST /users/me/account/finalize                              │                  │               │
-  │  X-Onboarding-Token: ***       │                              │                  │               │
-  │──────────────────────────────▶│  resolve → forward → finalize│                  │               │
-  │                                │─────────────────────────────▶│                  │               │
-  │                                │◀─────────────────────────────│ OK + welcome email│               │
-  │                                │                              │                  │               │
-  │                                │  delete onboarding_token     │                  │               │
-  │                                │──────────────────────────────────────────────────▶│ DEL           │
-  │                                │  save session_token          │                  │               │
-  │                                │──────────────────────────────────────────────────▶│ SET session   │
-  │                                │                              │                  │               │
-  │◀───────────────────────────────│  {session_token, user_id}    │                  │               │
+```bash
+docker compose build gateway_service
+docker compose up gateway_service
 ```
 
-## Обработка ошибок
+## Совместимость с Redis
 
-| Код  | Когда возникает                                                 |
-|------|-----------------------------------------------------------------|
-| 401  | Отсутствует / невалидный `X-Session-Token` или `X-Onboarding-Token` |
-| 400  | Ошибка валидации данных во внутреннем сервисе                  |
-| 404  | Пользователь не найден                                         |
-| 409  | Конфликт данных (дубликат ИНН/СНИЛС, аккаунт не заблокирован) |
-| 423  | Аккаунт заблокирован (15 неудачных попыток PIN)                |
-| 429  | Кулдаун после 5 неудачных попыток PIN (Retry-After)            |
-| 500  | Непредвиденная ошибка внутреннего сервиса                      |
+Go-версия gateway использует **идентичные Redis-ключи** с Python-сервисами:
 
-> Gateway прозрачно пробрасывает HTTP-код и `detail` из внутреннего сервиса. Если ответ не JSON — возвращает текст ошибки.
+- `session:token:{token}` — Hash (`user_id`, `has_pin`)
+- `session:user:{userID}` — Set (активные токены пользователя)
+есть пути - `onboarding:token:{token}` — String (user_id, TTL 15 мин)

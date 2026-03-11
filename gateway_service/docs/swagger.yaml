@@ -1,0 +1,1171 @@
+basePath: /
+definitions:
+  schemas.AmountPayload:
+    properties:
+      amount:
+        example: 1000.5
+        type: number
+    type: object
+  schemas.ContactsPayload:
+    properties:
+      email:
+        example: user@example.com
+        format: email
+        type: string
+      phone:
+        example: "+79991234567"
+        format: phone
+        type: string
+    type: object
+  schemas.ContactsUpdate:
+    properties:
+      email:
+        example: new@example.com
+        format: email
+        type: string
+      phone:
+        example: "+79990001122"
+        format: phone
+        type: string
+    type: object
+  schemas.ExchangeRequest:
+    properties:
+      amount:
+        example: 100
+        type: number
+      from_account_id:
+        example: from-uuid-here
+        format: uuid
+        type: string
+      to_account_id:
+        example: to-uuid-here
+        format: uuid
+        type: string
+    type: object
+  schemas.IdentifiersPayload:
+    properties:
+      inn:
+        example: "123456789012"
+        type: string
+      snils:
+        example: "12345678900"
+        type: string
+    type: object
+  schemas.LoginPinRequest:
+    properties:
+      phone:
+        example: "+79991234567"
+        format: phone
+        type: string
+      pin:
+        example: "1234"
+        type: string
+    type: object
+  schemas.OpenAccountRequest:
+    properties:
+      currency:
+        enum:
+        - RUB
+        - USD
+        - EUR
+        example: RUB
+        type: string
+      type:
+        enum:
+        - checking
+        - savings
+        - credit
+        - deposit
+        example: checking
+        type: string
+    type: object
+  schemas.PassportPayload:
+    properties:
+      division_code:
+        example: 123-456
+        type: string
+      expiration_date:
+        example: "2030-01-01"
+        format: date
+        type: string
+      issued_at:
+        example: "2010-01-01"
+        format: date
+        type: string
+      issued_by:
+        example: ГУ МВД России
+        type: string
+      number:
+        example: "567890"
+        type: string
+      registration_address:
+        example: г. Москва, ул. Пушкина
+        type: string
+      series:
+        example: "1234"
+        type: string
+    type: object
+  schemas.PersonalDataPayload:
+    properties:
+      birth_date:
+        example: "1990-01-01"
+        format: date
+        type: string
+      first_name:
+        example: Иван
+        type: string
+      gender:
+        enum:
+        - M
+        - F
+        example: M
+        type: string
+      last_name:
+        example: Иванов
+        type: string
+      middle_name:
+        example: Иванович
+        type: string
+    type: object
+  schemas.PersonalDataUpdate:
+    properties:
+      first_name:
+        example: Петр
+        type: string
+      last_name:
+        example: Петров
+        type: string
+      middle_name:
+        example: Петрович
+        type: string
+    type: object
+  schemas.RequestUnlockRequest:
+    properties:
+      email:
+        example: user@example.com
+        format: email
+        type: string
+    type: object
+  schemas.SetPinRequest:
+    properties:
+      pin:
+        example: "1234"
+        type: string
+    type: object
+  schemas.TransferRequest:
+    properties:
+      amount:
+        example: 500
+        type: number
+      description:
+        example: Перевод другу
+        type: string
+      to_account_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        format: uuid
+        type: string
+    type: object
+  schemas.UnlockRequest:
+    properties:
+      code:
+        example: "123456"
+        type: string
+      email:
+        example: user@example.com
+        format: email
+        type: string
+    type: object
+  schemas.VerifyEmailRequest:
+    properties:
+      code:
+        example: "123456"
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact: {}
+  description: 'API Gateway банковского приложения. Единая точка входа для клиентских
+    запросов: онбординг, аутентификация, управление данными пользователя, счета, транзакции,
+    валюты и металлы.'
+  title: Gateway Service API
+  version: "1.0"
+paths:
+  /accounts:
+    get:
+      description: Возвращает все счета текущего пользователя.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Список счетов
+      tags:
+      - accounts
+    post:
+      consumes:
+      - application/json
+      description: Создаёт банковский счёт указанного типа и валюты для текущего пользователя.
+      parameters:
+      - description: Тип и валюта счёта
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.OpenAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Открыть новый счёт
+      tags:
+      - accounts
+  /accounts/{account_id}:
+    get:
+      description: Возвращает данные конкретного счёта.
+      parameters:
+      - description: UUID счёта
+        in: path
+        name: account_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Детали счёта
+      tags:
+      - accounts
+  /accounts/{account_id}/close:
+    post:
+      description: Закрывает банковский счёт. Баланс должен быть 0.
+      parameters:
+      - description: UUID счёта
+        in: path
+        name: account_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Закрыть счёт
+      tags:
+      - accounts
+  /accounts/{account_id}/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Вносит средства на указанный счёт.
+      parameters:
+      - description: UUID счёта
+        in: path
+        name: account_id
+        required: true
+        type: string
+      - description: Сумма пополнения
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.AmountPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Пополнить счёт
+      tags:
+      - transactions
+  /accounts/{account_id}/freeze:
+    post:
+      description: Замораживает счёт. Исходящие операции блокируются, входящие — разрешены.
+      parameters:
+      - description: UUID счёта
+        in: path
+        name: account_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Заморозить счёт
+      tags:
+      - accounts
+  /accounts/{account_id}/transactions:
+    get:
+      description: Возвращает историю операций по счёту с пагинацией и фильтрами.
+      parameters:
+      - description: UUID счёта
+        in: path
+        name: account_id
+        required: true
+        type: string
+      - default: 20
+        description: Кол-во записей (по умолчанию 20)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение
+        in: query
+        name: offset
+        type: integer
+      - description: 'Тип операции: deposit | withdrawal | transfer'
+        in: query
+        name: type
+        type: string
+      - description: 'Направление: incoming | outgoing'
+        in: query
+        name: direction
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: История операций
+      tags:
+      - transactions
+  /accounts/{account_id}/transfer:
+    post:
+      consumes:
+      - application/json
+      description: Переводит средства с указанного счёта на другой (свой или чужой).
+      parameters:
+      - description: UUID счёта-отправителя
+        in: path
+        name: account_id
+        required: true
+        type: string
+      - description: Данные перевода
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.TransferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Перевести между счетами
+      tags:
+      - transactions
+  /accounts/{account_id}/unfreeze:
+    post:
+      description: Размораживает счёт. Доступно только если заморозка инициирована
+        пользователем.
+      parameters:
+      - description: UUID счёта
+        in: path
+        name: account_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Разморозить счёт
+      tags:
+      - accounts
+  /accounts/{account_id}/withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Списывает средства со счёта текущего пользователя.
+      parameters:
+      - description: UUID счёта
+        in: path
+        name: account_id
+        required: true
+        type: string
+      - description: Сумма снятия
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.AmountPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Снять со счёта
+      tags:
+      - transactions
+  /auth/login-pin:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация по номеру телефона и PIN-коду. Возвращает сессионный
+        токен.
+      parameters:
+      - description: Телефон и PIN
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.LoginPinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Вход по PIN-коду
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Завершает текущий сеанс (удаляет сессионный токен).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Выход
+      tags:
+      - auth
+  /auth/logout-all:
+    post:
+      description: Завершает все активные сеансы пользователя.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Выход со всех устройств
+      tags:
+      - auth
+  /auth/request-unlock:
+    post:
+      consumes:
+      - application/json
+      description: Отправляет код разблокировки на email, привязанный к аккаунту.
+      parameters:
+      - description: Данные для запроса
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.RequestUnlockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Запросить код разблокировки
+      tags:
+      - auth
+  /auth/self-block:
+    post:
+      description: Блокирует аккаунт по запросу владельца. Замораживает все счета
+        и завершает все сеансы.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Самоблокировка аккаунта
+      tags:
+      - auth
+  /auth/set-pin:
+    post:
+      consumes:
+      - application/json
+      description: Устанавливает или обновляет PIN-код текущего пользователя.
+      parameters:
+      - description: PIN-код
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.SetPinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Установить / сменить PIN
+      tags:
+      - auth
+  /auth/unlock:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет код и разблокирует аккаунт.
+      parameters:
+      - description: Код разблокировки
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.UnlockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Разблокировать аккаунт
+      tags:
+      - auth
+  /currency/exchange:
+    post:
+      consumes:
+      - application/json
+      description: Конвертирует валюту между банковскими счетами (RUB/USD/EUR).
+      parameters:
+      - description: Данные обмена
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.ExchangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Обменять валюту между счетами
+      tags:
+      - currency
+  /currency/rates:
+    get:
+      description: Возвращает курсы всех валют относительно базовой.
+      parameters:
+      - default: RUB
+        description: Базовая валюта (по умолчанию RUB)
+        in: query
+        name: base
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Все курсы валют
+      tags:
+      - currency
+  /currency/rates/{base}/{target}:
+    get:
+      description: Возвращает курс конкретной валютной пары.
+      parameters:
+      - description: Базовая валюта (RUB, USD, EUR)
+        in: path
+        name: base
+        required: true
+        type: string
+      - description: Целевая валюта (RUB, USD, EUR)
+        in: path
+        name: target
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Курс валютной пары
+      tags:
+      - currency
+  /metals/rates:
+    get:
+      description: Возвращает цены на драгоценные металлы (за грамм).
+      parameters:
+      - default: RUB
+        description: Базовая валюта (по умолчанию RUB)
+        in: query
+        name: base
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Цены на металлы
+      tags:
+      - metals
+  /users/me:
+    delete:
+      description: 'Soft delete: статус → deleted, счета заморожены, все сессии отозваны.
+        Данные сохраняются.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Удалить аккаунт
+      tags:
+      - user-update
+  /users/me/account/contacts:
+    post:
+      consumes:
+      - application/json
+      description: Сохраняет email и номер телефона клиента.
+      parameters:
+      - description: Контактные данные
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.ContactsPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OnboardingToken: []
+      summary: 'Шаг 4: Контактные данные'
+      tags:
+      - onboarding
+  /users/me/account/finalize:
+    post:
+      description: Переносит данные из черновиков в БД, выдаёт сессионный токен и
+        удаляет onboarding-токен.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: status + message + session_token + user_id
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OnboardingToken: []
+      summary: Завершить регистрацию
+      tags:
+      - onboarding
+  /users/me/account/identifiers:
+    post:
+      consumes:
+      - application/json
+      description: Сохраняет идентификаторы налогоплательщика и социального страхования.
+      parameters:
+      - description: ИНН и СНИЛС
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.IdentifiersPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OnboardingToken: []
+      summary: 'Шаг 3: ИНН и СНИЛС'
+      tags:
+      - onboarding
+  /users/me/account/passport:
+    post:
+      consumes:
+      - application/json
+      description: Сохраняет серию, номер, кем выдан и прочие паспортные сведения.
+      parameters:
+      - description: Паспортные данные
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.PassportPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OnboardingToken: []
+      summary: 'Шаг 2: Паспортные данные'
+      tags:
+      - onboarding
+  /users/me/account/personal-data:
+    post:
+      consumes:
+      - application/json
+      description: Сохраняет ФИО, дату рождения и пол клиента.
+      parameters:
+      - description: Персональные данные
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.PersonalDataPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OnboardingToken: []
+      summary: 'Шаг 1: Персональные данные'
+      tags:
+      - onboarding
+  /users/me/account/send-email-code:
+    post:
+      description: Отправляет 6-значный код подтверждения на email из шага 4 (contacts).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OnboardingToken: []
+      summary: Отправить код на email
+      tags:
+      - onboarding
+  /users/me/account/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет 6-значный код. После успешной верификации можно вызывать
+        finalize.
+      parameters:
+      - description: Код верификации
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OnboardingToken: []
+      summary: Подтвердить email
+      tags:
+      - onboarding
+  /users/me/contacts:
+    patch:
+      consumes:
+      - application/json
+      description: Частичное обновление email и/или телефона.
+      parameters:
+      - description: Контактные данные
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.ContactsUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Обновить контактные данные
+      tags:
+      - user-update
+  /users/me/passport:
+    put:
+      consumes:
+      - application/json
+      description: Полная замена паспортных данных (все поля обязательны).
+      parameters:
+      - description: Паспортные данные
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.PassportPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Заменить паспортные данные
+      tags:
+      - user-update
+  /users/me/personal-data:
+    patch:
+      consumes:
+      - application/json
+      description: Частичное обновление ФИО. Дата рождения и пол неизменяемы.
+      parameters:
+      - description: Данные для обновления
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.PersonalDataUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionToken: []
+      summary: Обновить персональные данные
+      tags:
+      - user-update
+  /users/start:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт нового пользователя и возвращает onboarding_token для прохождения
+        шагов регистрации.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: onboarding_token + status
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Начать регистрацию
+      tags:
+      - onboarding
+securityDefinitions:
+  OnboardingToken:
+    description: Токен онбординга, полученный из /users/start (TTL 15 минут, скользящая
+      экспирация)
+    in: header
+    name: X-Onboarding-Token
+    type: apiKey
+  SessionToken:
+    description: Сессионный токен, полученный при авторизации
+    in: header
+    name: X-Session-Token
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: 'Регистрация нового клиента: создание аккаунта, заполнение данных по
+    шагам и финализация. Шаги требуют заголовок X-Onboarding-Token.'
+  name: onboarding
+- description: Обновление данных авторизованного пользователя. Требует заголовок X-Session-Token.
+  name: user-update
+- description: 'Аутентификация: вход по PIN-коду, управление сессиями. Защищённые
+    эндпоинты требуют заголовок X-Session-Token.'
+  name: auth
+- description: 'Банковские счета: открытие, просмотр, закрытие, заморозка.'
+  name: accounts
+- description: 'Операции по счетам: пополнение, снятие, переводы, история.'
+  name: transactions
+- description: 'Валютные операции: курсы и обмен между счетами.'
+  name: currency
+- description: 'Драгоценные металлы: курсы.'
+  name: metals
+- description: Проверка работоспособности сервиса.
+  name: health

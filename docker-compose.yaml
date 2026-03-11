@@ -4,8 +4,8 @@ services:
 
   gateway_service:
     build:
-      context: .
-      dockerfile: ./gateway_service/Dockerfile
+      context: ./gateway_service
+      dockerfile: Dockerfile
     env_file: ./gateway_service/.env
     restart: unless-stopped
     depends_on:
@@ -13,9 +13,7 @@ services:
       - customer_service
       - account_service
       - currency_service
-      - log_service
       - metal_service
-      - notification_service
       - transaction_service
       - redis_sessions
       - redis_onboarding

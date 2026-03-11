@@ -1,15 +1,24 @@
-FROM python:3.12-slim
+# ── Stage 1: Сборка ──────────────────────────────────────────────────
+FROM golang:1.23-alpine AS builder
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-	PYTHONUNBUFFERED=1 \
-	PYTHONPATH=/app
+WORKDIR /build
 
-WORKDIR /app
+# Копируем go.mod, go.sum и вендорированные зависимости
+COPY go.mod go.sum ./
+COPY vendor/ vendor/
 
-COPY gateway_service/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Копируем исходный код и собираем бинарник
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-s -w" -o gateway .
 
-COPY gateway_service /app/gateway_service
-COPY shared /app/shared
+# ── Stage 2: Минимальный образ ───────────────────────────────────────
+FROM alpine:3.19
 
-CMD ["uvicorn", "gateway_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Сертификаты для HTTPS-запросов к внутренним сервисам (если понадобятся)
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /build/gateway /gateway
+
+EXPOSE 8000
+
+CMD ["/gateway"]

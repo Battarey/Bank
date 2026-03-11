@@ -1,11 +1,11 @@
 # Backend для банковского приложения
 
 ## Стек
-- **Язык:** Python 3.12
-- **Фреймворк:** FastAPI, asyncio
+- **Языки:** Go 1.23 (Gateway), Python 3.12 (Бизнес-сервисы)
+- **Фреймворки:** Echo (Go), FastAPI + asyncio (Python)
 - **ORM / миграции:** SQLAlchemy 2.0 (async), Alembic
-- **HTTP-клиент:** httpx (AsyncClient)
-- **Валидация:** Pydantic v2
+- **HTTP-клиент:** httpx (AsyncClient в Python сервисах)
+- **Валидация:** Pydantic v2 (Python), go-swagger (Go)
 - **БД:** PostgreSQL 17 (основная + история), Redis 7, Redis Stack, MongoDB 7, ClickHouse 24
 - **Брокер:** RabbitMQ 3.13
 - **Хеширование:** bcrypt (PIN-коды)
@@ -15,7 +15,7 @@
 ## Файловая архитектура
 ```
 bank/
-├── gateway_service/             # API Gateway — единая точка входа, маршрутизация, аутентификация
+├── gateway_service/             # API Gateway (Go) — единая точка входа, маршрутизация, аутентификация
 ├── customer_service/            # Онбординг и управление данными клиента (ФИО, паспорт, контакты)
 ├── auth_service/                # Аутентификация: логин по PIN, сессии, установка PIN, самоблокировка
 ├── account_service/             # Сервис банковских счетов: открытие, просмотр, закрытие, заморозка
@@ -112,12 +112,13 @@ bank/
 
 ## Реализованные сервисы
 
-### Gateway Service
-- Маршрутизация запросов к микросервисам через httpx
-- Middleware аутентификации (сессии + onboarding-токены)
+### Gateway Service (Go)
+- Высокопроизводительный Reverse Proxy (Echo Framework)
+- Маршрутизация запросов к внутренним Python-микросервисам
+- Middleware аутентификации (сессии + onboarding-токены) через go-redis
 - PIN-gate: без установленного PIN доступны только `/auth/set-pin`, `/auth/logout`, `/auth/logout-all`
 - CORS-настройки
-- Swagger UI с двумя схемами авторизации
+- Swagger UI с автозаполнением DTO-схем и двумя схемами авторизации
 
 ### Customer Service
 - Онбординг: `/users/start` → 4 шага → `/users/me/account/finalize`
@@ -225,17 +226,16 @@ Mongo Express: `http://localhost:8081`.
 ## TODO
 
 ### Глобальный
-- Рассмотреть k8s (манифесты для minikube / k3s)
-- Оформление документации как технической, так и простой
+- Разбор и усовершенствование БД
+- Вклады/накопительный счёт
 
-### Локальный
+### Test
 - Создать тестовые env
 - Покрыть тестами (unit/integrations/нагрузка)
-- Рассмотреть возможность лицензирования кода
-- Разбор и усовершенствование БД
-- Подумать над "красивым" выводом логов
 
-### Возможный
-- Перенести Gateway на другой язык, чтобы повысить нагрузку
+### Front
 - Frontend
 - Telegram APP (Для информативных функций, безопасность)
+
+### END
+- Лицензирования кода (MIT, Apache 2.0, GPL v3)
