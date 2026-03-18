@@ -33,47 +33,71 @@ bank/
 ## Архитектура
 
 ```
-                  ┌───────────────┐
-   Клиент ──────► │    Gateway    │ :8000
-                  └──┬───┬─────┬─┬┘
-                     │   │     │ └────────┐ 
-          ┌──────────┘   │     └──────┐   └────────────┐
-          │              │            │                │
-          ▼              ▼            ▼                ▼
-   ┌─────────────┐ ┌──────────┐ ┌────────────┐ ┌──────────────┐
-   │  Customer   │ │   Auth   │ │  Account   │ │ Transaction  │
-   │   Service   │ │  Service │ │  Service   │ │   Service    │
-   └──────┬──────┘ └─────┬────┘ └───────┬────┘ └───────┬──────┘
-          │              │              │              │
-          │              │              │          ┌───┘
-          │              │              │          ▼
-          │              │              │   ┌──────────────┐
-          │              │              │   │   Security   │
-          │              │              │   │   Service    │
-          │              │              │   │  (AML/CFT)   │
-          │              │              │   └──────┬───────┘
-          │              │              │          │
-          ▼              ▼              ▼          ▼
-   ┌─────────────┐ ┌─────────────┐ ┌───────────────────────┐
-   │  PostgreSQL │ │    Redis    │ │      RabbitMQ         │
-   │   (core)    │ │ sessions /  │ │                       │
-   │             │ │ onboarding  │ │   ┌─────────┐ ┌──────┐│
-   └─────────────┘ └─────────────┘ │   │notifica-│ │ logs ││
-                                   │   │  tions  │ │      ││
-                                   │   └────┬────┘ └──┬───┘│
-                                   └────────┼─────────┼────┘
-                                            │         │
-   ┌──────────────┐ ┌──────────────┐        ▼         ▼
-   │   Currency   │ │    Metal     │ ┌────────────┐ ┌──────────┐
-   │   Service    │ │   Service    │ │Notification│ │   Log    │
-   │ (ExchangeRate│ │ (Metals.Dev  │ │  Service   │ │  Service │
-   │     API)     │ │     API)     │ │ (consumer) │ │(consumer)│
-   └──────────────┘ └──────────────┘ └──┬───────┬─┘ └──┬────┬──┘
-                                        │       │      │    │
-                                        ▼       ▼      ▼    ▼
-                                  Gmail SMTP  MongoDB  PG   ClickHouse
-                                             (email_log  (history)
-                                           + security)
+   ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+     [frontend network]                    [backend network]
+   │               ┌──────────────────────────────────────────────────────────────────────┐  │
+                   │                      Gateway Service  :8000                          │
+   │               │              (Go/Echo · Reverse Proxy · Auth Middleware)             │  │
+                   └──────┬───────────┬───────────┬────────────┬──────────┬───────────────┘
+   │                      │           │           │            │          │                  │
+    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ──│─ ─ ─  ─ ─ │─ ─ ─ ─  ─ │─ ─ ─  ─ ─ ─│─ ─  ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ -
+   Клиент ────────────────┘           │       (X-Internal-Key на всех внутренних запросах)
+                          │           │           │            │          │
+                          ▼           ▼           ▼            ▼          ▼
+                   ┌────────────┐ ┌────────┐ ┌─────────┐ ┌──────────┐ ┌────────────┐
+                   │  Customer  │ │  Auth  │ │ Account │ │Transact- │ │ Currency / │
+                   │  Service   │ │Service │ │ Service │ │  ion     │ │  Metal     │
+                   └─────┬──────┘ └───┬────┘ └────┬────┘ │ Service  │ │  Service   │
+                         │            │           │      └────┬─────┘ └─────┬──────┘
+                         │            │           │           │             │
+                         │            │       ┌───┘   HTTP    │    HTTP     │  HTTP
+                         │            │       │  (X-Int-Key)  │             │ (внешний)
+                         │            │       │          ┌────┘             │
+                         │            │       │          ▼                  ▼
+                         │            │       │    ┌──────────────┐  ┌─────────────────┐
+                         │            │       │    │   Security   │  │ ExchangeRate /  │
+                         │            │       │    │   Service    │  │   Metals.Dev    │
+                         │            │       │    │  (AML/CFT)   │  │     (APIs)      │
+                         │            │       │    │  только из   │  └─────────────────┘
+                         │            │       │    │  backend,    │
+                         │            │       │    │  не через GW │
+                         │            │       │    └──────────────┘
+                         │            │       │
+         RabbitMQ-события (publish) ◄─┴───────┴──── все бизнес-сервисы
+                         │
+       ┌─────────────────┴───────────────────────────┐
+       │                RabbitMQ  :5672              │
+       │   exchange: notifications   exchange: logs  │
+       └────────────┬────────────────────┬───────────┘
+                    │                    │
+                    ▼ (consumer)         ▼ (consumer)
+           ┌─────────────────┐   ┌──────────────────┐
+           │  Notification   │   │   Log Service    │
+           │    Service      │   └──────┬───────────┘
+           └──────┬──────────┘          │
+                  │               ┌─────┴──────────────┐
+                  ▼               ▼                    ▼
+            Gmail SMTP   ┌─────────────────┐  ┌───────────────────┐
+                         │   ClickHouse    │  │    PostgreSQL     │
+              +          │   (analytics)   │  │    (history)      │
+                         │   :8123         │  │    :5433          │
+              ▼          │  business_events│  │   user_actions    │
+         ┌─────────┐     └─────────────────┘  └───────────────────┘
+         │ MongoDB │
+         │ :27017  │
+         │email_log│  ◄── Notification Service
+         │security_│  ◄── Security Service
+         │ events  │
+         └─────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │                      [data network] — Shared Storage                      │
+ │                                                                           │
+ │  PostgreSQL (core) :5432   — users, personal_data, passports, contacts,   │
+ │                               bank_accounts, transactions                 │
+ │  redis_sessions    :6379   — сессионные токены (TTL 30 мин)               │
+ │  redis_onboarding  :6380   — JSON-черновики, onboarding-токены (TTL 24 ч) │
+ └───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Сети Docker
@@ -230,7 +254,12 @@ Mongo Express: `http://localhost:8081`.
 
 ### Test
 - Создать тестовые env
-- Покрыть тестами (unit/integrations/нагрузка)
+- Покрыть unit/integrations тестами все сервисы
+- e2e тесты
+- Нагрузочные тесты
+- Тесты на безопасность: SAST, DAST, Dependency Scanning
+- Контрактное тестирование
+- Мутационное тестирование
 
 ### Front
 - Frontend

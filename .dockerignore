@@ -8,6 +8,7 @@ Draft.md
 .venv/
 
 __pycache__/
+.pytest_cache
 
 *.md
 

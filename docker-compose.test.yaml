@@ -1,0 +1,21 @@
+services:
+  customer_service_test:
+    build:
+      context: .
+      dockerfile: ./customer_service/Dockerfile
+    # Монтируем директорию, чтобы не пересобирать образ при новых тестах
+    volumes:
+      - ./customer_service:/app/customer_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r customer_service/requirements-test.txt &&
+               pytest --cov=customer_service customer_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+    networks:
+      - test_network
+
+networks:
+  test_network:
+    driver: bridge
