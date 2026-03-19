@@ -61,6 +61,22 @@ services:
     networks:
       - test_network
 
+  transaction_service_test:
+    build:
+      context: .
+      dockerfile: ./transaction_service/Dockerfile
+    volumes:
+      - ./transaction_service:/app/transaction_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r transaction_service/requirements-test.txt > /dev/null &&
+               pytest --cov=transaction_service transaction_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+    networks:
+      - test_network
+
 networks:
   test_network:
     driver: bridge
