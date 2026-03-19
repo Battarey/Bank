@@ -77,6 +77,23 @@ services:
     networks:
       - test_network
 
+  notification_service_test:
+    build:
+      context: .
+      dockerfile: ./notification_service/Dockerfile
+    volumes:
+      - ./notification_service:/app/notification_service
+    command: >
+      bash -c "pip install --no-cache-dir -r notification_service/requirements-test.txt > /dev/null &&
+               pytest --cov=notification_service notification_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - SMTP_HOST=smtp.example.com
+      - SMTP_USER=test@example.com
+    networks:
+      - test_network
+
 networks:
   test_network:
     driver: bridge
