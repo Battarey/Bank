@@ -43,6 +43,21 @@ services:
     environment:
       - PYTHONPATH=/app
       - RUNNING_IN_DOCKER=true
+      - test_network
+
+  security_service_test:
+    build:
+      context: .
+      dockerfile: ./security_service/Dockerfile
+    volumes:
+      - ./security_service:/app/security_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r security_service/requirements-test.txt > /dev/null &&
+               pytest --cov=security_service security_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
     networks:
       - test_network
 
