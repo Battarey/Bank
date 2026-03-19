@@ -16,6 +16,22 @@ services:
     networks:
       - test_network
 
+  account_service_test:
+    build:
+      context: .
+      dockerfile: ./account_service/Dockerfile
+    volumes:
+      - ./account_service:/app/account_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r account_service/requirements-test.txt &&
+               pytest --cov=account_service account_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+    networks:
+      - test_network
+
 networks:
   test_network:
     driver: bridge
