@@ -94,6 +94,38 @@ services:
     networks:
       - test_network
 
+  metal_service_test:
+    build:
+      context: .
+      dockerfile: ./metal_service/Dockerfile
+    volumes:
+      - ./metal_service:/app/metal_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r metal_service/requirements-test.txt > /dev/null &&
+               pytest --cov=metal_service metal_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+    networks:
+      - test_network
+
+  currency_service_test:
+    build:
+      context: .
+      dockerfile: ./currency_service/Dockerfile
+    volumes:
+      - ./currency_service:/app/currency_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r currency_service/requirements-test.txt > /dev/null &&
+               pytest --cov=currency_service currency_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+    networks:
+      - test_network
+
 networks:
   test_network:
     driver: bridge
