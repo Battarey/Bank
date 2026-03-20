@@ -126,6 +126,22 @@ services:
     networks:
       - test_network
 
+  log_service_test:
+    build:
+      context: .
+      dockerfile: ./log_service/Dockerfile
+    volumes:
+      - ./log_service:/app/log_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r log_service/requirements-test.txt > /dev/null &&
+               pytest --cov=log_service log_service/tests/unit/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+    networks:
+      - test_network
+
 networks:
   test_network:
     driver: bridge
