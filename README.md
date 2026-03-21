@@ -249,9 +249,6 @@ Mongo Express: `http://localhost:8081`.
 
 ## TODO
 
-### Глобальный
-- Вклады/накопительный счёт
-
 ### Test
 - Создать тестовые env
 - Покрыть unit/integrations тестами все сервисы

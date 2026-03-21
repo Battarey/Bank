@@ -20,15 +20,15 @@ type AuthHandler struct {
 // RegisterAuthRoutes регистрирует маршруты аутентификации.
 func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
 	// Публичные
-	e.POST("/auth/login-pin", h.loginPin)
-	e.POST("/auth/request-unlock", h.requestUnlock)
-	e.POST("/auth/unlock", h.unlock)
+	e.POST("/auth/login-pin", h.LoginPin)
+	e.POST("/auth/request-unlock", h.RequestUnlock)
+	e.POST("/auth/unlock", h.Unlock)
 
 	// Защищённые (middleware уже проверяет сессию)
-	e.POST("/auth/set-pin", h.setPin)
-	e.POST("/auth/logout", h.logout)
-	e.POST("/auth/logout-all", h.logoutAll)
-	e.POST("/auth/self-block", h.selfBlock)
+	e.POST("/auth/set-pin", h.SetPin)
+	e.POST("/auth/logout", h.Logout)
+	e.POST("/auth/logout-all", h.LogoutAll)
+	e.POST("/auth/self-block", h.SelfBlock)
 }
 
 // ── Публичные ──────────────────────────────────────────────────────────
@@ -43,8 +43,9 @@ func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /auth/login-pin [post]
-func (h *AuthHandler) loginPin(c echo.Context) error {
-	body, _ := readBody(c)
+// LoginPin godoc
+func (h *AuthHandler) LoginPin(c echo.Context) error {
+	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/login-pin", body, "auth", h.APIKey)
 }
 
@@ -57,8 +58,9 @@ func (h *AuthHandler) loginPin(c echo.Context) error {
 // @Param       payload body schemas.RequestUnlockRequest true "Данные для запроса"
 // @Success     200 {object} map[string]interface{}
 // @Router      /auth/request-unlock [post]
-func (h *AuthHandler) requestUnlock(c echo.Context) error {
-	body, _ := readBody(c)
+// RequestUnlock godoc
+func (h *AuthHandler) RequestUnlock(c echo.Context) error {
+	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/request-unlock", body, "auth", h.APIKey)
 }
 
@@ -71,8 +73,9 @@ func (h *AuthHandler) requestUnlock(c echo.Context) error {
 // @Param       payload body schemas.UnlockRequest true "Код разблокировки"
 // @Success     200 {object} map[string]interface{}
 // @Router      /auth/unlock [post]
-func (h *AuthHandler) unlock(c echo.Context) error {
-	body, _ := readBody(c)
+// Unlock godoc
+func (h *AuthHandler) Unlock(c echo.Context) error {
+	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock", body, "auth", h.APIKey)
 }
 
@@ -89,10 +92,11 @@ func (h *AuthHandler) unlock(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /auth/set-pin [post]
-func (h *AuthHandler) setPin(c echo.Context) error {
-	body, _ := readBody(c)
+// SetPin godoc
+func (h *AuthHandler) SetPin(c echo.Context) error {
+	body, _ := ReadBody(c)
 
-	respData, statusCode, err := forwardAndParse(c, h.Proxy, http.MethodPost, "/set-pin", body, "auth", h.APIKey)
+	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPost, "/set-pin", body, "auth", h.APIKey)
 	if err != nil {
 		return c.JSON(http.StatusBadGateway, map[string]string{
 			"detail": fmt.Sprintf("Ошибка пересылки: %v", err),
@@ -123,7 +127,8 @@ func (h *AuthHandler) setPin(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /auth/logout [post]
-func (h *AuthHandler) logout(c echo.Context) error {
+// Logout godoc
+func (h *AuthHandler) Logout(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/logout", nil, "auth", h.APIKey)
 }
 
@@ -136,7 +141,8 @@ func (h *AuthHandler) logout(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /auth/logout-all [post]
-func (h *AuthHandler) logoutAll(c echo.Context) error {
+// LogoutAll godoc
+func (h *AuthHandler) LogoutAll(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/logout-all", nil, "auth", h.APIKey)
 }
 
@@ -149,6 +155,7 @@ func (h *AuthHandler) logoutAll(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /auth/self-block [post]
-func (h *AuthHandler) selfBlock(c echo.Context) error {
+// SelfBlock godoc
+func (h *AuthHandler) SelfBlock(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/self-block", nil, "auth", h.APIKey)
 }

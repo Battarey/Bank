@@ -19,18 +19,11 @@ type MetalHandler struct {
 
 // RegisterMetalRoutes регистрирует маршруты драгоценных металлов.
 func (h *MetalHandler) RegisterMetalRoutes(e *echo.Echo) {
-	e.GET("/metals/rates", h.getMetalRates)
+	e.GET("/metals/rates", h.GetMetalRates)
 }
 
-// getMetalRates godoc
-// @Summary     Цены на металлы
-// @Description Возвращает цены на драгоценные металлы (за грамм).
-// @Tags        metals
-// @Produce     json
-// @Param       base query string false "Базовая валюта (по умолчанию RUB)" default(RUB)
-// @Success     200 {object} map[string]interface{}
-// @Router      /metals/rates [get]
-func (h *MetalHandler) getMetalRates(c echo.Context) error {
+// GetMetalRates godoc
+func (h *MetalHandler) GetMetalRates(c echo.Context) error {
 	base := c.QueryParam("base")
 	if base == "" {
 		base = "RUB"

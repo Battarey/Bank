@@ -12,8 +12,21 @@ import (
 	"gateway_service/proxy"
 )
 
-// forwardAndParse пересылает запрос и парсит JSON-ответ (для cases, где нужно обработать ответ).
-func forwardAndParse(
+// ReadBody читает тело запроса и возвращает его как []byte (для повторного использования).
+func ReadBody(c echo.Context) ([]byte, error) {
+	if c.Request().Body == nil {
+		return nil, nil
+	}
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return nil, err
+	}
+	c.Request().Body = io.NopCloser(bytes.NewReader(body))
+	return body, nil
+}
+
+// ForwardAndParse пересылает запрос и парсит JSON-ответ (для cases, где нужно обработать ответ).
+func ForwardAndParse(
 	c echo.Context,
 	sc *proxy.ServiceClients,
 	method, path string,

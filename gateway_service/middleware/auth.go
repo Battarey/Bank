@@ -44,8 +44,8 @@ var pinExemptPaths = map[string]bool{
 	"/auth/logout-all": true,
 }
 
-// isPublic определяет, является ли запрос публичным.
-func isPublic(path, method string) bool {
+// IsPublic определяет, является ли запрос публичным.
+func IsPublic(path, method string) bool {
 	if method == http.MethodOptions {
 		return true
 	}
@@ -72,7 +72,7 @@ func AuthMiddleware(sessions *redisClient.SessionsClient) echo.MiddlewareFunc {
 			path := c.Request().URL.Path
 			method := c.Request().Method
 
-			if isPublic(path, method) {
+			if IsPublic(path, method) {
 				return next(c)
 			}
 

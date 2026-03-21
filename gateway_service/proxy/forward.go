@@ -59,7 +59,7 @@ func (sc *ServiceClients) ForwardRequest(
 ) error {
 	svc, ok := sc.clients[service]
 	if !ok {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]string{
 			"detail": fmt.Sprintf("Неизвестный сервис: %s", service),
 		})
 	}
@@ -68,7 +68,7 @@ func (sc *ServiceClients) ForwardRequest(
 	if body != nil {
 		jsonBytes, err := json.Marshal(body)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{
+			return echo.NewHTTPError(http.StatusInternalServerError, map[string]string{
 				"detail": "Ошибка сериализации запроса.",
 			})
 		}
@@ -78,7 +78,7 @@ func (sc *ServiceClients) ForwardRequest(
 	url := svc.BaseURL + path
 	req, err := http.NewRequestWithContext(c.Request().Context(), method, url, bodyReader)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]string{
 			"detail": "Ошибка создания запроса.",
 		})
 	}
@@ -95,7 +95,7 @@ func (sc *ServiceClients) ForwardRequest(
 
 	resp, err := svc.HTTP.Do(req)
 	if err != nil {
-		return c.JSON(http.StatusBadGateway, map[string]string{
+		return echo.NewHTTPError(http.StatusBadGateway, map[string]string{
 			"detail": "Внутренний сервис недоступен.",
 		})
 	}
@@ -103,7 +103,7 @@ func (sc *ServiceClients) ForwardRequest(
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]string{
 			"detail": "Ошибка чтения ответа от сервиса.",
 		})
 	}
@@ -125,7 +125,7 @@ func (sc *ServiceClients) ForwardRaw(
 ) error {
 	svc, ok := sc.clients[service]
 	if !ok {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]string{
 			"detail": fmt.Sprintf("Неизвестный сервис: %s", service),
 		})
 	}
@@ -138,7 +138,7 @@ func (sc *ServiceClients) ForwardRaw(
 	url := svc.BaseURL + path
 	req, err := http.NewRequestWithContext(c.Request().Context(), method, url, bodyReader)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]string{
 			"detail": "Ошибка создания запроса.",
 		})
 	}
@@ -155,7 +155,7 @@ func (sc *ServiceClients) ForwardRaw(
 
 	resp, err := svc.HTTP.Do(req)
 	if err != nil {
-		return c.JSON(http.StatusBadGateway, map[string]string{
+		return echo.NewHTTPError(http.StatusBadGateway, map[string]string{
 			"detail": "Внутренний сервис недоступен.",
 		})
 	}
@@ -163,7 +163,7 @@ func (sc *ServiceClients) ForwardRaw(
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]string{
 			"detail": "Ошибка чтения ответа от сервиса.",
 		})
 	}

@@ -4,7 +4,7 @@
 
 // @title           Gateway Service API
 // @version         1.0
-// @description     API Gateway банковского приложения. Единая точка входа для клиентских запросов: онбординг, аутентификация, управление данными пользователя, счета, транзакции, валюты и металлы.
+// @description     API Gateway банковского приложения. Единая точка входа для клиентских запросов.
 
 // @host            localhost:8000
 // @BasePath        /
@@ -13,28 +13,6 @@
 // @in header
 // @name X-Session-Token
 // @description Сессионный токен, полученный при авторизации
-
-// @securityDefinitions.apikey OnboardingToken
-// @in header
-// @name X-Onboarding-Token
-// @description Токен онбординга, полученный из /users/start (TTL 15 минут, скользящая экспирация)
-
-// @tag.name onboarding
-// @tag.description Регистрация нового клиента: создание аккаунта, заполнение данных по шагам и финализация. Шаги требуют заголовок X-Onboarding-Token.
-// @tag.name user-update
-// @tag.description Обновление данных авторизованного пользователя. Требует заголовок X-Session-Token.
-// @tag.name auth
-// @tag.description Аутентификация: вход по PIN-коду, управление сессиями. Защищённые эндпоинты требуют заголовок X-Session-Token.
-// @tag.name accounts
-// @tag.description Банковские счета: открытие, просмотр, закрытие, заморозка.
-// @tag.name transactions
-// @tag.description Операции по счетам: пополнение, снятие, переводы, история.
-// @tag.name currency
-// @tag.description Валютные операции: курсы и обмен между счетами.
-// @tag.name metals
-// @tag.description Драгоценные металлы: курсы.
-// @tag.name health
-// @tag.description Проверка работоспособности сервиса.
 
 package main
 
@@ -48,16 +26,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	echoMiddleware "github.com/labstack/echo/v4/middleware"
-	echoSwagger "github.com/swaggo/echo-swagger"
-
+	"gateway_service/app"
 	"gateway_service/config"
-	_ "gateway_service/docs"
-	"gateway_service/middleware"
 	"gateway_service/proxy"
 	redisClient "gateway_service/redis"
-	"gateway_service/routes"
 )
 
 func main() {
@@ -94,75 +66,7 @@ func main() {
 	})
 	defer services.Close()
 
-	// Echo-приложение
-	e := echo.New()
-	e.HideBanner = true
-
-	// CORS
-	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
-		AllowOrigins:     cfg.CORSAllowedOrigins,
-		AllowCredentials: true,
-		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
-		AllowHeaders:     []string{"*"},
-	}))
-
-	// Middleware: логирование + recover + аутентификация
-	e.Use(echoMiddleware.Logger())
-	e.Use(echoMiddleware.Recover())
-	e.Use(middleware.AuthMiddleware(sessions))
-
-	// Swagger UI (доступен без авторизации — middleware пропускает /docs/*)
-	e.GET("/docs/*", echoSwagger.WrapHandler)
-
-	// Healthcheck
-	// @Summary     Проверка работоспособности
-	// @Tags        health
-	// @Produce     json
-	// @Success     200 {object} map[string]string
-	// @Router      /health [get]
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	})
-
-	// Регистрация маршрутов
-	customerHandler := &routes.CustomerHandler{
-		Proxy:      services,
-		Sessions:   sessions,
-		Onboarding: onboarding,
-		APIKey:     cfg.InternalAPIKey,
-	}
-	customerHandler.RegisterCustomerRoutes(e)
-
-	authHandler := &routes.AuthHandler{
-		Proxy:    services,
-		Sessions: sessions,
-		APIKey:   cfg.InternalAPIKey,
-	}
-	authHandler.RegisterAuthRoutes(e)
-
-	accountHandler := &routes.AccountHandler{
-		Proxy:  services,
-		APIKey: cfg.InternalAPIKey,
-	}
-	accountHandler.RegisterAccountRoutes(e)
-
-	transactionHandler := &routes.TransactionHandler{
-		Proxy:  services,
-		APIKey: cfg.InternalAPIKey,
-	}
-	transactionHandler.RegisterTransactionRoutes(e)
-
-	currencyHandler := &routes.CurrencyHandler{
-		Proxy:  services,
-		APIKey: cfg.InternalAPIKey,
-	}
-	currencyHandler.RegisterCurrencyRoutes(e)
-
-	metalHandler := &routes.MetalHandler{
-		Proxy:  services,
-		APIKey: cfg.InternalAPIKey,
-	}
-	metalHandler.RegisterMetalRoutes(e)
+	e := app.SetupApp(cfg, sessions, onboarding, services)
 
 	// Graceful shutdown
 	go func() {

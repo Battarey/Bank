@@ -142,6 +142,26 @@ services:
     networks:
       - test_network
 
+  gateway_service_test:
+    image: golang:1.23-alpine
+    volumes:
+      - ./gateway_service:/app
+    working_dir: /app
+    command: >
+      sh -c "go get github.com/stretchr/testify && go test -v -mod=mod -coverpkg=./... -coverprofile=coverage.out ./... && go tool cover -func=coverage.out"
+    environment:
+      - REDIS_SESSIONS_URL=redis://redis_test:6379/0
+      - REDIS_ONBOARDING_URL=redis://redis_test:6379/1
+    networks:
+      - test_network
+    depends_on:
+      - redis_test
+
+  redis_test:
+    image: redis:7-alpine
+    networks:
+      - test_network
+
 networks:
   test_network:
     driver: bridge

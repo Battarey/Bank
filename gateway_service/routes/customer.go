@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -25,20 +24,20 @@ type CustomerHandler struct {
 // RegisterCustomerRoutes регистрирует маршруты онбординга и обновления данных.
 func (h *CustomerHandler) RegisterCustomerRoutes(e *echo.Echo) {
 	// Онбординг (публичный + onboarding-токен)
-	e.POST("/users/start", h.startOnboarding)
-	e.POST("/users/me/account/personal-data", h.submitPersonalData)
-	e.POST("/users/me/account/passport", h.submitPassport)
-	e.POST("/users/me/account/identifiers", h.submitIdentifiers)
-	e.POST("/users/me/account/contacts", h.submitContacts)
-	e.POST("/users/me/account/send-email-code", h.sendEmailCode)
-	e.POST("/users/me/account/verify-email", h.verifyEmail)
-	e.POST("/users/me/account/finalize", h.finalizeOnboarding)
+	e.POST("/users/start", h.StartOnboarding)
+	e.POST("/users/me/account/personal-data", h.SubmitPersonalData)
+	e.POST("/users/me/account/passport", h.SubmitPassport)
+	e.POST("/users/me/account/identifiers", h.SubmitIdentifiers)
+	e.POST("/users/me/account/contacts", h.SubmitContacts)
+	e.POST("/users/me/account/send-email-code", h.SendEmailCode)
+	e.POST("/users/me/account/verify-email", h.VerifyEmail)
+	e.POST("/users/me/account/finalize", h.FinalizeOnboarding)
 
 	// Обновление данных (сессия)
-	e.PATCH("/users/me/personal-data", h.updatePersonalData)
-	e.PUT("/users/me/passport", h.replacePassport)
-	e.PATCH("/users/me/contacts", h.updateContacts)
-	e.DELETE("/users/me", h.deleteAccount)
+	e.PATCH("/users/me/personal-data", h.UpdatePersonalData)
+	e.PUT("/users/me/passport", h.ReplacePassport)
+	e.PATCH("/users/me/contacts", h.UpdateContacts)
+	e.DELETE("/users/me", h.DeleteAccount)
 }
 
 // resolveOnboarding проверяет X-Onboarding-Token и возвращает userID.
@@ -62,15 +61,7 @@ func (h *CustomerHandler) resolveOnboarding(c echo.Context) (string, error) {
 	return userID, nil
 }
 
-// readBody читает тело запроса.
-func readBody(c echo.Context) ([]byte, error) {
-	body, err := io.ReadAll(c.Request().Body)
-	if err != nil {
-		return nil, err
-	}
-	defer c.Request().Body.Close()
-	return body, nil
-}
+
 
 // ── Онбординг ──────────────────────────────────────────────────────────
 
@@ -83,11 +74,11 @@ func readBody(c echo.Context) ([]byte, error) {
 // @Success     201 {object} map[string]interface{} "onboarding_token + status"
 // @Failure     500 {object} map[string]string
 // @Router      /users/start [post]
-func (h *CustomerHandler) startOnboarding(c echo.Context) error {
-	body, _ := readBody(c)
+func (h *CustomerHandler) StartOnboarding(c echo.Context) error {
+	body, _ := ReadBody(c)
 
 	svc := h.Proxy
-	respData, statusCode, err := forwardAndParse(c, svc, http.MethodPost, "/users/start", body, "customer", h.APIKey)
+	respData, statusCode, err := ForwardAndParse(c, svc, http.MethodPost, "/users/start", body, "customer", h.APIKey)
 	if err != nil {
 		return err
 	}
@@ -118,7 +109,7 @@ func (h *CustomerHandler) startOnboarding(c echo.Context) error {
 }
 
 // onboardingStep — общий обработчик для шагов онбординга.
-func (h *CustomerHandler) onboardingStep(c echo.Context, subPath string) error {
+func (h *CustomerHandler) OnboardingStep(c echo.Context, subPath string) error {
 	userID, err := h.resolveOnboarding(c)
 	if err != nil {
 		he, ok := err.(*echo.HTTPError)
@@ -128,7 +119,7 @@ func (h *CustomerHandler) onboardingStep(c echo.Context, subPath string) error {
 		return err
 	}
 
-	body, _ := readBody(c)
+	body, _ := ReadBody(c)
 	path := fmt.Sprintf("/users/%s/account/%s", userID, subPath)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, path, body, "customer", h.APIKey)
 }
@@ -144,8 +135,8 @@ func (h *CustomerHandler) onboardingStep(c echo.Context, subPath string) error {
 // @Success     201 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/account/personal-data [post]
-func (h *CustomerHandler) submitPersonalData(c echo.Context) error {
-	return h.onboardingStep(c, "personal-data")
+func (h *CustomerHandler) SubmitPersonalData(c echo.Context) error {
+	return h.OnboardingStep(c, "personal-data")
 }
 
 // submitPassport godoc
@@ -159,8 +150,8 @@ func (h *CustomerHandler) submitPersonalData(c echo.Context) error {
 // @Success     201 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/account/passport [post]
-func (h *CustomerHandler) submitPassport(c echo.Context) error {
-	return h.onboardingStep(c, "passport")
+func (h *CustomerHandler) SubmitPassport(c echo.Context) error {
+	return h.OnboardingStep(c, "passport")
 }
 
 // submitIdentifiers godoc
@@ -174,8 +165,8 @@ func (h *CustomerHandler) submitPassport(c echo.Context) error {
 // @Success     201 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/account/identifiers [post]
-func (h *CustomerHandler) submitIdentifiers(c echo.Context) error {
-	return h.onboardingStep(c, "identifiers")
+func (h *CustomerHandler) SubmitIdentifiers(c echo.Context) error {
+	return h.OnboardingStep(c, "identifiers")
 }
 
 // submitContacts godoc
@@ -189,8 +180,8 @@ func (h *CustomerHandler) submitIdentifiers(c echo.Context) error {
 // @Success     201 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/account/contacts [post]
-func (h *CustomerHandler) submitContacts(c echo.Context) error {
-	return h.onboardingStep(c, "contacts")
+func (h *CustomerHandler) SubmitContacts(c echo.Context) error {
+	return h.OnboardingStep(c, "contacts")
 }
 
 // sendEmailCode godoc
@@ -202,8 +193,8 @@ func (h *CustomerHandler) submitContacts(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/account/send-email-code [post]
-func (h *CustomerHandler) sendEmailCode(c echo.Context) error {
-	return h.onboardingStep(c, "send-email-code")
+func (h *CustomerHandler) SendEmailCode(c echo.Context) error {
+	return h.OnboardingStep(c, "send-email-code")
 }
 
 // verifyEmail godoc
@@ -217,8 +208,8 @@ func (h *CustomerHandler) sendEmailCode(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/account/verify-email [post]
-func (h *CustomerHandler) verifyEmail(c echo.Context) error {
-	return h.onboardingStep(c, "verify-email")
+func (h *CustomerHandler) VerifyEmail(c echo.Context) error {
+	return h.OnboardingStep(c, "verify-email")
 }
 
 // finalizeOnboarding godoc
@@ -230,7 +221,7 @@ func (h *CustomerHandler) verifyEmail(c echo.Context) error {
 // @Success     200 {object} map[string]interface{} "status + message + session_token + user_id"
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/account/finalize [post]
-func (h *CustomerHandler) finalizeOnboarding(c echo.Context) error {
+func (h *CustomerHandler) FinalizeOnboarding(c echo.Context) error {
 	userID, err := h.resolveOnboarding(c)
 	if err != nil {
 		he, ok := err.(*echo.HTTPError)
@@ -243,7 +234,7 @@ func (h *CustomerHandler) finalizeOnboarding(c echo.Context) error {
 	onbToken := c.Request().Header.Get("X-Onboarding-Token")
 
 	path := fmt.Sprintf("/users/%s/account/finalize", userID)
-	respData, statusCode, fwdErr := forwardAndParse(c, h.Proxy, http.MethodPost, path, nil, "customer", h.APIKey)
+	respData, statusCode, fwdErr := ForwardAndParse(c, h.Proxy, http.MethodPost, path, nil, "customer", h.APIKey)
 	if fwdErr != nil {
 		return fwdErr
 	}
@@ -289,8 +280,8 @@ func (h *CustomerHandler) finalizeOnboarding(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/personal-data [patch]
-func (h *CustomerHandler) updatePersonalData(c echo.Context) error {
-	body, _ := readBody(c)
+func (h *CustomerHandler) UpdatePersonalData(c echo.Context) error {
+	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPatch, "/users/personal-data", body, "customer", h.APIKey)
 }
 
@@ -305,8 +296,8 @@ func (h *CustomerHandler) updatePersonalData(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/passport [put]
-func (h *CustomerHandler) replacePassport(c echo.Context) error {
-	body, _ := readBody(c)
+func (h *CustomerHandler) ReplacePassport(c echo.Context) error {
+	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPut, "/users/passport", body, "customer", h.APIKey)
 }
 
@@ -321,8 +312,8 @@ func (h *CustomerHandler) replacePassport(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me/contacts [patch]
-func (h *CustomerHandler) updateContacts(c echo.Context) error {
-	body, _ := readBody(c)
+func (h *CustomerHandler) UpdateContacts(c echo.Context) error {
+	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPatch, "/users/contacts", body, "customer", h.APIKey)
 }
 
@@ -335,8 +326,8 @@ func (h *CustomerHandler) updateContacts(c echo.Context) error {
 // @Success     200 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
 // @Router      /users/me [delete]
-func (h *CustomerHandler) deleteAccount(c echo.Context) error {
-	respData, statusCode, err := forwardAndParse(c, h.Proxy, http.MethodDelete, "/users/delete", nil, "customer", h.APIKey)
+func (h *CustomerHandler) DeleteAccount(c echo.Context) error {
+	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodDelete, "/users/delete", nil, "customer", h.APIKey)
 	if err != nil {
 		return err
 	}
