@@ -58,11 +58,12 @@ async def _find_user_by_phone(
 ) -> tuple[models.User, models.Contact]:
 	"""Ищет пользователя по номеру телефона (active или blocked)."""
 
+	from shared.utils.security import get_blind_index
 	stmt = (
 		select(models.User, models.Contact)
 		.join(models.Contact, models.User.id == models.Contact.client_id)
 		.where(
-			models.Contact.phone == phone,
+			models.Contact.phone_hash == get_blind_index(phone),
 			models.User.status.in_(("active", "blocked")),
 		)
 	)

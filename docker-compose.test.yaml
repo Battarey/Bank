@@ -211,6 +211,32 @@ services:
       redis_test:
         condition: service_started
 
+  auth_service_integration_test:
+    build:
+      context: .
+      dockerfile: ./auth_service/Dockerfile
+    volumes:
+      - ./auth_service:/app/auth_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r auth_service/requirements-test.txt &&
+               pytest auth_service/tests/integration/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - DATABASE_URL=postgresql+asyncpg://test_user:test_password@postgres_test:5432/test_db
+      - REDIS_SESSIONS_URL=redis://redis_test:6379/0
+      - INTERNAL_API_KEY=test-internal-key
+      - ENCRYPTION_KEY=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      - BLIND_INDEX_SALT=test_salt
+    networks:
+      - test_network
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+      redis_test:
+        condition: service_started
+
   postgres_test:
     image: postgres:15-alpine
     environment:
@@ -224,6 +250,42 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  mongodb_test:
+    image: mongo:6.0
+    networks:
+      - test_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  security_service_integration_test:
+    build:
+      context: .
+      dockerfile: ./security_service/Dockerfile
+    volumes:
+      - ./security_service:/app/security_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r security_service/requirements-test.txt &&
+               pytest security_service/tests/integration/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - DATABASE_URL=postgresql+asyncpg://test_user:test_password@postgres_test:5432/test_db
+      - MONGO_URL=mongodb://mongodb_test:27017/test_security_db
+      - INTERNAL_API_KEY=test-internal-key
+      - ENCRYPTION_KEY=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      - BLIND_INDEX_SALT=test_salt
+    networks:
+      - test_network
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+      mongodb_test:
+        condition: service_healthy
 
 networks:
   test_network:
