@@ -77,7 +77,7 @@ async def close_clickhouse() -> None:
 	global _client  # noqa: PLW0603
 
 	if _client is not None:
-		_client.close()
+		await _client.close()  # clickhouse_connect async client.close() is a coroutine
 		_client = None
 		logger.info("ClickHouse отключён.")
 

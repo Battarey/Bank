@@ -287,6 +287,147 @@ services:
       mongodb_test:
         condition: service_healthy
 
+  transaction_service_integration_test:
+    build:
+      context: .
+      dockerfile: ./transaction_service/Dockerfile
+    volumes:
+      - ./transaction_service:/app/transaction_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r transaction_service/requirements-test.txt &&
+               pytest transaction_service/tests/integration/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - DATABASE_URL=postgresql+asyncpg://test_user:test_password@postgres_test:5432/test_db
+      - INTERNAL_API_KEY=test-internal-key
+      - ENCRYPTION_KEY=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      - BLIND_INDEX_SALT=test_salt
+    networks:
+      - test_network
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+
+  metal_service_integration_test:
+    build:
+      context: .
+      dockerfile: ./metal_service/Dockerfile
+    volumes:
+      - ./metal_service:/app/metal_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r metal_service/requirements-test.txt &&
+               pytest metal_service/tests/integration/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - INTERNAL_API_KEY=test-internal-key
+      - METAL_RATE_CACHE_TTL=30
+    networks:
+      - test_network
+
+  clickhouse_test:
+    image: clickhouse/clickhouse-server:24-alpine
+    environment:
+      - CLICKHOUSE_DB=test_db
+      - CLICKHOUSE_USER=test_user
+      - CLICKHOUSE_PASSWORD=test_password
+    networks:
+      - test_network
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "-q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq_test:
+    image: rabbitmq:3-management-alpine
+    networks:
+      - test_network
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  log_service_integration_test:
+    build:
+      context: .
+      dockerfile: ./log_service/Dockerfile
+    volumes:
+      - ./log_service:/app/log_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r log_service/requirements-test.txt &&
+               pytest log_service/tests/integration/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - CLICKHOUSE_HOST=clickhouse_test
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_DB=test_db
+      - CLICKHOUSE_USER=test_user
+      - CLICKHOUSE_PASSWORD=test_password
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq_test:5672/
+      - HISTORY_DATABASE_URL=postgresql+asyncpg://test_user:test_password@postgres_test:5432/test_db
+    networks:
+      - test_network
+    depends_on:
+      clickhouse_test:
+        condition: service_healthy
+      rabbitmq_test:
+        condition: service_healthy
+      postgres_test:
+        condition: service_healthy
+
+  currency_service_integration_test:
+    build:
+      context: .
+      dockerfile: ./currency_service/Dockerfile
+    volumes:
+      - ./currency_service:/app/currency_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r currency_service/requirements-test.txt &&
+               pytest currency_service/tests/integration/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - DATABASE_URL=postgresql+asyncpg://test_user:test_password@postgres_test:5432/test_db
+      - INTERNAL_API_KEY=test-internal-key
+      - ENCRYPTION_KEY=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      - BLIND_INDEX_SALT=test_salt
+      - EXCHANGE_RATE_CACHE_TTL=30
+    networks:
+      - test_network
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+
+  notification_service_integration_test:
+    build:
+      context: .
+      dockerfile: ./notification_service/Dockerfile
+    volumes:
+      - ./notification_service:/app/notification_service
+      - ./shared:/app/shared
+    command: >
+      bash -c "pip install --no-cache-dir -r notification_service/requirements-test.txt &&
+               pytest notification_service/tests/integration/ -v"
+    environment:
+      - PYTHONPATH=/app
+      - RUNNING_IN_DOCKER=true
+      - MONGO_URL=mongodb://mongodb_test:27017/test_notifications_db
+      - SMTP_HOST=smtp.mock.com
+      - SMTP_USER=test@mock.com
+      - SMTP_PASSWORD=mock_pass
+    networks:
+      - test_network
+    depends_on:
+      - mongodb_test
+
 networks:
   test_network:
     driver: bridge

@@ -67,12 +67,13 @@ async def _process_message(message: aio_pika.abc.AbstractIncomingMessage) -> Non
 				status="sent",
 			)
 
-		except ValueError:
-			logger.warning("Неизвестный шаблон: %s", msg_type)
-		except KeyError as exc:
-			logger.error("Не хватает переменной для шаблона %s: %s", msg_type, exc)
-		except Exception as exc:
-			logger.exception("Ошибка обработки сообщения type=%s", msg_type)
+		except (ValueError, KeyError, Exception) as exc:
+			if isinstance(exc, ValueError):
+				logger.warning("Неизвестный шаблон: %s", msg_type)
+			elif isinstance(exc, KeyError):
+				logger.error("Не хватает переменной для шаблона %s: %s", msg_type, exc)
+			else:
+				logger.exception("Ошибка обработки сообщения type=%s", msg_type)
 
 			# Фиксируем неудачную попытку в журнале
 			await save_notification(
