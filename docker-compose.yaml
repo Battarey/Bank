@@ -48,7 +48,9 @@ services:
     build:
       context: .
       dockerfile: ./customer_service/Dockerfile
-    env_file: ./customer_service/.env
+    env_file:
+      - ./customer_service/.env
+      - .env
     restart: unless-stopped
     depends_on:
       migrations:
@@ -175,7 +177,9 @@ services:
 ##########  Миграции  ##########
 
   migrations:
-    build: ./migrations
+    build:
+      context: .
+      dockerfile: ./migrations/Dockerfile
     env_file: ./migrations/.env
     command: ["python", "reset_and_upgrade.py"]
     depends_on:

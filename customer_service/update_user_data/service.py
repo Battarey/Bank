@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
 from shared.utils.normalize import normalize_name, normalize_email, normalize_phone
+from shared.utils.security import get_blind_index
 
 
 class UpdateDataError(Exception):
@@ -104,11 +105,11 @@ async def replace_passport(
 		},
 	)
 
-	# Проверка уникальности серии/номера
+	# Проверка уникальности серии/номера через blind index
+	p_hash = get_blind_index(f"{normalized.series}{normalized.number}")
 	duplicate = await session.scalar(
 		select(models.Passport).where(
-			models.Passport.series == normalized.series,
-			models.Passport.number == normalized.number,
+			models.Passport.passport_hash == p_hash,
 		)
 	)
 	if duplicate and duplicate.client_id != user_id:
@@ -116,6 +117,8 @@ async def replace_passport(
 
 	for attr, value in normalized.model_dump().items():
 		setattr(record, attr, value)
+
+	record.passport_hash = p_hash  # Обновляем хеш
 
 	user.updated_at = datetime.now(UTC)
 
@@ -157,12 +160,12 @@ async def update_contacts(
 	if "phone" in fields:
 		fields["phone"] = normalize_phone(fields["phone"])
 
-	# Проверка уникальности
+	# Проверка уникальности через blind index
 	conditions = []
 	if "email" in fields:
-		conditions.append(models.Contact.email == fields["email"])
+		conditions.append(models.Contact.email_hash == get_blind_index(fields["email"]))
 	if "phone" in fields:
-		conditions.append(models.Contact.phone == fields["phone"])
+		conditions.append(models.Contact.phone_hash == get_blind_index(fields["phone"]))
 
 	if conditions:
 		duplicate = await session.scalar(
@@ -173,6 +176,11 @@ async def update_contacts(
 
 	for attr, value in fields.items():
 		setattr(record, attr, value)
+		# Если поле изменилось, обновляем и его хеш
+		if attr == "email":
+			record.email_hash = get_blind_index(fields["email"])
+		if attr == "phone":
+			record.phone_hash = get_blind_index(fields["phone"])
 
 	user.updated_at = datetime.now(UTC)
 

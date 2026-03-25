@@ -8,11 +8,13 @@ from .passport import Passport
 from .personal_data import PersonalData
 from .transaction import Transaction
 from .user import User
+from .types import EncryptedString
 
 __all__ = [
 	"BankAccount",
 	"Base",
 	"Contact",
+	"EncryptedString",
 	"Identifier",
 	"Passport",
 	"PersonalData",

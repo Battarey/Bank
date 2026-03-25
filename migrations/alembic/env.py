@@ -14,8 +14,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+import sys
+sys.path.append(os.path.abspath(os.path.join(BASE_DIR, '..')))
+from shared import models
+
 # Placeholder metadata. Update when SQLAlchemy models appear.
-target_metadata = None
+target_metadata = models.base.Base.metadata
 
 
 def _get_database_url() -> str:

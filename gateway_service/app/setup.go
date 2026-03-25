@@ -39,6 +39,9 @@ func SetupApp(
 	e.Use(middleware.AuthMiddleware(sessions))
 
 	// Swagger UI
+	e.GET("/docs", func(c echo.Context) error {
+		return c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
+	})
 	e.GET("/docs/*", echoSwagger.WrapHandler)
 
 	// Healthcheck

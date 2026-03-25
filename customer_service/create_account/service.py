@@ -14,6 +14,7 @@ from shared.rabbitmq.constants import LOGS_EXCHANGE, LOG_AUTH_KEY
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
 from shared.utils.normalize import normalize_name, normalize_email, normalize_phone, digits_only
+from shared.utils.security import get_blind_index
 
 
 class AccountDataError(Exception):
@@ -134,11 +135,11 @@ async def _ensure_passport_unique(
 	user_id: UUID,
 	payload: schemas.PassportPayload,
 ) -> None:
-	"""Проверяет уникальность серии/номера паспорта."""
+	"""Проверяет уникальность серии/номера паспорта через blind index."""
+	p_hash = get_blind_index(f"{payload.series}{payload.number}")
 	duplicate = await session.scalar(
 		select(models.Passport).where(
-			models.Passport.series == payload.series,
-			models.Passport.number == payload.number,
+			models.Passport.passport_hash == p_hash,
 		)
 	)
 	if duplicate and duplicate.client_id != user_id:
@@ -168,12 +169,15 @@ async def _ensure_contacts_unique(
 	user_id: UUID,
 	payload: schemas.ContactsPayload,
 ) -> None:
-	"""Проверяет, что email/phone ещё не заняты."""
+	"""Проверяет, что email/phone ещё не заняты через blind index."""
+	e_hash = get_blind_index(payload.email)
+	p_hash = get_blind_index(payload.phone)
+	
 	duplicate = await session.scalar(
 		select(models.Contact).where(
 			or_(
-				models.Contact.email == payload.email,
-				models.Contact.phone == payload.phone,
+				models.Contact.email_hash == e_hash,
+				models.Contact.phone_hash == p_hash,
 			)
 		)
 	)
@@ -187,8 +191,12 @@ def _personal_model_factory(user_id: UUID, payload: schemas.PersonalDataPayload)
 
 
 def _passport_model_factory(user_id: UUID, payload: schemas.PassportPayload) -> models.Passport:
-	"""Создаёт ORM-модель паспорта."""
-	return models.Passport(client_id=user_id, **payload.model_dump())
+	"""Создаёт ORM-модель паспорта с расчётом blind index."""
+	return models.Passport(
+		client_id=user_id,
+		passport_hash=get_blind_index(f"{payload.series}{payload.number}"),
+		**payload.model_dump(),
+	)
 
 
 def _identifiers_model_factory(user_id: UUID, payload: schemas.IdentifiersPayload) -> models.Identifier:
@@ -197,8 +205,13 @@ def _identifiers_model_factory(user_id: UUID, payload: schemas.IdentifiersPayloa
 
 
 def _contacts_model_factory(user_id: UUID, payload: schemas.ContactsPayload) -> models.Contact:
-	"""Создаёт ORM-модель контактов."""
-	return models.Contact(client_id=user_id, **payload.model_dump())
+	"""Создаёт ORM-модель контактов с расчётом blind indexes."""
+	return models.Contact(
+		client_id=user_id,
+		email_hash=get_blind_index(payload.email),
+		phone_hash=get_blind_index(payload.phone),
+		**payload.model_dump(),
+	)
 
 
 STEP_DEFINITIONS: Dict[onboarding_drafts.StepName, StepDefinition] = {

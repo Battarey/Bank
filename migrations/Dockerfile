@@ -10,9 +10,11 @@ RUN apt-get update \
 	&& apt-get install -y --no-install-recommends build-essential libpq-dev \
 	&& rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
+COPY migrations/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Копируем shared для доступа к моделям в alembic
+COPY shared ./shared
+COPY migrations .
 
-CMD ["python", "-m", "alembic", "upgrade", "head"]
+CMD ["python", "reset_and_upgrade.py"]

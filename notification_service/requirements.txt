@@ -1,3 +1,4 @@
 aio-pika>=9.4
 aiosmtplib>=3.0
 motor>=3.6
+cryptography>=42.0.0
