@@ -251,7 +251,7 @@ Mongo Express: `http://localhost:8081`.
 
 ### Test
 - Создать тестовые env
-- Покрыть unit/integrations тестами все сервисы
+- Покрыть integrations тестами все сервисы
 - e2e тесты
 - Нагрузочные тесты
 - Тесты на безопасность: SAST, DAST, Dependency Scanning
