@@ -55,6 +55,11 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 	app.dependency_overrides[get_session] = _get_test_session
 	
+	# Мокаем RabbitMQ
+	import shared.rabbitmq.client as rmq
+	from unittest.mock import AsyncMock
+	rmq._channel = AsyncMock()
+	
 	async with AsyncClient(
 		transport=ASGITransport(app=app),
 		base_url="http://test",
