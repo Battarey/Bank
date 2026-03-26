@@ -93,3 +93,108 @@ async def test_process_smtp_error(monkeypatch):
 	assert doc is not None
 	assert doc["status"] == "failed"
 	assert "SMTP connection failed" in doc["error"]
+@pytest.mark.asyncio
+async def test_process_invalid_json_robustness(caplog):
+	"""Тест обработки невалидного JSON (не должен ронять воркер)."""
+	msg = MockMessage({})
+	msg.body = b"invalid json data {{["
+	
+	await _process_message(msg)
+	assert "Невалидный JSON" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_process_missing_to_field():
+	"""Тест обработки сообщения без поля 'to' (KeyError)."""
+	event_data = {
+		"type": "welcome",
+		"payload": {
+			"variables": {"name": "No To User"}
+		}
+	}
+	
+	msg = MockMessage(event_data)
+	await _process_message(msg)
+	
+	# Проверяем MongoDB: статус должен быть failed
+	db = get_mongo()
+	doc = await db["email_log"].find_one({"variables.name": "No To User"})
+	assert doc is not None
+	assert doc["status"] == "failed"
+	assert "to" in doc["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_process_missing_variables_error():
+	"""Тест рендеринга шаблона с неполным набором данных (KeyError)."""
+	email = "missing_vars@example.com"
+	event_data = {
+		"type": "verification_code", # Ожидает переменную 'code'
+		"payload": {
+			"to": email,
+			"variables": {} # Пустые переменные
+		}
+	}
+	
+	msg = MockMessage(event_data)
+	await _process_message(msg)
+	
+	# Проверяем MongoDB: статус должен быть failed
+	db = get_mongo()
+	doc = await db["email_log"].find_one({"to": email})
+	assert doc is not None
+	assert doc["status"] == "failed"
+	assert "code" in doc["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_process_mongodb_down_robustness(monkeypatch, mock_smtp):
+	"""Тест: сбой MongoDB не должен мешать отправке SMTP (хотя ошибка залогируется)."""
+	from notification_service import store
+	monkeypatch.setattr(store, "save_notification", AsyncMock(side_effect=Exception("MongoDB connection lost")))
+	
+	email = "db_down@example.com"
+	event_data = {
+		"type": "welcome",
+		"payload": {
+			"to": email,
+			"variables": {"name": "DB Down User"}
+		}
+	}
+	
+	msg = MockMessage(event_data)
+	# Мы ожидаем, что send_email выполнится, а save_notification упадет, но не уронит весь процесс
+	await _process_message(msg)
+	
+	# Проверяем SMTP - письмо должно быть отправлено до падения сохранения
+	assert mock_smtp.called
+	args, _ = mock_smtp.call_args
+	assert args[0]["To"] == email
+
+
+@pytest.mark.asyncio
+async def test_process_large_vars_stress(mock_smtp):
+	"""Тест обработки экстремально длинных строк в переменных шаблона."""
+	email = "large@example.com"
+	long_code = "X" * 10000 # 10KB код
+	
+	event_data = {
+		"type": "verification_code",
+		"payload": {
+			"to": email,
+			"variables": {"code": long_code}
+		}
+	}
+	
+	msg = MockMessage(event_data)
+	await _process_message(msg)
+	
+	# Проверяем SMTP
+	assert mock_smtp.called
+	args, _ = mock_smtp.call_args
+	assert long_code in args[0].get_content()
+	
+	# Проверяем MongoDB
+	db = get_mongo()
+	doc = await db["email_log"].find_one({"to": email})
+	assert doc["variables"]["code"] == long_code
