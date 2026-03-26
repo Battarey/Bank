@@ -10,6 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared.database_core.db import get_session
 from . import service
 
+from shared.models import BankAccount
+from sqlalchemy import select
+from fastapi import HTTPException, status
+
 router = APIRouter(tags=["security"])
 
 
@@ -57,6 +61,15 @@ async def check(
 
 	Возвращает `allowed: false` и список нарушений, если хотя бы одно правило сработало.
 	"""
+
+	# Проверка существования счета
+	stmt = select(BankAccount).where(BankAccount.id == payload.account_id)
+	result = await session.execute(stmt)
+	if result.scalar_one_or_none() is None:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail=f"Счет {payload.account_id} не найден."
+		)
 
 	violations = await service.check_transaction(
 		session,

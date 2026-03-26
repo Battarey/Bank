@@ -107,8 +107,10 @@ async def test_check_daily_amount_limit(client: AsyncClient, db_session: AsyncSe
 		account_id=account_id,
 		type="transfer",
 		amount=previous_amount,
-		currency="RUB",
+		direction="out",
 		status="completed",
+		balance_before=Decimal("100000.00"),
+		balance_after=Decimal("100000.00") - previous_amount,
 		created_at=datetime.now(UTC)
 	)
 	db_session.add(tx)
@@ -130,3 +132,138 @@ async def test_check_daily_amount_limit(client: AsyncClient, db_session: AsyncSe
 	
 	violation = next((v for v in data["violations"] if v["rule"] == "daily_amount_limit"), None)
 	assert violation is not None
+
+
+@pytest.mark.asyncio
+async def test_check_daily_count_limit(client: AsyncClient, db_session: AsyncSession, setup_account):
+	"""Проверка срабатывания правила daily_count_limit."""
+	account_id = setup_account
+	from security_service.rules import DAILY_TX_COUNT
+	
+	# Добавляем 20 транзакций (лимит)
+	for i in range(DAILY_TX_COUNT):
+		tx = Transaction(
+			id=uuid.uuid4(), account_id=account_id, type="transfer",
+			amount=Decimal("100"), direction="out", status="completed",
+			balance_before=Decimal("1000"), balance_after=Decimal("900"),
+			created_at=datetime.now(UTC)
+		)
+		db_session.add(tx)
+	await db_session.commit()
+	
+	# 21-я транзакция должна нарушить лимит
+	payload = {"account_id": str(account_id), "tx_type": "transfer", "amount": "100.00", "currency": "RUB"}
+	response = await client.post("/check", json=payload)
+	data = response.json()
+	assert data["allowed"] is False
+	assert any(v["rule"] == "daily_count_limit" for v in data["violations"])
+
+
+@pytest.mark.asyncio
+async def test_check_rapid_fire(client: AsyncClient, db_session: AsyncSession, setup_account):
+	"""Проверка срабатывания правила rapid_fire."""
+	account_id = setup_account
+	from security_service.rules import RAPID_FIRE_COUNT
+	
+	# Создаем серию быстрых транзакций
+	for _ in range(RAPID_FIRE_COUNT):
+		tx = Transaction(
+			id=uuid.uuid4(), account_id=account_id, type="transfer",
+			amount=Decimal("10"), direction="out", status="completed",
+			balance_before=Decimal("1000"), balance_after=Decimal("990"),
+			created_at=datetime.now(UTC)
+		)
+		db_session.add(tx)
+	await db_session.commit()
+	
+	payload = {"account_id": str(account_id), "tx_type": "transfer", "amount": "10.00", "currency": "RUB"}
+	response = await client.post("/check", json=payload)
+	data = response.json()
+	assert data["allowed"] is False
+	assert any(v["rule"] == "rapid_fire" for v in data["violations"])
+
+
+@pytest.mark.asyncio
+async def test_check_structuring(client: AsyncClient, db_session: AsyncSession, setup_account):
+	"""Проверка срабатывания правила structuring (дробление)."""
+	account_id = setup_account
+	from security_service.rules import LARGE_TX_THRESHOLD, STRUCTURING_RATIO, STRUCTURING_MIN_HITS
+	
+	# Сумма чуть ниже порога
+	struct_amount = LARGE_TX_THRESHOLD * STRUCTURING_RATIO + Decimal("1000")
+	
+	# Добавляем несколько таких транзакций
+	for _ in range(STRUCTURING_MIN_HITS - 1):
+		tx = Transaction(
+			id=uuid.uuid4(), account_id=account_id, type="transfer",
+			amount=struct_amount, direction="out", status="completed",
+			balance_before=Decimal("1000000"), balance_after=Decimal("1000000") - struct_amount,
+			created_at=datetime.now(UTC)
+		)
+		db_session.add(tx)
+	await db_session.commit()
+	
+	payload = {"account_id": str(account_id), "tx_type": "transfer", "amount": str(struct_amount), "currency": "RUB"}
+	response = await client.post("/check", json=payload)
+	data = response.json()
+	assert data["allowed"] is False
+	assert any(v["rule"] == "structuring" for v in data["violations"])
+
+
+@pytest.mark.asyncio
+async def test_check_round_amount_pattern(client: AsyncClient, db_session: AsyncSession, setup_account):
+	"""Проверка срабатывания правила round_amount_pattern."""
+	account_id = setup_account
+	from security_service.rules import ROUND_AMOUNT_FLOOR, ROUND_AMOUNT_MIN_HITS
+	
+	round_amount = ROUND_AMOUNT_FLOOR + Decimal("10000")
+	
+	for _ in range(ROUND_AMOUNT_MIN_HITS - 1):
+		tx = Transaction(
+			id=uuid.uuid4(), account_id=account_id, type="transfer",
+			amount=round_amount, direction="out", status="completed",
+			balance_before=Decimal("1000000"), balance_after=Decimal("1000000") - round_amount,
+			created_at=datetime.now(UTC)
+		)
+		db_session.add(tx)
+	await db_session.commit()
+	
+	payload = {"account_id": str(account_id), "tx_type": "transfer", "amount": str(round_amount), "currency": "RUB"}
+	response = await client.post("/check", json=payload)
+	data = response.json()
+	assert data["allowed"] is False
+	assert any(v["rule"] == "round_amount_pattern" for v in data["violations"])
+
+
+@pytest.mark.asyncio
+async def test_check_multiple_violations(client: AsyncClient, db_session: AsyncSession, setup_account):
+	"""Проверка множественных нарушений одной транзакцией."""
+	account_id = setup_account
+	from security_service.rules import LARGE_TX_THRESHOLD, DAILY_AMOUNT_LIMIT
+	
+	# Транзакция, нарушающая и large_single_tx, и daily_amount_limit
+	huge_amount = max(LARGE_TX_THRESHOLD, DAILY_AMOUNT_LIMIT) + Decimal("1000")
+	
+	payload = {"account_id": str(account_id), "tx_type": "transfer", "amount": str(huge_amount), "currency": "RUB"}
+	response = await client.post("/check", json=payload)
+	data = response.json()
+	
+	assert data["allowed"] is False
+	rules = [v["rule"] for v in data["violations"]]
+	assert "large_single_tx" in rules
+	assert "daily_amount_limit" in rules
+
+
+@pytest.mark.asyncio
+async def test_check_api_negative_scenarios(client: AsyncClient):
+	"""Негативные сценарии API."""
+	
+	# 1. Несуществующий счет
+	payload = {"account_id": str(uuid.uuid4()), "tx_type": "transfer", "amount": "100.00", "currency": "RUB"}
+	response = await client.post("/check", json=payload)
+	assert response.status_code == 404
+
+	# 2. Невалидный формат суммы
+	payload = {"account_id": str(uuid.uuid4()), "tx_type": "transfer", "amount": "invalid", "currency": "RUB"}
+	response = await client.post("/check", json=payload)
+	assert response.status_code == 422
