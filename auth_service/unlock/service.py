@@ -13,6 +13,7 @@ from shared.rabbitmq.client import publish
 from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_AUTH_KEY
 from shared.redis_sessions import rate_limit
 from shared.redis_sessions import unlock_codes
+from shared.utils.security import get_blind_index
 
 
 # ── Исключения ─────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ async def _find_user_by_email(
 	stmt = (
 		select(models.User, models.Contact)
 		.join(models.Contact, models.User.id == models.Contact.client_id)
-		.where(models.Contact.email == email)
+		.where(models.Contact.email_hash == get_blind_index(email))
 	)
 	result = await session.execute(stmt)
 	row = result.first()
