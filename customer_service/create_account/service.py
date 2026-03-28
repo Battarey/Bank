@@ -16,6 +16,9 @@ from shared.redis_onboarding.email_codes import clear_email_verification, is_ema
 from shared.utils.normalize import normalize_name, normalize_email, normalize_phone, digits_only
 from shared.utils.security import get_blind_index
 
+import logging
+logger = logging.getLogger("customer_service")
+
 
 class AccountDataError(Exception):
 	"""Общее исключение при работе с данными онбординга."""
@@ -388,7 +391,9 @@ async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
 		)
 
 	# Проверяем, что email подтверждён
-	if not await is_email_verified(user_id):
+	verified = await is_email_verified(user_id)
+	logger.info("Finalizing onboarding for user %s. Email verified: %s", user_id, verified)
+	if not verified:
 		raise AccountDataError(
 			"Email не подтверждён. Пройдите верификацию перед финализацией."
 		)

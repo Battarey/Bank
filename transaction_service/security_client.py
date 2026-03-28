@@ -65,7 +65,7 @@ async def check_transaction(
 			logger.error("Security Service вернул %s: %s", response.status_code, response.text)
 			# При ошибке security — пропускаем (fail-open)
 			return True, []
-	except Exception:
-		logger.exception("Не удалось вызвать Security Service")
+	except Exception as exc:
+		logger.exception("Ошибка вызова Security Service при проверке транзакции: %s", exc)
 		# fail-open: не блокируем операцию при недоступности
 		return True, []

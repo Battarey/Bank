@@ -12,8 +12,6 @@ __pycache__/
 
 *.md
 
-tests/
-
 .dockerignore
 Dockerfile
 docker-compose.yaml

@@ -42,10 +42,14 @@ async def get_rate(base: str, target: str) -> Decimal:
 	if _client is None:
 		raise RuntimeError("Currency client не инициализирован. Вызовите connect().")
 
-	response = await _client.get(
-		f"/rates/{base.upper()}/{target.upper()}",
-		headers={"X-Internal-Key": INTERNAL_API_KEY},
-	)
-	response.raise_for_status()
+	try:
+		response = await _client.get(
+			f"/rates/{base.upper()}/{target.upper()}",
+			headers={"X-Internal-Key": INTERNAL_API_KEY},
+		)
+		response.raise_for_status()
+	except Exception as exc:
+		logger.error("ConnectError to Currency Service at %s: %s", CURRENCY_SERVICE_URL, exc)
+		raise
 	data = response.json()
 	return Decimal(str(data["rate"]))

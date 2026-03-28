@@ -427,7 +427,3 @@ services:
       - test_network
     depends_on:
       - mongodb_test
-
-networks:
-  test_network:
-    driver: bridge

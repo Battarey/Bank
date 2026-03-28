@@ -8,7 +8,7 @@
 - **Валидация:** Pydantic v2 (Python), go-swagger (Go)
 - **БД:** PostgreSQL 17 (основная + история), Redis 7, Redis Stack, MongoDB 7, ClickHouse 24
 - **Брокер:** RabbitMQ 3.13
-- **Хеширование:** bcrypt (PIN-коды)
+- **Хеширование:** bcrypt (PIN-коды)у
 - **Контейнеризация:** Docker, Docker Compose
 - **Тесты:** Pytest (в процессе)
 
@@ -250,8 +250,6 @@ Mongo Express: `http://localhost:8081`.
 ## TODO
 
 ### Test
-- Создать тестовые env
-- e2e тесты
 - Нагрузочные тесты
 - Тесты на безопасность: SAST, DAST, Dependency Scanning
 - Контрактное тестирование
