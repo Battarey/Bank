@@ -25,10 +25,10 @@ metal_service/
 - Запрос с параметром `unit=g` — API сразу возвращает цену за 1 грамм
 - Поддерживаемые металлы: gold → XAU, silver → XAG, platinum → XPT, palladium → XPD
 
-## Переменные окружения
+## Конфигурация
 
-| Переменная            | Описание                                      |
-|-----------------------|-----------------------------------------------|
-| `INTERNAL_API_KEY`    | Ключ внутренней авторизации                   |
-| `METALS_DEV_API_KEY`  | API-ключ Metals.Dev                           |
-| `METALS_DEV_BASE_URL` | Базовый URL API (`https://api.metals.dev/v1`) |
+Сервис использует внешние API для получения цен на металлы.
+
+Подробное описание:
+- **[Интеграция с Metals.Dev API](../../infra/docs/external_integrations.md#1-metalsdev-api-metal-service)**
+- **[Справочник переменных окружения](../../infra/env/README.md)**

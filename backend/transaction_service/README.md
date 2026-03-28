@@ -53,9 +53,7 @@ transaction_service/
 - AML-проверка через Security Service перед выполнением перевода (fail-open)
 - Нельзя переводить самому себе (same account)
 - Проверка достаточности средств
-- **Deadlock prevention:** блокировка двух счетов в порядке `sorted([from_id, to_id])`
-- Создаются **2 записи**: outgoing (у отправителя, `amount` в валюте отправителя) + incoming (у получателя, `amount` в валюте получателя)
-- Уведомления: отправителю (`transaction_transfer`), получателю (`transaction_incoming`, если другой клиент) — при конвертации содержат информацию о курсе
+- **Deadlock prevention:** Используется упорядоченная блокировка UUID (подробнее в **[Архитектурных стандартах](../../infra/docs/api_standards.md#предотвращение-deadlock-ов)**).
 
 ### История (transactions)
 - Пагинация: `limit` (1–100, по умолчанию 20), `offset` (≥ 0)

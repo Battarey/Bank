@@ -85,21 +85,13 @@ gateway_service/
 | PATCH | `/users/me/contacts` | Обновить контакты |
 | DELETE | `/users/me` | Удалить аккаунт |
 
-## Переменные окружения
+## Конфигурация и Маршрутизация
 
-| Переменная | Описание |
-|------------|----------|
-| `CUSTOMER_SERVICE_URL` | URL customer_service |
-| `AUTH_SERVICE_URL` | URL auth_service |
-| `ACCOUNT_SERVICE_URL` | URL account_service |
-| `TRANSACTION_SERVICE_URL` | URL transaction_service |
-| `CURRENCY_SERVICE_URL` | URL currency_service |
-| `METAL_SERVICE_URL` | URL metal_service |
-| `REDIS_SESSIONS_URL` | URL Redis для сессий |
-| `REDIS_ONBOARDING_URL` | URL Redis для онбординга |
-| `INTERNAL_API_KEY` | Ключ для межсервисной авторизации |
-| `CORS_ALLOWED_ORIGINS` | Разрешённые origins через запятую |
-| `GATEWAY_PORT` | Порт сервера (по умолчанию 8000) |
+Gateway управляет всеми внешними запросами и пробрасывает их во внутренние сервисы.
+
+Подробное описание:
+- **[Карта эндпоинтов и маршрутизации (Gateway)](../../infra/README.md#доступные-интерфейсы)**
+- **[Справочник переменных окружения](../../infra/env/README.md)**
 
 ## Docker
 

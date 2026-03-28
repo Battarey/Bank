@@ -1,17 +1,36 @@
-Concept.md
-Patterns.md
-Draft.md
+# Git
+.git
+.gitignore
 
-.env
-*.env
-
-.venv/
-
+# Python
 __pycache__/
-.pytest_cache
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
 
+# Node.js (Frontend future)
+node_modules/
+npm-debug.log
+
+# Environment & Secrets (NEVER SEND TO DOCKER)
+.env
+.env.*
+!.env.example
+
+# Documentation & Research (Not needed in images)
+infra/docs/
+research/
 *.md
+LICENSE
+README.md
 
-.dockerignore
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Docker related (already in use)
 Dockerfile
-docker-compose.yaml
+docker-compose*.yaml
+.dockerignore

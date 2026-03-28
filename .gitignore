@@ -1,11 +1,28 @@
-Concept.md
-Patterns.md
-Draft.md
-
-.env
-*.env
-
-.venv/
-
+# Python
 __pycache__/
-.pytest_cache
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+
+# Logs & DBs
+*.log
+data/
+mongodb_data/
+postgres_data/
+clickhouse_data/
+redis_data/

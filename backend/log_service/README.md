@@ -8,23 +8,12 @@ RabbitMQ consumer (не HTTP-сервис), аналогично `notification_s
 1. **PostgreSQL (postgres_history)** — таблица `user_actions`, полный аудит действий пользователей.
 2. **ClickHouse** — таблица `business_events`, аналитика бизнес-событий (MergeTree, TTL 2 года, партиционирование по месяцам).
 
-## Поток данных
+## Типы событий (Event Map)
 
-```
-auth_service ──┐
-account_service─┤──► RabbitMQ (exchange: logs) ──► log_service ──┬──► PostgreSQL (history)
-transaction_service                                              └──► ClickHouse (analytics)
-customer_service─┘
-```
+Сервис обрабатывает события от всех бизнес-сервисов (auth, account, transaction, customer).
 
-## Типы событий
-
-| Routing Key        | Источник              | Примеры действий                                   |
-|--------------------|-----------------------|----------------------------------------------------|
-| `log.auth`         | auth_service          | login, set_pin, self_block, account_locked, unlock |
-| `log.auth`         | customer_service      | registration (финализация онбординга)              |
-| `log.account`      | account_service       | open_account, close_account, freeze, unfreeze      |
-| `log.transaction`  | transaction_service   | deposit, withdrawal, transfer                      |
+Подробная карта маршрутизации:
+- **[Карта событий RabbitMQ](../../infra/docs/events.md)**
 
 ## Формат сообщения
 

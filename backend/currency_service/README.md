@@ -31,12 +31,10 @@ currency_service/
 - При обмене — принудительное обновление если данные старше 60 сек
 - Ответ включает `last_updated` для прозрачности
 
-## Переменные окружения
+## Конфигурация
 
-| Переменная               | Описание                    |
-|--------------------------|-----------------------------|
-| `DATABASE_URL`           | PostgreSQL                  |
-| `INTERNAL_API_KEY`       | Ключ внутренней авторизации |
-| `RABBITMQ_URL`           | RabbitMQ                    |
-| `EXCHANGE_RATE_API_KEY`  | API-ключ ExchangeRate       |
-| `EXCHANGE_RATE_BASE_URL` | Базовый URL API             | 
+Сервис использует внешние API для получения курсов.
+
+Подробное описание:
+- **[Интеграция с ExchangeRate API](../../infra/docs/external_integrations.md#2-exchangerate-api-currency-service)**
+- **[Справочник переменных окружения](../../infra/env/README.md)**

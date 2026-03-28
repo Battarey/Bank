@@ -97,18 +97,13 @@ customer_service ──(publish)──► RabbitMQ ──(consume)──► noti
 
 > Если `type` не найден в реестре шаблонов — сообщение логируется как предупреждение и игнорируется.
 
-## Переменные окружения
+## Переменные окружения и Конфигурация
 
-| Переменная      | Описание                                  | Пример                                                  |
-|-----------------|-------------------------------------------|---------------------------------------------------------|
-| `RABBITMQ_URL`  | URL подключения к RabbitMQ                | `amqp://guest:guest@rabbitmq:5672/`                     |
-| `MONGO_URL`     | URL подключения к MongoDB                 | `mongodb://user:pass@mongodb:27017/db?authSource=admin` |
-| `SMTP_HOST`     | SMTP сервер                               | `smtp.gmail.com`                                        |
-| `SMTP_PORT`     | Порт SMTP                                 | `465`                                                   |
-| `SMTP_USER`     | Логин SMTP                                | `user@gmail.com`                                        |
-| `SMTP_PASSWORD` | Пароль / App Password                     | `xxxx xxxx xxxx xxxx`                                   |
-| `SMTP_FROM`     | Адрес отправителя (по умолч. = SMTP_USER) | `user@gmail.com`                                        |
-| `SMTP_USE_TLS`  | Использовать TLS (`true`/`false`)         | `true`                                                  |
+Настройка SMTP-сервера (Gmail), очередей RabbitMQ и журнала MongoDB.
+
+Подробное описание:
+- **[Внешние интеграции (SMTP)](../../infra/docs/external_integrations.md#3-gmail-smtp-notification-service)**
+- **[Справочник переменных окружения (.env)](../../infra/env/README.md)**
 
 ## Docker
 
