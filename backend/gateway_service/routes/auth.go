@@ -10,96 +10,94 @@ import (
 	redisClient "gateway_service/redis"
 )
 
-// AuthHandler обрабатывает маршруты auth_service.
+// AuthHandler обрабатывает маршруты аутентификации и управления доступом.
 type AuthHandler struct {
 	Proxy    *proxy.ServiceClients
 	Sessions *redisClient.SessionsClient
 	APIKey   string
 }
 
-// RegisterAuthRoutes регистрирует маршруты аутентификации.
+// RegisterAuthRoutes регистрирует маршруты аутентификации в API Gateway.
 func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
-	// Публичные
-	e.POST("/auth/login-pin", h.LoginPin)
-	e.POST("/auth/request-unlock", h.RequestUnlock)
-	e.POST("/auth/unlock", h.Unlock)
+	// Группа API v1
+	v1 := e.Group("/api/v1")
 
-	// Защищённые (middleware уже проверяет сессию)
-	e.POST("/auth/set-pin", h.SetPin)
-	e.POST("/auth/logout", h.Logout)
-	e.POST("/auth/logout-all", h.LogoutAll)
-	e.POST("/auth/self-block", h.SelfBlock)
+	// Публичные (вход и разблокировка)
+	v1.POST("/sessions", h.Login)             // Создать сессию (Вход)
+	v1.POST("/auth/unlock-codes", h.RequestUnlock)         // Запросить код
+	v1.POST("/auth/unlock-codes/confirm", h.ConfirmUnlock) // Подтвердить разблокировку
+
+	// Защищённые (управление сессиями и PIN)
+	v1.PUT("/auth/pin", h.SetPin)                         // Обновить PIN
+	v1.DELETE("/sessions/current", h.Logout)             // Выход (текущая)
+	v1.DELETE("/sessions", h.LogoutAll)                  // Выход (все устройства)
+	v1.POST("/auth/self-block", h.SelfBlock)             // Самоблокировка
 }
 
 // ── Публичные ──────────────────────────────────────────────────────────
 
-// loginPin godoc
-// @Summary     Вход по PIN-коду
+// login godoc
+// @Summary     Вход в приложение
 // @Description Аутентификация по номеру телефона и PIN-коду. Возвращает сессионный токен.
-// @Tags        auth
+// @Tags        sessions
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.LoginPinRequest true "Телефон и PIN"
-// @Success     200 {object} map[string]interface{}
+// @Param       payload body schemas.LoginPinRequest true "Данные для входа"
+// @Success     201 {object} map[string]interface{}
 // @Failure     401 {object} map[string]string
-// @Router      /auth/login-pin [post]
-// LoginPin godoc
-func (h *AuthHandler) LoginPin(c echo.Context) error {
+// @Router      /api/v1/sessions [post]
+func (h *AuthHandler) Login(c echo.Context) error {
 	body, _ := ReadBody(c)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/login-pin", body, "auth", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/sessions", body, "auth", h.APIKey)
 }
 
 // requestUnlock godoc
 // @Summary     Запросить код разблокировки
-// @Description Отправляет код разблокировки на email, привязанный к аккаунту.
-// @Tags        auth
+// @Description Отправляет временный код на email пользователя для восстановления доступа.
+// @Tags        auth-unlock
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.RequestUnlockRequest true "Данные для запроса"
-// @Success     200 {object} map[string]interface{}
-// @Router      /auth/request-unlock [post]
-// RequestUnlock godoc
+// @Param       payload body schemas.RequestUnlockRequest true "Email пользователя"
+// @Success     201 {object} map[string]interface{}
+// @Router      /api/v1/auth/unlock-codes [post]
 func (h *AuthHandler) RequestUnlock(c echo.Context) error {
 	body, _ := ReadBody(c)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/request-unlock", body, "auth", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock-codes", body, "auth", h.APIKey)
 }
 
-// unlock godoc
-// @Summary     Разблокировать аккаунт
-// @Description Проверяет код и разблокирует аккаунт.
-// @Tags        auth
+// confirmUnlock godoc
+// @Summary     Подтвердить разблокировку
+// @Description Проверяет код и разблокирует учетную запись пользователя.
+// @Tags        auth-unlock
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.UnlockRequest true "Код разблокировки"
+// @Param       payload body schemas.UnlockRequest true "Данные для разблокировки"
 // @Success     200 {object} map[string]interface{}
-// @Router      /auth/unlock [post]
-// Unlock godoc
-func (h *AuthHandler) Unlock(c echo.Context) error {
+// @Router      /api/v1/auth/unlock-codes/confirm [post]
+func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {
 	body, _ := ReadBody(c)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock", body, "auth", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock-codes/confirm", body, "auth", h.APIKey)
 }
 
 // ── Защищённые ─────────────────────────────────────────────────────────
 
 // setPin godoc
-// @Summary     Установить / сменить PIN
-// @Description Устанавливает или обновляет PIN-код текущего пользователя.
+// @Summary     Обновить PIN-код
+// @Description Устанавливает или изменяет секретный PIN для входа в приложение.
 // @Tags        auth
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.SetPinRequest true "PIN-код"
+// @Param       payload body schemas.SetPinRequest true "Новый PIN"
 // @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /auth/set-pin [post]
-// SetPin godoc
+// @Router      /api/v1/auth/pin [put]
 func (h *AuthHandler) SetPin(c echo.Context) error {
 	body, _ := ReadBody(c)
 
-	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPost, "/set-pin", body, "auth", h.APIKey)
+	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPut, "/pin", body, "auth", h.APIKey)
 	if err != nil {
 		return c.JSON(http.StatusBadGateway, map[string]string{
-			"detail": fmt.Sprintf("Ошибка пересылки: %v", err),
+			"detail": fmt.Sprintf("Ошибка проксирования: %v", err),
 		})
 	}
 
@@ -107,7 +105,7 @@ func (h *AuthHandler) SetPin(c echo.Context) error {
 		return c.JSON(statusCode, respData)
 	}
 
-	// Обновляем сессию: PIN теперь установлен
+	// Обновляем состояние сессии в Redis: PIN установлен
 	token := c.Request().Header.Get("X-Session-Token")
 	if token != "" {
 		_ = h.Sessions.UpdateTokenData(c.Request().Context(), token, map[string]string{
@@ -119,43 +117,37 @@ func (h *AuthHandler) SetPin(c echo.Context) error {
 }
 
 // logout godoc
-// @Summary     Выход
-// @Description Завершает текущий сеанс (удаляет сессионный токен).
-// @Tags        auth
+// @Summary     Выход (текущая сессия)
+// @Description Удаляет текущий сессионный токен.
+// @Tags        sessions
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /auth/logout [post]
-// Logout godoc
+// @Router      /api/v1/sessions/current [delete]
 func (h *AuthHandler) Logout(c echo.Context) error {
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/logout", nil, "auth", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodDelete, "/sessions/current", nil, "auth", h.APIKey)
 }
 
 // logoutAll godoc
 // @Summary     Выход со всех устройств
-// @Description Завершает все активные сеансы пользователя.
-// @Tags        auth
+// @Description Аннулирует все активные сессии текущего пользователя.
+// @Tags        sessions
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /auth/logout-all [post]
-// LogoutAll godoc
+// @Router      /api/v1/sessions [delete]
 func (h *AuthHandler) LogoutAll(c echo.Context) error {
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/logout-all", nil, "auth", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodDelete, "/sessions", nil, "auth", h.APIKey)
 }
 
 // selfBlock godoc
-// @Summary     Самоблокировка аккаунта
-// @Description Блокирует аккаунт по запросу владельца. Замораживает все счета и завершает все сеансы.
+// @Summary     Самоблокировка клиента
+// @Description Блокирует доступ к аккаунту и замораживает все счета по инициативе пользователя.
 // @Tags        auth
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /auth/self-block [post]
-// SelfBlock godoc
+// @Router      /api/v1/auth/self-block [post]
 func (h *AuthHandler) SelfBlock(c echo.Context) error {
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/self-block", nil, "auth", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/sessions/me/block", nil, "auth", h.APIKey)
 }
