@@ -1,111 +1,85 @@
 # Gateway Service (Go)
 
-API Gateway банковского приложения — единая точка входа для клиентских запросов.
+API Gateway банковского приложения — единая точка входа для всех внешних клиентских запросов. Обеспечивает маршрутизацию, аутентификацию и приведение к единому стандарту безопасности.
 
 ## Стек
 - **Язык:** Go 1.23
 - **Фреймворк:** Echo v4
 - **Redis-клиент:** go-redis v9
 - **HTTP-клиент:** net/http (stdlib)
+- **Документация:** Swagger (swaggo)
 
-## Что делает
+## Архитектура и Безопасность
 
-1. Принимает HTTP-запрос от клиента
-2. **Middleware** проверяет `X-Session-Token` → Redis lookup → скользящая экспирация (TTL 30 мин)
-3. **PIN-gate**: без установленного PIN доступны только `set-pin`, `logout`, `logout-all`
-4. **Reverse proxy** пересылает запрос во внутренний сервис с инъекцией заголовков:
-   - `X-Internal-Key` — защита от прямого доступа
-   - `X-User-ID` — идентификатор пользователя из сессии
-   - `X-Session-Token` — пробрасывается для auth_service
+1.  **Единый префикс:** Все эндпоинты версии 1 доступны по пути `/api/v1/...`.
+2.  **Аутентификация:** Middleware проверяет `X-Session-Token` в Redis. Поддерживается скользящая экспирация (TTL 30 мин).
+3.  **PIN-gate:** Если у пользователя не установлен PIN, доступны только методы `/api/v1/auth/pin` и завершение сессий.
+4.  **Reverse Proxy:** Проброс запросов во внутренние Python-сервисы с инъекцией:
+    - `X-Internal-Key` — секретный ключ для межсервисного взаимодействия.
+    - `X-User-ID` — UUID пользователя, извлеченный из сессии.
 
-## Файловая структура
+## Структура проекта
 
 ```
 gateway_service/
-├── main.go                 # Точка входа: конфиг, Echo, middleware, маршруты, graceful shutdown
-├── config/                 # Загрузка переменных окружения
-├── middleware/             # Auth middleware + PIN-gate
-├── proxy/                  # Reverse-proxy (ForwardRequest / ForwardRaw)
-├── redis/                  # Работа с Redis-клиентами сессий и онбординга
-├── routes/                 # Утилита forwardAndParse, где хранятся пути к роутам
-├── Dockerfile              # Multi-stage build (golang:1.23-alpine → alpine:3.19)
-├── .env                    # Переменные окружения
-├── go.mod                  # Go-модуль
-└── go.sum                  # Хеши зависимостей
+├── main.go                 # Точка входа и запуск сервера
+├── config/                 # Загрузка .env и конфигурация
+├── middleware/             # Проверка сессий и прав доступа
+├── proxy/                  # Логика проксирования (ForwardRaw / ForwardAndParse)
+├── redis/                  # Клиенты для работы с сессиями и онбордингом
+├── routes/                 # Обработчики маршрутов (Handlers)
+├── docs/                   # Сгенерированная Swagger-документация
+├── Dockerfile              # Оптимизированный multi-stage образ
+└── go.mod                  # Зависимости Go
 ```
 
-## Эндпоинты
+## Актуальный REST API (v1)
 
-### Публичные (без авторизации)
+### Сессии и Доступ
+| Метод  | Путь                         | Описание                   |
+|--------|------------------------------|----------------------------|
+| `POST` | `/api/v1/sessions`           | Вход в систему (создание сессии) |
+| `DELETE`| `/api/v1/sessions/current`   | Выход (текущее устройство) |
+| `DELETE`| `/api/v1/sessions`           | Выход со всех устройств    |
+| `PUT` | `/api/v1/auth/pin`           | Установить/сменить PIN      |
+| `POST` | `/api/v1/auth/self-block`    | Самоблокировка клиента      |
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/health` | Healthcheck |
-| POST | `/users/start` | Начать регистрацию |
-| POST | `/auth/login-pin` | Вход по PIN |
-| POST | `/auth/request-unlock` | Запрос кода разблокировки |
-| POST | `/auth/unlock` | Разблокировка аккаунта |
-| GET | `/currency/rates` | Курсы валют |
-| GET | `/currency/rates/:base/:target` | Курс пары |
-| GET | `/metals/rates` | Цены на металлы |
+### Банковские счета (`/api/v1/accounts`)
+| Метод  | Путь                         | Описание                   |
+|--------|------------------------------|----------------------------|
+| `POST` | `/api/v1/accounts`           | Открыть новый счёт         |
+| `GET`  | `/api/v1/accounts`           | Список всех счетов         |
+| `GET`  | `/api/v1/accounts/{id}`      | Детальная информация       |
+| `DELETE`| `/api/v1/accounts/{id}`      | Закрыть счёт (архив)      |
+| `POST` | `/api/v1/accounts/{id}/freeze`| Заморозить операции        |
+| `DELETE`| `/api/v1/accounts/{id}/freeze`| Разморозить операции       |
 
-### Онбординг (X-Onboarding-Token)
+### Финансовые операции
+| Метод  | Путь                               | Описание                   |
+|--------|------------------------------------|----------------------------|
+| `POST` | `/api/v1/accounts/{id}/deposit`    | Пополнение счёта           |
+| `POST` | `/api/v1/accounts/{id}/withdrawal` | Снятие наличных            |
+| `POST` | `/api/v1/accounts/{id}/transfer`   | Перевод другому клиенту    |
+| `GET`  | `/api/v1/accounts/{id}/transactions`| История транзакций        |
+| `POST` | `/api/v1/currencies/exchange`      | Обмен валюты (между счетами)|
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| POST | `/users/me/account/personal-data` | Шаг 1: ФИО |
-| POST | `/users/me/account/passport` | Шаг 2: Паспорт |
-| POST | `/users/me/account/identifiers` | Шаг 3: ИНН/СНИЛС |
-| POST | `/users/me/account/contacts` | Шаг 4: Контакты |
-| POST | `/users/me/account/send-email-code` | Код на email |
-| POST | `/users/me/account/verify-email` | Подтверждение email |
-| POST | `/users/me/account/finalize` | Завершение регистрации |
+### Регистрация (Онбординг)
+Все шаги требуют `X-Onboarding-Token`.
+| Метод  | Путь                               | Шаг                        |
+|--------|------------------------------------|----------------------------|
+| `POST` | `/api/v1/onboarding`               | Старт (получение токена)    |
+| `POST` | `/api/v1/onboarding/personal-data` | 1. Анкета (ФИО)            |
+| `POST` | `/api/v1/onboarding/passport`      | 2. Паспортные данные       |
+| `POST` | `/api/v1/onboarding/identifiers`   | 3. ИНН / СНИЛС             |
+| `POST` | `/api/v1/onboarding/contacts`      | 4. Email / Телефон         |
+| `POST` | `/api/v1/onboarding/finalize`      | 5. Активация профиля       |
 
-### Защищённые (X-Session-Token)
-
-| Метод | Путь | Описание |
-|-------|------|----------|
-| POST | `/auth/set-pin` | Установить PIN |
-| POST | `/auth/logout` | Выход |
-| POST | `/auth/logout-all` | Выход со всех устройств |
-| POST | `/auth/self-block` | Самоблокировка |
-| POST | `/accounts` | Открыть счёт |
-| GET | `/accounts` | Список счетов |
-| GET | `/accounts/:id` | Детали счёта |
-| POST | `/accounts/:id/close` | Закрыть счёт |
-| POST | `/accounts/:id/freeze` | Заморозить счёт |
-| POST | `/accounts/:id/unfreeze` | Разморозить счёт |
-| POST | `/accounts/:id/deposit` | Пополнить |
-| POST | `/accounts/:id/withdraw` | Снять |
-| POST | `/accounts/:id/transfer` | Перевести |
-| GET | `/accounts/:id/transactions` | История операций |
-| POST | `/currency/exchange` | Обменять валюту |
-| PATCH | `/users/me/personal-data` | Обновить ФИО |
-| PUT | `/users/me/passport` | Заменить паспорт |
-| PATCH | `/users/me/contacts` | Обновить контакты |
-| DELETE | `/users/me` | Удалить аккаунт |
-
-## Конфигурация и Маршрутизация
-
-Gateway управляет всеми внешними запросами и пробрасывает их во внутренние сервисы.
-
-Подробное описание:
-- **[Карта эндпоинтов и маршрутизации (Gateway)](../../infra/README.md#доступные-интерфейсы)**
-- **[Справочник переменных окружения](../../infra/env/README.md)**
-
-## Docker
-
-Multi-stage build: итоговый образ ~15 MB (Alpine).
+## Развертывание
 
 ```bash
-docker compose build gateway_service
-docker compose up gateway_service
+# Сборка и запуск через Docker Compose
+docker compose up -d gateway_service
+
+# Обновление документации (требуется swag)
+swag init -g main.go --parseDependency --parseInternal
 ```
-
-## Совместимость с Redis
-
-Go-версия gateway использует **идентичные Redis-ключи** с Python-сервисами:
-
-- `session:token:{token}` — Hash (`user_id`, `has_pin`)
-- `session:user:{userID}` — Set (активные токены пользователя)
-есть пути - `onboarding:token:{token}` — String (user_id, TTL 15 мин)
