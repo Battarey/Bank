@@ -1,15 +1,16 @@
-"""Единая иерархия исключений metal_service."""
+"""Исключения metal_service, интегрированные с глобальным обработчиком."""
+
+from shared.utils.exceptions import (
+	BaseBusinessError,
+	UnprocessableError,
+)
 
 
-class MetalError(Exception):
+class MetalError(BaseBusinessError):
 	"""Базовая ошибка операций с металлами."""
+	title = "Ошибка операций с драгметаллами"
 
 
-class RateUnavailable(MetalError):
+class RateUnavailable(MetalError, UnprocessableError):
 	"""Не удалось получить актуальную цену металла."""
-
-
-__all__ = [
-	"MetalError",
-	"RateUnavailable",
-]
+	title = "Цена металла недоступна"

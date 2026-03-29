@@ -1,19 +1,27 @@
-"""Получение цен на драгоценные металлы."""
+"""Бизнес-логика получения котировок драгоценных металлов."""
 
-import logging
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
-from metal_service import metal_client
-from metal_service.exceptions import RateUnavailable
-
-logger = logging.getLogger("metal_service")
+from .. import metal_client
+from ..exceptions import RateUnavailable
 
 
 async def get_all_prices(base_currency: str) -> tuple[dict[str, Decimal], datetime]:
-	"""Возвращает цены всех металлов за грамм."""
+	"""Возвращает актуальные цены всех поддерживаемых металлов за грамм.
+
+	Данные запрашиваются из внешнего API (через MetalClient) и кэшируются.
+
+	Args:
+		base_currency: Код базовой валюты (например, 'RUB').
+
+	Returns:
+		tuple[dict[str, Decimal], datetime]: Словарь цен (металл -> цена) и время обновления.
+
+	Raises:
+		RateUnavailable: Если не удалось получить данные от внешнего провайдера.
+	"""
 	try:
 		return await metal_client.get_metal_prices(base_currency)
 	except Exception as exc:
-		logger.exception("Ошибка получения цен металлов (base=%s)", base_currency)
-		raise RateUnavailable(f"Не удалось получить цены металлов: {exc}") from exc
+		raise RateUnavailable(f"Не удалось получить цены металлов для {base_currency}: {exc}") from exc

@@ -1,10 +1,8 @@
-"""Роутер для просмотра цен на драгоценные металлы."""
+"""Роутер для просмотра текущих цен на драгоценные металлы."""
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
 from shared import schemas
-from metal_service.exceptions import MetalError, RateUnavailable
-from metal_service.metal_client import METAL_NAMES
 from . import service
 
 router = APIRouter(
@@ -17,16 +15,13 @@ router = APIRouter(
 	"",
 	response_model=schemas.MetalRatesListResponse,
 	status_code=status.HTTP_200_OK,
-	summary="Цены на металлы",
+	summary="Котировки металлов",
 )
 async def get_metal_rates(
 	base: str = Query("RUB", min_length=3, max_length=3, description="Валюта цены (ISO 4217)"),
 ):
-	"""Возвращает цены на драгоценные металлы (за грамм) в указанной валюте."""
-	try:
-		prices, updated = await service.get_all_prices(base.upper())
-	except RateUnavailable as exc:
-		raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+	"""Возвращает актуальные банковские цены за грамм драгоценных металлов в указанной валюте."""
+	prices, updated = await service.get_all_prices(base.upper())
 
 	rates = [
 		schemas.MetalRateResponse(
