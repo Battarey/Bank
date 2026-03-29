@@ -1,17 +1,9 @@
 """AML-правила для обнаружения подозрительных операций.
 
-Каждое правило — async-функция, которая принимает (session, account_id, amount, currency)
-и возвращает Violation | None.
+Каждое правило — асинхронная функция, которая анализирует данные счёта и историю транзакций.
+Если правило срабатывает, оно возвращает объект Violation с подробным описанием ошибки.
 
-Пороговые значения берутся из переменных окружения с разумными дефолтами.
-
-Правила:
-1. large_single_tx        — Крупная разовая операция (≥ 600 000 ₽ по ФМ РФ)
-2. daily_amount_limit      — Суммарный объём за 24ч превышает порог
-3. daily_count_limit       — Количество операций за 24ч превышает порог
-4. rapid_fire              — Слишком много операций за короткий период
-5. structuring             — Дробление: несколько операций чуть ниже порога крупной
-6. round_amount_pattern    — Серия крупных переводов круглыми суммами
+Набор правил основан на рекомендациях ФСМ РФ и стандартах банковской безопасности.
 """
 
 from __future__ import annotations
@@ -20,6 +12,7 @@ import os
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -42,19 +35,21 @@ ROUND_AMOUNT_STEP = Decimal(os.getenv("ROUND_AMOUNT_STEP", "10000"))
 ROUND_AMOUNT_MIN_HITS = int(os.getenv("ROUND_AMOUNT_MIN_HITS", "3"))
 
 
-# ── Результат проверки ─────────────────────────────────────────────────
-
 @dataclass(frozen=True, slots=True)
 class Violation:
-	"""Зафиксированное нарушение AML-правила."""
+	"""Зафиксированное нарушение AML-правила.
 
+	Attributes:
+		rule: Идентификатор сработавшего правила.
+		threshold: Текстовое описание порога срабатывания.
+		actual: Фактическое значение, вызвавшее срабатывание.
+		details: Словарь с техническими деталями для инспектора.
+	"""
 	rule: str
 	threshold: str
 	actual: str
-	details: dict
+	details: dict[str, Any]
 
-
-# ── Правило 1: Крупная разовая операция ────────────────────────────────
 
 async def check_large_single_tx(
 	session: AsyncSession,
@@ -62,8 +57,17 @@ async def check_large_single_tx(
 	amount: Decimal,
 	currency: str,
 ) -> Violation | None:
-	"""Проверяет, не превышает ли разовая операция порог крупной сделки."""
-
+	"""Проверяет, не превышает ли разовая операция порог крупной сделки (600к+ руб).
+	
+	Args:
+		session: Сессия БД.
+		account_id: ID анализируемого счёта.
+		amount: Сумма операции.
+		currency: Валюта операции.
+		
+	Returns:
+		Violation | None: Описание нарушения или None, если всё в норме.
+	"""
 	if amount >= LARGE_TX_THRESHOLD:
 		return Violation(
 			rule="large_single_tx",
@@ -78,16 +82,23 @@ async def check_large_single_tx(
 	return None
 
 
-# ── Правило 2: Лимит суммы за сутки ───────────────────────────────────
-
 async def check_daily_amount(
 	session: AsyncSession,
 	account_id: UUID,
 	amount: Decimal,
 	currency: str,
 ) -> Violation | None:
-	"""Суммарный объём операций по счёту за 24 ч + текущая > порога."""
-
+	"""Проверяет суммарный объём операций по счёту за последние 24 часа.
+	
+	Args:
+		session: Сессия БД.
+		account_id: ID анализируемого счёта.
+		amount: Сумма новой (pending) операции.
+		currency: Валюта операции.
+		
+	Returns:
+		Violation | None: Описание нарушения или None.
+	"""
 	since = datetime.now(UTC) - timedelta(hours=24)
 	stmt = (
 		select(func.coalesce(func.sum(models.Transaction.amount), 0))
@@ -115,16 +126,23 @@ async def check_daily_amount(
 	return None
 
 
-# ── Правило 3: Лимит количества за сутки ──────────────────────────────
-
 async def check_daily_count(
 	session: AsyncSession,
 	account_id: UUID,
 	amount: Decimal,
 	currency: str,
 ) -> Violation | None:
-	"""Количество операций по счёту за 24 ч + 1 > порога."""
-
+	"""Проверяет количество операций по счёту за последние 24 часа.
+	
+	Args:
+		session: Сессия БД.
+		account_id: ID анализируемого счёта.
+		amount: Сумма операции (не влияет на проверку количества).
+		currency: Валюта операции.
+		
+	Returns:
+		Violation | None: Описание нарушения или None.
+	"""
 	since = datetime.now(UTC) - timedelta(hours=24)
 	stmt = (
 		select(func.count())
@@ -152,16 +170,23 @@ async def check_daily_count(
 	return None
 
 
-# ── Правило 4: Rapid-fire ─────────────────────────────────────────────
-
 async def check_rapid_fire(
 	session: AsyncSession,
 	account_id: UUID,
 	amount: Decimal,
 	currency: str,
 ) -> Violation | None:
-	"""Более N операций за последние M минут."""
-
+	"""Выявляет серию операций за аномально короткий период времени.
+	
+	Args:
+		session: Сессия БД.
+		account_id: ID анализируемого счёта.
+		amount: Сумма операции.
+		currency: Валюта операции.
+		
+	Returns:
+		Violation | None: Описание нарушения или None.
+	"""
 	since = datetime.now(UTC) - timedelta(minutes=RAPID_FIRE_WINDOW_MIN)
 	stmt = (
 		select(func.count())
@@ -181,7 +206,7 @@ async def check_rapid_fire(
 			threshold=f"{RAPID_FIRE_COUNT} за {RAPID_FIRE_WINDOW_MIN} мин",
 			actual=str(projected),
 			details={
-				"description": "Слишком частые операции",
+				"description": "Слишком частые операции (rapid-fire)",
 				"window_minutes": RAPID_FIRE_WINDOW_MIN,
 				"count_in_window": count_recent,
 				"projected": projected,
@@ -190,21 +215,30 @@ async def check_rapid_fire(
 	return None
 
 
-# ── Правило 5: Structuring (дробление) ────────────────────────────────
-
 async def check_structuring(
 	session: AsyncSession,
 	account_id: UUID,
 	amount: Decimal,
 	currency: str,
 ) -> Violation | None:
-	"""Несколько операций в диапазоне [порог×0.9, порог) за 24 ч — признак дробления."""
-
+	"""Выявляет признаки дробления транзакций (structuring) перед порогом мониторинга.
+	
+	Дробление — это серия переводов на суммы чуть ниже лимита обязательного контроля.
+	
+	Args:
+		session: Сессия БД.
+		account_id: ID анализируемого счёта.
+		amount: Сумма операции.
+		currency: Валюта операции.
+		
+	Returns:
+		Violation | None: Описание нарушения или None.
+	"""
 	lower_bound = LARGE_TX_THRESHOLD * STRUCTURING_RATIO
 	upper_bound = LARGE_TX_THRESHOLD
 	since = datetime.now(UTC) - timedelta(hours=24)
 
-	# Считаем текущую операцию
+	# Учитываем текущую операцию
 	current_is_suspicious = lower_bound <= amount < upper_bound
 
 	stmt = (
@@ -238,25 +272,30 @@ async def check_structuring(
 	return None
 
 
-# ── Правило 6: Round-amount pattern ───────────────────────────────────
-
 async def check_round_amount(
 	session: AsyncSession,
 	account_id: UUID,
 	amount: Decimal,
 	currency: str,
 ) -> Violation | None:
-	"""Серия крупных переводов круглыми суммами за 24 ч."""
-
+	"""Выявляет серийные крупные переводы круглыми суммами — косвенный признак обналичивания.
+	
+	Args:
+		session: Сессия БД.
+		account_id: ID анализируемого счёта.
+		amount: Сумма операции.
+		currency: Валюта операции.
+		
+	Returns:
+		Violation | None: Описание нарушения или None.
+	"""
 	since = datetime.now(UTC) - timedelta(hours=24)
 	current_is_round = (
 		amount >= ROUND_AMOUNT_FLOOR
 		and amount % ROUND_AMOUNT_STEP == 0
 	)
 
-	# Подсчёт: крупные операции с круглой суммой за последние 24 ч
-	# amount % step == 0  →  amount - floor(amount / step) * step == 0
-	# В SQL: amount::numeric % step = 0  (PostgreSQL поддерживает mod для numeric)
+	# Проверка нацелена на крупные операции с круглой суммой
 	stmt = (
 		select(func.count())
 		.select_from(models.Transaction)
@@ -290,7 +329,7 @@ async def check_round_amount(
 
 # ── Реестр правил ──────────────────────────────────────────────────────
 
-ALL_RULES = [
+ALL_RULES: list[Any] = [
 	check_large_single_tx,
 	check_daily_amount,
 	check_daily_count,

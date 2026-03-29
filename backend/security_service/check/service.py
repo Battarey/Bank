@@ -6,8 +6,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from security_service.rules import ALL_RULES, Violation
-from security_service.store import save_event
+from ..rules import ALL_RULES, Violation
+from ..store import save_event
+from ..repository import SecurityRepository
 
 logger = logging.getLogger("security_service")
 
@@ -19,20 +20,33 @@ async def check_transaction(
 	amount: Decimal,
 	currency: str,
 ) -> list[Violation]:
-	"""Проверяет pending-транзакцию по всем AML-правилам.
+	"""Проводит комплексную проверку транзакции по всем активным AML-правилам.
 
-	Возвращает список сработавших правил (пустой = всё ок).
-	Каждое срабатывание логируется в MongoDB.
+	Каждое нарушение логируется в постоянное хранилище (MongoDB) для последующего анализа.
+	В случае срабатывания хотя бы одного правила, операция считается подозрительной.
+
+	Args:
+		session: Сессия БД для доступа к истории транзакций.
+		account_id: ID проверяемого счёта.
+		tx_type: Тип операции (deposit, withdrawal, transfer).
+		amount: Сумма операции в базовой валюте счёта.
+		currency: Код валюты счёта.
+
+	Returns:
+		list[Violation]: Список зафиксированных нарушений (пустой, если проверка пройдена).
 	"""
-
 	violations: list[Violation] = []
+	repo = SecurityRepository(session)
+	
+	# Проверка существования счёта
+	await repo.get_account(account_id)
 
 	for rule_fn in ALL_RULES:
 		violation = await rule_fn(session, account_id, amount, currency)
 		if violation is not None:
 			violations.append(violation)
 
-			# Логируем в MongoDB
+			# Фиксация события безопасности в MongoDB
 			try:
 				await save_event(
 					account_id=str(account_id),
@@ -43,21 +57,21 @@ async def check_transaction(
 						"amount": str(amount),
 						"currency": currency,
 					},
-					action="freeze",
+					action="freeze", # Рекомендованное действие
 					threshold=violation.threshold,
 					actual=violation.actual,
 				)
 			except Exception:
 				logger.exception(
-					"Не удалось сохранить security event: rule=%s, account=%s",
+					"Ошибка записи security event в хранилище: rule=%s, account=%s",
 					violation.rule, account_id,
 				)
 
 	if violations:
-		rules = ", ".join(v.rule for v in violations)
+		rules_summary = ", ".join(v.rule for v in violations)
 		logger.warning(
-			"AML violations: account=%s, tx_type=%s, amount=%s %s, rules=[%s]",
-			account_id, tx_type, amount, currency, rules,
+			"AML Violation Detected: account=%s, type=%s, amount=%s %s, rules=[%s]",
+			account_id, tx_type, amount, currency, rules_summary,
 		)
 
 	return violations

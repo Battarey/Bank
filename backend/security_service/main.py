@@ -1,12 +1,12 @@
-"""Security Service — AML / антифрод-проверки операций по счетам."""
+"""Security Service — антифрод-мониторинг и AML-анализ банковских операций."""
 
 from contextlib import asynccontextmanager
-
 from fastapi import Depends, FastAPI
 
 from shared.database_core.db import engine
 from shared.internal_auth import verify_internal_key
 from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+from shared.utils.exceptions_handler import setup_exception_handlers
 
 from .check.router import router as check_router
 from .store import init_mongo, close_mongo
@@ -24,11 +24,24 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
 	title="Security Service",
-	version="0.1.0",
-	description="Внутренний сервис безопасности: AML-правила, обнаружение подозрительных операций.",
+	version="0.2.0",
+	description="Внутренний сервис мониторинга безопасности: автоматическое выявление подозрительных операций и AML-проверка.",
 	lifespan=lifespan,
 	dependencies=[Depends(verify_internal_key)],
+	openapi_tags=[
+		{
+			"name": "security",
+			"description": "Эндпоинты проверки транзакций и событий безопасности.",
+		},
+		{
+			"name": "health",
+			"description": "Проверка работоспособности сервиса.",
+		},
+	],
 )
+
+# Регистрация глобального обработчика ошибок BaseBusinessError
+setup_exception_handlers(app)
 
 
 @app.get("/health", tags=["health"])

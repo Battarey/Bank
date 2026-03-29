@@ -1,18 +1,15 @@
-"""Роутер антифрод-проверки: POST /check."""
+"""Роутер для проведения AML / антифрод-проверок транзакций."""
 
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database_core.db import get_session
 from . import service
 
-from shared.models import BankAccount
-from sqlalchemy import select
-from fastapi import HTTPException, status
 
 router = APIRouter(tags=["security"])
 
@@ -20,57 +17,49 @@ router = APIRouter(tags=["security"])
 # ── Схемы запроса/ответа ───────────────────────────────────────────────
 
 class SecurityCheckRequest(BaseModel):
-	"""Запрос на проверку pending-транзакции."""
+	"""Запрос на проверку транзакции перед её выполнением."""
 
-	account_id: UUID = Field(description="UUID счёта")
-	tx_type: str = Field(description="Тип операции: deposit | withdrawal | transfer")
-	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма")
-	currency: str = Field(description="Валюта счёта")
+	account_id: UUID = Field(description="Уникальный идентификатор счёта")
+	tx_type: str = Field(description="Тип операции (deposit, withdrawal, transfer)")
+	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма операции")
+	currency: str = Field(description="Код валюты (RUB, USD, EUR)")
 
 	model_config = ConfigDict(extra="forbid")
 
 
 class ViolationItem(BaseModel):
-	"""Одно сработавшее правило."""
+	"""Описание одного зафиксированного нарушения AML-правил."""
 
-	rule: str = Field(description="Имя правила")
-	threshold: str = Field(description="Пороговое значение")
-	actual: str = Field(description="Фактическое значение")
-	details: dict = Field(description="Подробности")
+	rule: str = Field(description="Название сработавшего правила")
+	threshold: str = Field(description="Пороговое значение правила")
+	actual: str = Field(description="Фактическое значение в транзакции")
+	details: dict = Field(description="Технические подробности для администратора")
 
 
 class SecurityCheckResponse(BaseModel):
-	"""Результат проверки."""
+	"""Результат AML-проверки транзакции."""
 
-	allowed: bool = Field(description="true — операция разрешена, false — заблокирована")
-	violations: list[ViolationItem] = Field(default_factory=list, description="Сработавшие правила")
+	allowed: bool = Field(description="Разрешить операцию (true) или заблокировать (false)")
+	violations: list[ViolationItem] = Field(default_factory=list, description="Список нарушений")
 
 
-# ── Эндпоинт ──────────────────────────────────────────────────────────
+# ── Эндпоинты ──────────────────────────────────────────────────────────
 
 @router.post(
 	"/check",
 	response_model=SecurityCheckResponse,
-	summary="Проверить транзакцию на соответствие AML-правилам",
+	status_code=status.HTTP_200_OK,
+	summary="Проверить транзакцию",
 )
-async def check(
+async def check_transaction(
 	payload: SecurityCheckRequest,
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Проверяет pending-операцию по 6 AML-правилам.
-
-	Возвращает `allowed: false` и список нарушений, если хотя бы одно правило сработало.
+	"""Проверяет входящую операцию на соответствие набору AML-правил безопасности.
+	
+	Возвращает `allowed: false` при выявлении хотя бы одного нарушения.
+	Используется Transaction Service и Account Service перед завершением финансовых проводок.
 	"""
-
-	# Проверка существования счета
-	stmt = select(BankAccount).where(BankAccount.id == payload.account_id)
-	result = await session.execute(stmt)
-	if result.scalar_one_or_none() is None:
-		raise HTTPException(
-			status_code=status.HTTP_404_NOT_FOUND,
-			detail=f"Счет {payload.account_id} не найден."
-		)
-
 	violations = await service.check_transaction(
 		session,
 		account_id=payload.account_id,
