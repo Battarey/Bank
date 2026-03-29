@@ -1,20 +1,13 @@
-"""Роутер для открытия, просмотра и получения банковских счетов."""
+"""Роутер для управления банковскими счетами: открытие, листинг и детализация."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
 from shared.database_core.db import get_session
 from shared.internal_auth import require_user_id
-from account_service.exceptions import (
-	AccountConflict,
-	AccountError,
-	AccountLimitReached,
-	AccountNotFound,
-	AccountOwnerNotFound,
-)
 from . import service
 
 router = APIRouter(
@@ -22,21 +15,6 @@ router = APIRouter(
 	tags=["accounts"],
 )
 
-
-# ── Маппинг исключений → HTTP ──────────────────────────────────────────
-
-def _raise(exc: AccountError) -> None:
-	"""Единообразное преобразование бизнес-исключений в HTTP-ошибки."""
-	if isinstance(exc, AccountNotFound):
-		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
-	if isinstance(exc, AccountOwnerNotFound):
-		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
-	if isinstance(exc, (AccountLimitReached, AccountConflict)):
-		raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
-	raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-
-# ── Эндпоинты ──────────────────────────────────────────────────────────
 
 @router.post(
 	"",
@@ -49,13 +27,9 @@ async def open_account(
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Создаёт банковский счёт указанного типа и валюты."""
-
-	try:
-		account = await service.open_account(session, user_id, payload)
-	except AccountError as exc:
-		_raise(exc)
-
+	"""Создаёт новый банковский счёт указанного типа и валюты для текущего пользователя."""
+	account = await service.open_account(session, user_id, payload)
+	
 	return schemas.AccountMessageResponse(
 		message="Счёт успешно открыт.",
 		account=schemas.AccountResponse.model_validate(account),
@@ -66,15 +40,15 @@ async def open_account(
 	"",
 	response_model=schemas.AccountListResponse,
 	status_code=status.HTTP_200_OK,
-	summary="Список счетов пользователя",
+	summary="Список моих счетов",
 )
 async def list_accounts(
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Возвращает все счета текущего пользователя."""
-
+	"""Возвращает список всех счетов (активных, закрытых, замороженных) текущего пользователя."""
 	accounts = await service.list_accounts(session, user_id)
+	
 	return schemas.AccountListResponse(
 		accounts=[schemas.AccountResponse.model_validate(a) for a in accounts],
 		total=len(accounts),
@@ -85,18 +59,12 @@ async def list_accounts(
 	"/{account_id}",
 	response_model=schemas.AccountResponse,
 	status_code=status.HTTP_200_OK,
-	summary="Детали счёта",
+	summary="Информация о счёте",
 )
 async def get_account(
 	account_id: UUID,
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Возвращает данные конкретного счёта, если он принадлежит пользователю."""
-
-	try:
-		account = await service.get_account(session, user_id, account_id)
-	except AccountError as exc:
-		_raise(exc)
-
-	return schemas.AccountResponse.model_validate(account)
+	"""Возвращает детальную информацию о конкретном счёте по его ID."""
+	return await service.get_account(session, user_id, account_id)

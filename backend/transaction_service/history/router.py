@@ -1,14 +1,13 @@
-"""Роутер для просмотра истории транзакций."""
+"""Роутер для просмотра истории транзакций по банковским счетам."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
 from shared.database_core.db import get_session
 from shared.internal_auth import require_user_id
-from transaction_service.exceptions import AccountNotFound, TransactionError
 from . import service
 
 router = APIRouter(
@@ -32,21 +31,17 @@ async def list_transactions(
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Возвращает историю операций по счёту с пагинацией и фильтрами."""
-
-	try:
-		transactions, total = await service.list_transactions(
-			session, user_id, account_id,
-			limit=limit,
-			offset=offset,
-			tx_type=type,
-			direction=direction,
-		)
-	except AccountNotFound as exc:
-		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
-	except TransactionError as exc:
-		raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
+	"""Возвращает историю операций по конкретному счёту с поддержкой пагинации и фильтров по типам/направлению."""
+	transactions, total = await service.list_transactions(
+		session, 
+		user_id, 
+		account_id,
+		limit=limit,
+		offset=offset,
+		tx_type=type,
+		direction=direction,
+	)
+	
 	return schemas.TransactionListResponse(
 		transactions=[schemas.TransactionResponse.model_validate(tx) for tx in transactions],
 		total=total,

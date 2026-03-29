@@ -1,60 +1,64 @@
-"""Единая иерархия исключений account_service."""
+"""Исключения account_service, интегрированные с глобальным обработчиком."""
+
+from shared.utils.exceptions import (
+	BaseBusinessError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UnprocessableError,
+)
 
 
-class AccountError(Exception):
+class AccountError(BaseBusinessError):
 	"""Базовая ошибка операций со счетами."""
+	title = "Ошибка банковского счёта"
 
 
-class AccountNotFound(AccountError):
+class AccountNotFound(AccountError, NotFoundError):
 	"""Счёт не найден или не принадлежит пользователю."""
+	title = "Счёт не найден"
 
 
-class AccountOwnerNotFound(AccountError):
+class AccountOwnerNotFound(AccountError, NotFoundError):
 	"""Владелец счёта не найден или не активен."""
+	title = "Владелец не найден"
 
 
-class AccountLimitReached(AccountError):
+class AccountLimitReached(AccountError, ForbiddenError):
 	"""Превышен лимит счетов данного типа/валюты."""
+	title = "Лимит счетов превышен"
 
 
-class AccountNotOpen(AccountError):
+class AccountNotOpen(AccountError, UnprocessableError):
 	"""Счёт не в статусе open — невозможно выполнить операцию."""
+	title = "Счёт недоступен"
 
 
-class AccountNonZeroBalance(AccountError):
+class AccountNonZeroBalance(AccountError, ConflictError):
 	"""На счёте есть остаток — невозможно закрыть."""
+	title = "Баланс не нулевой"
 
 
-class AccountFrozen(AccountError):
+class AccountFrozen(AccountError, ForbiddenError):
 	"""Счёт заморожен — операция невозможна."""
+	title = "Счёт заморожен"
 
 
-class AccountAlreadyFrozen(AccountError):
+class AccountAlreadyFrozen(AccountError, ConflictError):
 	"""Счёт уже заморожен."""
+	title = "Счёт уже заморожен"
 
 
-class AccountNotFrozen(AccountError):
+class AccountNotFrozen(AccountError, ConflictError):
 	"""Счёт не заморожен — разморозка невозможна."""
+	title = "Счёт не заморожен"
 
 
-class UnfreezeNotAllowed(AccountError):
+class UnfreezeNotAllowed(AccountError, ForbiddenError):
 	"""Разморозка невозможна — счёт заморожен системой."""
+	title = "Разморозка запрещена"
 
 
-class AccountConflict(AccountError):
+class AccountConflict(AccountError, ConflictError):
 	"""Конфликт данных (например, дублирование номера счёта)."""
-
-
-__all__ = [
-	"AccountAlreadyFrozen",
-	"AccountConflict",
-	"AccountError",
-	"AccountFrozen",
-	"AccountLimitReached",
-	"AccountNonZeroBalance",
-	"AccountNotFound",
-	"AccountNotFrozen",
-	"AccountNotOpen",
-	"AccountOwnerNotFound",
-	"UnfreezeNotAllowed",
-]
+	title = "Конфликт данных"

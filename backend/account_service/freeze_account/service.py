@@ -1,85 +1,27 @@
-"""Бизнес-логика заморозки и разморозки банковского счёта."""
+"""Бизнес-логика заморозки и разморозки банковских счетов."""
 
-import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_ACCOUNT_KEY
-from account_service.exceptions import (
+from shared.rabbitmq.constants import (
+	EMAIL_ROUTING_KEY,
+	LOG_ACCOUNT_KEY,
+	NOTIFICATIONS_EXCHANGE,
+)
+from shared.utils.log_event import log_event
+
+from ..repository import AccountRepository
+from ..exceptions import (
 	AccountAlreadyFrozen,
-	AccountNotFound,
 	AccountNotFrozen,
 	AccountNotOpen,
 	UnfreezeNotAllowed,
 )
 
-logger = logging.getLogger("account_service")
-
-
-# ── Уведомления ────────────────────────────────────────────────────────
-
-async def _notify_frozen(
-	session: AsyncSession,
-	user_id: UUID,
-	account: models.BankAccount,
-	frozen_by: str,
-	reason: str,
-) -> None:
-	"""Отправляет email-уведомление о заморозке счёта."""
-
-	contact = await session.get(models.Contact, user_id)
-	if not contact:
-		return
-
-	await publish(
-		exchange_name=NOTIFICATIONS_EXCHANGE,
-		routing_key=EMAIL_ROUTING_KEY,
-		body={
-			"type": "account_frozen",
-			"payload": {
-				"to": contact.email,
-				"variables": {
-					"account_number": account.account_number,
-					"frozen_by": frozen_by,
-					"reason": reason,
-				},
-			},
-		},
-	)
-
-
-async def _notify_unfrozen(
-	session: AsyncSession,
-	user_id: UUID,
-	account: models.BankAccount,
-) -> None:
-	"""Отправляет email-уведомление о разморозке счёта."""
-
-	contact = await session.get(models.Contact, user_id)
-	if not contact:
-		return
-
-	await publish(
-		exchange_name=NOTIFICATIONS_EXCHANGE,
-		routing_key=EMAIL_ROUTING_KEY,
-		body={
-			"type": "account_unfrozen",
-			"payload": {
-				"to": contact.email,
-				"variables": {
-					"account_number": account.account_number,
-				},
-			},
-		},
-	)
-
-
-# ── Операции ───────────────────────────────────────────────────────────
 
 async def freeze_account(
 	session: AsyncSession,
@@ -89,30 +31,36 @@ async def freeze_account(
 	frozen_by: str = "user",
 	reason: str = "Заморозка по запросу пользователя",
 ) -> models.BankAccount:
-	"""Замораживает банковский счёт.
+	"""Замораживает счёт, предотвращая любые расходные операции.
 
-	1. Проверяет принадлежность и текущий статус.
-	2. Переводит status → frozen, сохраняет frozen_by / frozen_at / freeze_reason.
-	3. Отправляет email-уведомление.
+	1. Проверяет наличие счёта и принадлежность пользователю.
+	2. Переводит в статус 'frozen', сохраняя метаданные заморозки.
+	3. Отправляет уведомление и логирует событие.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID владельца.
+		account_id: ID счёта.
+		frozen_by: Кем заморожен ('user', 'system', 'admin').
+		reason: Причина заморозки.
+
+	Returns:
+		BankAccount: Замороженный счёт.
+
+	Raises:
+		AccountNotFound: Если счёт не найден.
+		AccountAlreadyFrozen: Если счёт уже в статусе frozen.
+		AccountNotOpen: Если счёт закрыт.
 	"""
-
-	stmt = (
-		select(models.BankAccount)
-		.where(models.BankAccount.id == account_id)
-		.with_for_update()
-	)
-	result = await session.execute(stmt)
-	account = result.scalar_one_or_none()
-
-	if account is None or account.client_id != user_id:
-		raise AccountNotFound("Счёт не найден.")
+	repo = AccountRepository(session)
+	account = await repo.get_by_user(user_id, account_id)
 
 	if account.status == "frozen":
-		raise AccountAlreadyFrozen("Счёт уже заморожен.")
+		raise AccountAlreadyFrozen(f"Счёт {account.account_number} уже заморожен.")
 
 	if account.status != "open":
 		raise AccountNotOpen(
-			f"Невозможно заморозить счёт со статусом «{account.status}»."
+			f"Невозможно заморозить счёт в статусе «{account.status}»."
 		)
 
 	now = datetime.now(UTC)
@@ -122,41 +70,48 @@ async def freeze_account(
 	account.freeze_reason = reason
 
 	try:
-		await session.commit()
-		await session.refresh(account)
+		await repo.commit()
 	except Exception:
-		await session.rollback()
+		await repo.rollback()
 		raise
 
-	logger.info(
-		"Счёт заморожен: account=%s, frozen_by=%s, reason=%s",
-		account_id, frozen_by, reason,
-	)
+	await repo.refresh(account)
 
-	try:
-		await _notify_frozen(session, user_id, account, frozen_by, reason)
-	except Exception:
-		logger.exception("Не удалось отправить уведомление о заморозке (account=%s)", account_id)
-
-	try:
-		await publish(
-			exchange_name=LOGS_EXCHANGE,
-			routing_key=LOG_ACCOUNT_KEY,
-			body={
-				"type": "account",
-				"payload": {
-					"user_id": str(user_id),
-					"action": "freeze_account",
-					"service": "account_service",
-					"entity_id": str(account.id),
-					"entity_type": "bank_account",
-					"status": "success",
-					"details": f"Заморозка счёта {account.account_number} ({frozen_by}: {reason})",
+	# Уведомление и логирование (Best effort)
+	contact = await repo.get_owner_contact(user_id)
+	if contact:
+		try:
+			await publish(
+				exchange_name=NOTIFICATIONS_EXCHANGE,
+				routing_key=EMAIL_ROUTING_KEY,
+				body={
+					"type": "account_frozen",
+					"payload": {
+						"to": contact.email,
+						"variables": {
+							"account_number": account.account_number,
+							"frozen_by": frozen_by,
+							"reason": reason,
+						},
+					},
 				},
-			},
-		)
-	except Exception:
-		logger.exception("Не удалось отправить лог о заморозке (account=%s)", account_id)
+			)
+		except Exception:
+			pass
+
+	await log_event(
+		routing_key=LOG_ACCOUNT_KEY,
+		event_type="account",
+		payload={
+			"user_id": str(user_id),
+			"action": "freeze_account",
+			"service": "account_service",
+			"entity_id": str(account.id),
+			"entity_type": "bank_account",
+			"status": "success",
+			"details": f"Счёт {account.account_number} заморожен ({frozen_by}: {reason})",
+		}
+	)
 
 	return account
 
@@ -166,32 +121,31 @@ async def unfreeze_account(
 	user_id: UUID,
 	account_id: UUID,
 ) -> models.BankAccount:
-	"""Размораживает банковский счёт (только если frozen_by=user).
+	"""Размораживает счёт, если он был заморожен пользователем.
 
-	1. Проверяет принадлежность и текущий статус.
-	2. Проверяет, что заморозка была инициирована пользователем.
-	3. Переводит status → open, очищает frozen-поля.
-	4. Отправляет email-уведомление.
+	Системные заморозки (например, при блокировке профиля) нельзя снять вручную.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID владельца.
+		account_id: ID счёта.
+
+	Returns:
+		BankAccount: Размороженный счёт в статусе 'open'.
+
+	Raises:
+		AccountNotFrozen: Если счёт не заморожен.
+		UnfreezeNotAllowed: Если заморозка была инициирована системой.
 	"""
-
-	stmt = (
-		select(models.BankAccount)
-		.where(models.BankAccount.id == account_id)
-		.with_for_update()
-	)
-	result = await session.execute(stmt)
-	account = result.scalar_one_or_none()
-
-	if account is None or account.client_id != user_id:
-		raise AccountNotFound("Счёт не найден.")
+	repo = AccountRepository(session)
+	account = await repo.get_by_user(user_id, account_id)
 
 	if account.status != "frozen":
-		raise AccountNotFrozen("Счёт не заморожен.")
+		raise AccountNotFrozen(f"Счёт {account.account_number} не заморожен.")
 
 	if account.frozen_by != "user":
 		raise UnfreezeNotAllowed(
-			"Счёт заморожен системой безопасности. "
-			"Обратитесь в поддержку для разморозки."
+			"Счёт заморожен системой безопасности. Самостоятельная разморозка невозможна."
 		)
 
 	account.status = "open"
@@ -200,38 +154,46 @@ async def unfreeze_account(
 	account.freeze_reason = None
 
 	try:
-		await session.commit()
-		await session.refresh(account)
+		await repo.commit()
 	except Exception:
-		await session.rollback()
+		await repo.rollback()
 		raise
 
-	logger.info("Счёт разморожен: account=%s", account_id)
+	await repo.refresh(account)
 
-	try:
-		await _notify_unfrozen(session, user_id, account)
-	except Exception:
-		logger.exception("Не удалось отправить уведомление о разморозке (account=%s)", account_id)
-
-	try:
-		await publish(
-			exchange_name=LOGS_EXCHANGE,
-			routing_key=LOG_ACCOUNT_KEY,
-			body={
-				"type": "account",
-				"payload": {
-					"user_id": str(user_id),
-					"action": "unfreeze_account",
-					"service": "account_service",
-					"entity_id": str(account.id),
-					"entity_type": "bank_account",
-					"status": "success",
-					"details": f"Разморозка счёта {account.account_number}",
+	# Уведомление и логирование (Best effort)
+	contact = await repo.get_owner_contact(user_id)
+	if contact:
+		try:
+			await publish(
+				exchange_name=NOTIFICATIONS_EXCHANGE,
+				routing_key=EMAIL_ROUTING_KEY,
+				body={
+					"type": "account_unfrozen",
+					"payload": {
+						"to": contact.email,
+						"variables": {
+							"account_number": account.account_number,
+						},
+					},
 				},
-			},
-		)
-	except Exception:
-		logger.exception("Не удалось отправить лог о разморозке (account=%s)", account_id)
+			)
+		except Exception:
+			pass
+
+	await log_event(
+		routing_key=LOG_ACCOUNT_KEY,
+		event_type="account",
+		payload={
+			"user_id": str(user_id),
+			"action": "unfreeze_account",
+			"service": "account_service",
+			"entity_id": str(account.id),
+			"entity_type": "bank_account",
+			"status": "success",
+			"details": f"Счёт {account.account_number} разморожен",
+		}
+	)
 
 	return account
 
@@ -242,22 +204,20 @@ async def cascade_freeze(
 	*,
 	reason: str = "Блокировка аккаунта",
 ) -> int:
-	"""Замораживает все open-счета пользователя (системная каскадная заморозка).
+	"""Системная каскадная заморозка всех открытых счетов пользователя.
 
-	Возвращает количество замороженных счетов.
-	Счета, уже замороженные пользователем (frozen_by=user), не трогает.
+	Используется при блокировке профиля.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		reason: Причина заморозки.
+
+	Returns:
+		int: Количество замороженных счетов.
 	"""
-
-	stmt = (
-		select(models.BankAccount)
-		.where(
-			models.BankAccount.client_id == user_id,
-			models.BankAccount.status == "open",
-		)
-		.with_for_update()
-	)
-	result = await session.execute(stmt)
-	accounts = result.scalars().all()
+	repo = AccountRepository(session)
+	accounts = await repo.get_open_accounts(user_id) # Метод уже есть в репозитории
 
 	now = datetime.now(UTC)
 	count = 0
@@ -269,13 +229,8 @@ async def cascade_freeze(
 		count += 1
 
 	if count:
-		try:
-			await session.commit()
-		except Exception:
-			await session.rollback()
-			raise
+		await repo.commit()
 
-	logger.info("Каскадная заморозка: user=%s, accounts=%d", user_id, count)
 	return count
 
 
@@ -283,23 +238,17 @@ async def cascade_unfreeze(
 	session: AsyncSession,
 	user_id: UUID,
 ) -> int:
-	"""Размораживает все системно-замороженные счета пользователя.
+	"""Каскадная разморозка счетов, замороженных системой.
 
-	Снимает только frozen_by=system. Пользовательские заморозки остаются.
-	Возвращает количество размороженных счетов.
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+
+	Returns:
+		int: Количество размороженных счетов.
 	"""
-
-	stmt = (
-		select(models.BankAccount)
-		.where(
-			models.BankAccount.client_id == user_id,
-			models.BankAccount.status == "frozen",
-			models.BankAccount.frozen_by == "system",
-		)
-		.with_for_update()
-	)
-	result = await session.execute(stmt)
-	accounts = result.scalars().all()
+	repo = AccountRepository(session)
+	accounts = await repo.get_system_frozen_accounts(user_id) # Метод уже есть в репозитории
 
 	count = 0
 	for acc in accounts:
@@ -310,11 +259,6 @@ async def cascade_unfreeze(
 		count += 1
 
 	if count:
-		try:
-			await session.commit()
-		except Exception:
-			await session.rollback()
-			raise
+		await repo.commit()
 
-	logger.info("Каскадная разморозка: user=%s, accounts=%d", user_id, count)
 	return count

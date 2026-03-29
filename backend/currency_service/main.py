@@ -1,12 +1,12 @@
-"""Currency Service — курсы валют и обмен между счетами."""
+"""Currency Service — управление курсами валют и конверсионными операциями."""
 
 from contextlib import asynccontextmanager
-
 from fastapi import Depends, FastAPI
 
 from shared.database_core.db import engine
 from shared.internal_auth import verify_internal_key
 from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+from shared.utils.exceptions_handler import setup_exception_handlers
 
 from . import exchange_client
 from .rates.router import router as rates_router
@@ -25,11 +25,28 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
 	title="Currency Service",
-	version="0.1.0",
-	description="Внутренний сервис валютных операций: курсы и обмен между счетами.",
+	version="0.2.0",
+	description="Сервис валютных операций: получение актуальных котировок и внутренний обмен между счетами.",
 	lifespan=lifespan,
 	dependencies=[Depends(verify_internal_key)],
+	openapi_tags=[
+		{
+			"name": "rates",
+			"description": "Получение курсов валют в реальном времени.",
+		},
+		{
+			"name": "exchange",
+			"description": "Операции обмена валют между банковскими счетами.",
+		},
+		{
+			"name": "health",
+			"description": "Проверка работоспособности сервиса.",
+		},
+	],
 )
+
+# Регистрация глобального обработчика ошибок BaseBusinessError
+setup_exception_handlers(app)
 
 
 @app.get("/health", tags=["health"])

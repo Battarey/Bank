@@ -1,58 +1,29 @@
 """Бизнес-логика пополнения банковского счёта."""
 
-import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_TRANSACTION_KEY
-from transaction_service.exceptions import (
-	AccountNotFound,
+from shared.rabbitmq.constants import (
+	EMAIL_ROUTING_KEY,
+	LOG_TRANSACTION_KEY,
+	NOTIFICATIONS_EXCHANGE,
+)
+from shared.utils.log_event import log_event
+
+from ..repository import TransactionRepository
+from ..exceptions import (
 	AccountNotOpen,
 	TransactionConflict,
 )
 
-logger = logging.getLogger("transaction_service")
-
 # Мягкая заморозка: пополнение разрешено на open и frozen счетах
 _DEPOSIT_ALLOWED_STATUSES = {"open", "frozen"}
-
-
-async def _notify_deposit(
-	session: AsyncSession,
-	user_id: UUID,
-	account: models.BankAccount,
-	amount: Decimal,
-	balance_after: Decimal,
-) -> None:
-	"""Отправляет email-уведомление о пополнении."""
-
-	contact = await session.get(models.Contact, user_id)
-	if not contact:
-		return
-
-	await publish(
-		exchange_name=NOTIFICATIONS_EXCHANGE,
-		routing_key=EMAIL_ROUTING_KEY,
-		body={
-			"type": "transaction_deposit",
-			"payload": {
-				"to": contact.email,
-				"variables": {
-					"account_number": account.account_number,
-					"amount": str(amount),
-					"currency": account.currency,
-					"balance_after": str(balance_after),
-				},
-			},
-		},
-	)
 
 
 async def deposit(
@@ -62,34 +33,43 @@ async def deposit(
 	amount: Decimal,
 	description: str | None,
 ) -> models.Transaction:
-	"""Пополняет банковский счёт.
+	"""Пополняет баланс банковского счёта.
 
-	1. Проверяет принадлежность и статус счёта.
-	2. Обновляет баланс.
-	3. Создаёт запись транзакции.
+	Операция разрешена как для активных, так и для замороженных счетов.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID владельца счёта.
+		account_id: ID пополняемого счёта.
+		amount: Сумма пополнения.
+		description: Комментарий к операции.
+
+	Returns:
+		Transaction: Созданная запись транзакции.
+
+	Raises:
+		AccountNotFound: Если счёт не найден или не принадлежит пользователю.
+		AccountNotOpen: Если счёт закрыт.
+		TransactionConflict: При ошибке записи в БД.
 	"""
-
-	# 1. Получаем счёт с блокировкой строки (FOR UPDATE)
-	stmt = (
-		select(models.BankAccount)
-		.where(models.BankAccount.id == account_id)
-		.with_for_update()
-	)
-	result = await session.execute(stmt)
-	account = result.scalar_one_or_none()
-
-	if account is None or account.client_id != user_id:
-		raise AccountNotFound("Счёт не найден.")
+	repo = TransactionRepository(session)
+	
+	# 1. Получение счёта с блокировкой
+	account = await repo.get_account_for_update(account_id)
+	
+	if account.client_id != user_id:
+		from ..exceptions import AccountNotFound
+		raise AccountNotFound("Счёт не принадлежит вам.")
 
 	if account.status not in _DEPOSIT_ALLOWED_STATUSES:
-		raise AccountNotOpen(f"Счёт в статусе «{account.status}» — пополнение невозможно.")
+		raise AccountNotOpen(f"Счёт {account.account_number} в статусе «{account.status}» — пополнение невозможно.")
 
-	# 2. Обновляем баланс
+	# 2. Обновление баланса
 	balance_before = account.balance
-	balance_after = balance_before + amount
-	account.balance = balance_after
+	account.balance += amount
+	balance_after = account.balance
 
-	# 3. Создаём транзакцию
+	# 3. Создание транзакции
 	now = datetime.now(UTC)
 	tx = models.Transaction(
 		id=uuid4(),
@@ -97,7 +77,7 @@ async def deposit(
 		type="deposit",
 		amount=amount,
 		created_at=now,
-		description=description,
+		description=description or "Пополнение счёта",
 		related_account_id=None,
 		direction="incoming",
 		status="posted",
@@ -105,46 +85,52 @@ async def deposit(
 		balance_after=balance_after,
 		external_ref=None,
 	)
-	session.add(tx)
+	await repo.add(tx)
 
 	try:
-		await session.commit()
-		await session.refresh(tx)
-		await session.refresh(account)
-	except IntegrityError:
-		await session.rollback()
-		raise TransactionConflict("Конфликт при проведении операции. Попробуйте снова.")
+		await repo.commit()
+	except IntegrityError as exc:
+		await repo.rollback()
+		raise TransactionConflict("Ошибка при зачислении средств. Попробуйте снова.") from exc
 
-	logger.info(
-		"Пополнение: account=%s, amount=%s %s, balance=%s",
-		account_id, amount, account.currency, balance_after,
-	)
+	await repo.refresh(tx)
 
-	try:
-		await _notify_deposit(session, user_id, account, amount, balance_after)
-	except Exception:
-		logger.exception("Не удалось отправить уведомление о пополнении (account=%s)", account_id)
-
-	try:
-		await publish(
-			exchange_name=LOGS_EXCHANGE,
-			routing_key=LOG_TRANSACTION_KEY,
-			body={
-				"type": "transaction",
-				"payload": {
-					"user_id": str(user_id),
-					"action": "deposit",
-					"service": "transaction_service",
-					"entity_id": str(tx.id),
-					"entity_type": "transaction",
-					"amount": str(amount),
-					"currency": account.currency,
-					"status": "success",
-					"details": f"Пополнение счёта {account.account_number}",
+	# 4. Уведомление и логирование (Best effort)
+	contact = await repo.get_owner_contact(user_id)
+	if contact:
+		try:
+			await publish(
+				exchange_name=NOTIFICATIONS_EXCHANGE,
+				routing_key=EMAIL_ROUTING_KEY,
+				body={
+					"type": "transaction_deposit",
+					"payload": {
+						"to": contact.email,
+						"variables": {
+							"account_number": account.account_number,
+							"amount": str(amount),
+							"currency": account.currency,
+							"balance_after": str(balance_after),
+						},
+					},
 				},
-			},
-		)
-	except Exception:
-		logger.exception("Не удалось отправить лог о пополнении (account=%s)", account_id)
+			)
+		except Exception:
+			pass
+
+	await log_event(
+		routing_key=LOG_TRANSACTION_KEY,
+		event_type="transaction",
+		payload={
+			"user_id": str(user_id),
+			"action": "deposit",
+			"service": "transaction_service",
+			"entity_id": str(tx.id),
+			"amount": str(amount),
+			"currency": account.currency,
+			"status": "success",
+			"details": f"Пополнение счёта {account.account_number}",
+		}
+	)
 
 	return tx
