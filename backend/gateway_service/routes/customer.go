@@ -1,4 +1,3 @@
-// Package routes содержит маршруты Gateway → внутренние сервисы.
 package routes
 
 import (
@@ -13,7 +12,7 @@ import (
 	"gateway_service/proxy"
 )
 
-// CustomerHandler обрабатывает маршруты customer_service.
+// CustomerHandler обрабатывает маршруты онбординга (регистрации) и профиля клиента.
 type CustomerHandler struct {
 	Proxy      *proxy.ServiceClients
 	Sessions   *redisClient.SessionsClient
@@ -21,64 +20,58 @@ type CustomerHandler struct {
 	APIKey     string
 }
 
-// RegisterCustomerRoutes регистрирует маршруты онбординга и обновления данных.
+// RegisterCustomerRoutes регистрирует маршруты клиента в API Gateway.
 func (h *CustomerHandler) RegisterCustomerRoutes(e *echo.Echo) {
-	// Онбординг (публичный + onboarding-токен)
-	e.POST("/users/start", h.StartOnboarding)
-	e.POST("/users/me/account/personal-data", h.SubmitPersonalData)
-	e.POST("/users/me/account/passport", h.SubmitPassport)
-	e.POST("/users/me/account/identifiers", h.SubmitIdentifiers)
-	e.POST("/users/me/account/contacts", h.SubmitContacts)
-	e.POST("/users/me/account/send-email-code", h.SendEmailCode)
-	e.POST("/users/me/account/verify-email", h.VerifyEmail)
-	e.POST("/users/me/account/finalize", h.FinalizeOnboarding)
+	v1 := e.Group("/api/v1")
 
-	// Обновление данных (сессия)
-	e.PATCH("/users/me/personal-data", h.UpdatePersonalData)
-	e.PUT("/users/me/passport", h.ReplacePassport)
-	e.PATCH("/users/me/contacts", h.UpdateContacts)
-	e.DELETE("/users/me", h.DeleteAccount)
+	// Онбординг (Публичные эндпоинты с X-Onboarding-Token)
+	v1.POST("/onboarding", h.StartOnboarding)                    // Шаг 0: Старт
+	v1.POST("/onboarding/personal-data", h.SubmitPersonalData)   // Шаг 1: ФИО
+	v1.POST("/onboarding/passport", h.SubmitPassport)             // Шаг 2: Паспорт
+	v1.POST("/onboarding/identifiers", h.SubmitIdentifiers)       // Шаг 3: ИНН/СНИЛС
+	v1.POST("/onboarding/contacts", h.SubmitContacts)             // Шаг 4: Контакты
+	v1.POST("/onboarding/finalize", h.FinalizeOnboarding)         // Завершение
+
+	// Управление профилем (Требуется сессия X-Session-Token)
+	v1.PATCH("/customers/me/personal-data", h.UpdatePersonalData) // Смена ФИО
+	v1.PUT("/customers/me/passport", h.ReplacePassport)           // Новый паспорт
+	v1.PATCH("/customers/me/contacts", h.UpdateContacts)           // Смена Email/тел
+	v1.DELETE("/customers/me", h.DeleteAccount)                    // Удаление (soft delete)
 }
 
-// resolveOnboarding проверяет X-Onboarding-Token и возвращает userID.
+// resolveOnboarding извлекает userID из onboarding-токена.
 func (h *CustomerHandler) resolveOnboarding(c echo.Context) (string, error) {
 	token := c.Request().Header.Get("X-Onboarding-Token")
 	if token == "" {
-		return "", echo.NewHTTPError(http.StatusUnauthorized, "Заголовок X-Onboarding-Token обязателен.")
+		return "", echo.NewHTTPError(http.StatusUnauthorized, "Заголовок X-Onboarding-Token отсутствует.")
 	}
 
 	userID, err := h.Onboarding.LoadOnboardingToken(c.Request().Context(), token)
 	if err != nil {
-		return "", echo.NewHTTPError(http.StatusInternalServerError, "Ошибка проверки онбординг-токена.")
+		return "", echo.NewHTTPError(http.StatusInternalServerError, "Ошибка верификации токена.")
 	}
 	if userID == "" {
-		return "", echo.NewHTTPError(http.StatusUnauthorized, "Onboarding-токен невалиден или истёк.")
+		return "", echo.NewHTTPError(http.StatusUnauthorized, "Невалидный или просроченный токен.")
 	}
 
-	// Скользящая экспирация
+	// Обновляем TTL токена при активности
 	_ = h.Onboarding.TouchOnboardingToken(c.Request().Context(), token, redisClient.DefaultOnboardingTTL)
 
 	return userID, nil
 }
 
-
-
 // ── Онбординг ──────────────────────────────────────────────────────────
 
-// startOnboarding godoc
+// StartOnboarding godoc
 // @Summary     Начать регистрацию
-// @Description Создаёт нового пользователя и возвращает onboarding_token для прохождения шагов регистрации.
+// @Description Создаёт временный профиль и выдаёт X-Onboarding-Token для прохождения шагов.
 // @Tags        onboarding
 // @Accept      json
 // @Produce     json
-// @Success     201 {object} map[string]interface{} "onboarding_token + status"
-// @Failure     500 {object} map[string]string
-// @Router      /users/start [post]
+// @Success     201 {object} map[string]interface{}
+// @Router      /api/v1/onboarding [post]
 func (h *CustomerHandler) StartOnboarding(c echo.Context) error {
-	body, _ := ReadBody(c)
-
-	svc := h.Proxy
-	respData, statusCode, err := ForwardAndParse(c, svc, http.MethodPost, "/users/start", body, "customer", h.APIKey)
+	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPost, "/onboarding", nil, "customer", h.APIKey)
 	if err != nil {
 		return err
 	}
@@ -87,153 +80,75 @@ func (h *CustomerHandler) StartOnboarding(c echo.Context) error {
 		return c.JSON(statusCode, respData)
 	}
 
-	userID, _ := respData["user_id"].(string)
+	userID := respData["client_id"].(string)
+	token, _ := redisClient.GenerateToken()
 
-	token, err := redisClient.GenerateToken()
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"detail": "Ошибка генерации токена.",
-		})
-	}
-	err = h.Onboarding.SaveOnboardingToken(c.Request().Context(), token, userID, redisClient.DefaultOnboardingTTL)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"detail": "Ошибка сохранения токена.",
-		})
-	}
+	_ = h.Onboarding.SaveOnboardingToken(c.Request().Context(), token, userID, redisClient.DefaultOnboardingTTL)
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"onboarding_token": token,
-		"status":           respData["status"],
+		"status":           "started",
 	})
 }
 
-// onboardingStep — общий обработчик для шагов онбординга.
+// OnboardingStep — хелпер для проксирования шагов регистрации.
 func (h *CustomerHandler) OnboardingStep(c echo.Context, subPath string) error {
 	userID, err := h.resolveOnboarding(c)
 	if err != nil {
-		he, ok := err.(*echo.HTTPError)
-		if ok {
-			return c.JSON(he.Code, map[string]string{"detail": fmt.Sprint(he.Message)})
-		}
 		return err
 	}
 
 	body, _ := ReadBody(c)
-	path := fmt.Sprintf("/users/%s/account/%s", userID, subPath)
+	path := fmt.Sprintf("/onboarding/%s/%s", userID, subPath)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, path, body, "customer", h.APIKey)
 }
 
-// submitPersonalData godoc
-// @Summary     Шаг 1: Персональные данные
-// @Description Сохраняет ФИО, дату рождения и пол клиента.
+// SubmitPersonalData godoc
+// @Summary     Шаг 1: ФИО
 // @Tags        onboarding
-// @Security    OnboardingToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.PersonalDataPayload true "Персональные данные"
-// @Success     201 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/account/personal-data [post]
+// @Router      /api/v1/onboarding/personal-data [post]
 func (h *CustomerHandler) SubmitPersonalData(c echo.Context) error {
 	return h.OnboardingStep(c, "personal-data")
 }
 
-// submitPassport godoc
-// @Summary     Шаг 2: Паспортные данные
-// @Description Сохраняет серию, номер, кем выдан и прочие паспортные сведения.
+// SubmitPassport godoc
+// @Summary     Шаг 2: Паспорт
 // @Tags        onboarding
-// @Security    OnboardingToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.PassportPayload true "Паспортные данные"
-// @Success     201 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/account/passport [post]
+// @Router      /api/v1/onboarding/passport [post]
 func (h *CustomerHandler) SubmitPassport(c echo.Context) error {
 	return h.OnboardingStep(c, "passport")
 }
 
-// submitIdentifiers godoc
-// @Summary     Шаг 3: ИНН и СНИЛС
-// @Description Сохраняет идентификаторы налогоплательщика и социального страхования.
+// SubmitIdentifiers godoc
+// @Summary     Шаг 3: ИНН/СНИЛС
 // @Tags        onboarding
-// @Security    OnboardingToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.IdentifiersPayload true "ИНН и СНИЛС"
-// @Success     201 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/account/identifiers [post]
+// @Router      /api/v1/onboarding/identifiers [post]
 func (h *CustomerHandler) SubmitIdentifiers(c echo.Context) error {
 	return h.OnboardingStep(c, "identifiers")
 }
 
-// submitContacts godoc
-// @Summary     Шаг 4: Контактные данные
-// @Description Сохраняет email и номер телефона клиента.
+// SubmitContacts godoc
+// @Summary     Шаг 4: Контакты
 // @Tags        onboarding
-// @Security    OnboardingToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.ContactsPayload true "Контактные данные"
-// @Success     201 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/account/contacts [post]
+// @Router      /api/v1/onboarding/contacts [post]
 func (h *CustomerHandler) SubmitContacts(c echo.Context) error {
 	return h.OnboardingStep(c, "contacts")
 }
 
-// sendEmailCode godoc
-// @Summary     Отправить код на email
-// @Description Отправляет 6-значный код подтверждения на email из шага 4 (contacts).
+// FinalizeOnboarding godoc
+// @Summary     Завершение регистрации
+// @Description Переносит данные из черновиков в основной профиль и активирует аккаунт.
 // @Tags        onboarding
-// @Security    OnboardingToken
-// @Produce     json
-// @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/account/send-email-code [post]
-func (h *CustomerHandler) SendEmailCode(c echo.Context) error {
-	return h.OnboardingStep(c, "send-email-code")
-}
-
-// verifyEmail godoc
-// @Summary     Подтвердить email
-// @Description Проверяет 6-значный код. После успешной верификации можно вызывать finalize.
-// @Tags        onboarding
-// @Security    OnboardingToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.VerifyEmailRequest true "Код верификации"
-// @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/account/verify-email [post]
-func (h *CustomerHandler) VerifyEmail(c echo.Context) error {
-	return h.OnboardingStep(c, "verify-email")
-}
-
-// finalizeOnboarding godoc
-// @Summary     Завершить регистрацию
-// @Description Переносит данные из черновиков в БД, выдаёт сессионный токен и удаляет onboarding-токен.
-// @Tags        onboarding
-// @Security    OnboardingToken
-// @Produce     json
-// @Success     200 {object} map[string]interface{} "status + message + session_token + user_id"
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/account/finalize [post]
+// @Router      /api/v1/onboarding/finalize [post]
 func (h *CustomerHandler) FinalizeOnboarding(c echo.Context) error {
 	userID, err := h.resolveOnboarding(c)
 	if err != nil {
-		he, ok := err.(*echo.HTTPError)
-		if ok {
-			return c.JSON(he.Code, map[string]string{"detail": fmt.Sprint(he.Message)})
-		}
 		return err
 	}
 
 	onbToken := c.Request().Header.Get("X-Onboarding-Token")
-
-	path := fmt.Sprintf("/users/%s/account/finalize", userID)
+	path := fmt.Sprintf("/onboarding/%s/activation", userID)
+	
 	respData, statusCode, fwdErr := ForwardAndParse(c, h.Proxy, http.MethodPost, path, nil, "customer", h.APIKey)
 	if fwdErr != nil {
 		return fwdErr
@@ -243,91 +158,54 @@ func (h *CustomerHandler) FinalizeOnboarding(c echo.Context) error {
 		return c.JSON(statusCode, respData)
 	}
 
-	// Удаляем onboarding-токен
+	// Очистка onboarding-данных
 	if onbToken != "" {
 		_ = h.Onboarding.DeleteOnboardingToken(c.Request().Context(), onbToken)
 	}
 
-	// Генерируем сессионный токен
-	sessionToken := generateSessionToken()
-	err = h.Sessions.SaveToken(c.Request().Context(), sessionToken, userID, map[string]string{
-		"has_pin": "false",
-	}, redisClient.DefaultSessionTTL)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"detail": "Ошибка создания сессии.",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"status":        respData["status"],
-		"message":       respData["message"],
-		"session_token": sessionToken,
-		"user_id":       userID,
-	})
+	return c.JSON(http.StatusOK, respData)
 }
 
-// ── Обновление данных пользователя ─────────────────────────────────────
+// ── Профиль пользователя ───────────────────────────────────────────────
 
-// updatePersonalData godoc
-// @Summary     Обновить персональные данные
-// @Description Частичное обновление ФИО. Дата рождения и пол неизменяемы.
-// @Tags        user-update
+// UpdatePersonalData godoc
+// @Summary     Обновить ФИО
+// @Tags        customers
 // @Security    SessionToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.PersonalDataUpdate true "Данные для обновления"
-// @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/personal-data [patch]
+// @Router      /api/v1/customers/me/personal-data [patch]
 func (h *CustomerHandler) UpdatePersonalData(c echo.Context) error {
 	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPatch, "/users/personal-data", body, "customer", h.APIKey)
 }
 
-// replacePassport godoc
-// @Summary     Заменить паспортные данные
-// @Description Полная замена паспортных данных (все поля обязательны).
-// @Tags        user-update
+// ReplacePassport godoc
+// @Summary     Сменить паспорт
+// @Tags        customers
 // @Security    SessionToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.PassportPayload true "Паспортные данные"
-// @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/passport [put]
+// @Router      /api/v1/customers/me/passport [put]
 func (h *CustomerHandler) ReplacePassport(c echo.Context) error {
 	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPut, "/users/passport", body, "customer", h.APIKey)
 }
 
-// updateContacts godoc
-// @Summary     Обновить контактные данные
-// @Description Частичное обновление email и/или телефона.
-// @Tags        user-update
+// UpdateContacts godoc
+// @Summary     Сменить контакты
+// @Tags        customers
 // @Security    SessionToken
-// @Accept      json
-// @Produce     json
-// @Param       payload body schemas.ContactsUpdate true "Контактные данные"
-// @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me/contacts [patch]
+// @Router      /api/v1/customers/me/contacts [patch]
 func (h *CustomerHandler) UpdateContacts(c echo.Context) error {
 	body, _ := ReadBody(c)
 	return h.Proxy.ForwardRaw(c, http.MethodPatch, "/users/contacts", body, "customer", h.APIKey)
 }
 
-// deleteAccount godoc
-// @Summary     Удалить аккаунт
-// @Description Soft delete: статус → deleted, счета заморожены, все сессии отозваны. Данные сохраняются.
-// @Tags        user-update
+// DeleteAccount godoc
+// @Summary     Удалить профиль
+// @Description Помечает профиль как удалённый и завершает все активные сессии.
+// @Tags        customers
 // @Security    SessionToken
-// @Produce     json
-// @Success     200 {object} map[string]interface{}
-// @Failure     401 {object} map[string]string
-// @Router      /users/me [delete]
+// @Router      /api/v1/customers/me [delete]
 func (h *CustomerHandler) DeleteAccount(c echo.Context) error {
-	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodDelete, "/users/delete", nil, "customer", h.APIKey)
+	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodDelete, "/users/me", nil, "customer", h.APIKey)
 	if err != nil {
 		return err
 	}
@@ -336,16 +214,16 @@ func (h *CustomerHandler) DeleteAccount(c echo.Context) error {
 		return c.JSON(statusCode, respData)
 	}
 
+	// Принудительный логаут со всех устройств после удаления
 	if userID, ok := c.Get("user_id").(string); ok && userID != "" {
 		_ = h.Sessions.RevokeAll(c.Request().Context(), userID)
 	}
 
-	return c.JSON(statusCode, respData)
+	return c.JSON(http.StatusOK, respData)
 }
 
 // ── Утилиты ────────────────────────────────────────────────────────────
 
-// generateSessionToken генерирует случайный URL-safe сессионный токен.
 func generateSessionToken() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
