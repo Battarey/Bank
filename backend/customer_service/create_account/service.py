@@ -1,335 +1,62 @@
 """Бизнес-логика онбординга — сохранение шагов, валидация, финализация."""
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Awaitable, Callable, Dict
+from typing import Dict, Any
 from uuid import UUID, uuid4
-from pydantic import BaseModel
-from sqlalchemy import or_, select
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from shared import models, schemas
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import LOGS_EXCHANGE, LOG_AUTH_KEY
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
-from shared.utils.normalize import normalize_name, normalize_email, normalize_phone, digits_only
+from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
+from shared.utils.log_event import log_event
+from shared.rabbitmq.constants import LOG_AUTH_KEY
 
-import logging
-logger = logging.getLogger("customer_service")
-
-
-class AccountDataError(Exception):
-	"""Общее исключение при работе с данными онбординга."""
-
-
-class AccountDataConflict(AccountDataError):
-	"""Возникает при конфликте вводимых данных с уже существующими."""
-
-
-EnsureNoRecordFn = Callable[[AsyncSession, UUID], Awaitable[None]]
-EnsureUniqueFn = Callable[[AsyncSession, UUID, BaseModel], Awaitable[None]]
-NormalizeFn = Callable[[BaseModel], BaseModel]
-ModelFactoryFn = Callable[[UUID, BaseModel], object]
-
-
-@dataclass(frozen=True)
-class StepDefinition:
-	"""Описывает, как обрабатывать конкретный шаг онбординга."""
-
-	step: onboarding_drafts.StepName
-	payload_model: type[BaseModel]
-	response_model: type[BaseModel]
-	conflict_message: str
-	ensure_no_record: EnsureNoRecordFn
-	normalize: NormalizeFn
-	ensure_unique: EnsureUniqueFn | None
-	model_factory: ModelFactoryFn
-
-
-async def _get_or_create_user(session: AsyncSession, user_id: UUID) -> models.User:
-	"""Возвращает пользователя либо создаёт новую запись для онбординга."""
-
-	user = await session.get(models.User, user_id)
-	if user:
-		return user
-
-	now = datetime.now(UTC)
-	user = models.User(
-		id=user_id,
-		created_at=now,
-		updated_at=now,
-		status="pending",
-		is_verified=False,
-	)
-	session.add(user)
-	return user
-
-
-def _normalize_personal_payload(payload: schemas.PersonalDataPayload) -> schemas.PersonalDataPayload:
-	"""Возвращает копию с нормализованными текстовыми полями персонального шага."""
-
-	return payload.model_copy(
-		update={
-			"last_name": normalize_name(payload.last_name),
-			"first_name": normalize_name(payload.first_name),
-			"middle_name": normalize_name(payload.middle_name),
-		},
-	)
-
-
-def _normalize_passport_payload(payload: schemas.PassportPayload) -> schemas.PassportPayload:
-	"""Очищает строковые поля паспорта от пробелов по краям."""
-	return payload.model_copy(
-		update={
-			"issued_by": payload.issued_by.strip(),
-			"registration_address": payload.registration_address.strip(),
-		},
-	)
-
-
-def _normalize_identifiers_payload(payload: schemas.IdentifiersPayload) -> schemas.IdentifiersPayload:
-	"""Удаляет нецифровые символы из ИНН/СНИЛС."""
-	return payload.model_copy(
-		update={
-			"inn": digits_only(payload.inn),
-			"snils": digits_only(payload.snils),
-		},
-	)
-
-
-def _normalize_contacts_payload(payload: schemas.ContactsPayload) -> schemas.ContactsPayload:
-	"""Нормализует email и телефон для поиска дублей."""
-	return payload.model_copy(
-		update={
-			"email": normalize_email(payload.email),
-			"phone": normalize_phone(payload.phone),
-		},
-	)
-
-
-async def _ensure_no_personal_data_record(session: AsyncSession, user_id: UUID) -> None:
-	"""Предотвращает повторный ввод персональных данных."""
-	if await session.get(models.PersonalData, user_id):
-		raise AccountDataConflict("Personal data already captured for this user.")
-
-
-async def _ensure_no_passport_record(session: AsyncSession, user_id: UUID) -> None:
-	"""Проверяет, что паспорт не сохранён."""
-	if await session.get(models.Passport, user_id):
-		raise AccountDataConflict("Passport data already captured for this user.")
-
-
-async def _ensure_no_identifiers_record(session: AsyncSession, user_id: UUID) -> None:
-	"""Следит, чтобы ИНН/СНИЛС не были записаны ранее."""
-	if await session.get(models.Identifier, user_id):
-		raise AccountDataConflict("Identifiers already captured for this user.")
-
-
-async def _ensure_no_contacts_record(session: AsyncSession, user_id: UUID) -> None:
-	"""Не допускает повторного сохранения контактов."""
-	if await session.get(models.Contact, user_id):
-		raise AccountDataConflict("Contact data already captured for this user.")
-
-
-async def _ensure_passport_unique(
-	session: AsyncSession,
-	user_id: UUID,
-	payload: schemas.PassportPayload,
-) -> None:
-	"""Проверяет уникальность серии/номера паспорта через blind index."""
-	p_hash = get_blind_index(f"{payload.series}{payload.number}")
-	duplicate = await session.scalar(
-		select(models.Passport).where(
-			models.Passport.passport_hash == p_hash,
-		)
-	)
-	if duplicate and duplicate.client_id != user_id:
-		raise AccountDataConflict("Passport is already linked to another client.")
-
-
-async def _ensure_identifiers_unique(
-	session: AsyncSession,
-	user_id: UUID,
-	payload: schemas.IdentifiersPayload,
-) -> None:
-	"""Проверяет уникальность ИНН/СНИЛС."""
-	duplicate = await session.scalar(
-		select(models.Identifier).where(
-			or_(
-				models.Identifier.inn == payload.inn,
-				models.Identifier.snils == payload.snils,
-			)
-		)
-	)
-	if duplicate and duplicate.client_id != user_id:
-		raise AccountDataConflict("Provided INN or SNILS already belongs to another client.")
-
-
-async def _ensure_contacts_unique(
-	session: AsyncSession,
-	user_id: UUID,
-	payload: schemas.ContactsPayload,
-) -> None:
-	"""Проверяет, что email/phone ещё не заняты через blind index."""
-	e_hash = get_blind_index(payload.email)
-	p_hash = get_blind_index(payload.phone)
-	
-	duplicate = await session.scalar(
-		select(models.Contact).where(
-			or_(
-				models.Contact.email_hash == e_hash,
-				models.Contact.phone_hash == p_hash,
-			)
-		)
-	)
-	if duplicate and duplicate.client_id != user_id:
-		raise AccountDataConflict("Provided email or phone already belongs to another client.")
-
-
-def _personal_model_factory(user_id: UUID, payload: schemas.PersonalDataPayload) -> models.PersonalData:
-	"""Создаёт ORM-модель персональных данных."""
-	return models.PersonalData(client_id=user_id, **payload.model_dump())
-
-
-def _passport_model_factory(user_id: UUID, payload: schemas.PassportPayload) -> models.Passport:
-	"""Создаёт ORM-модель паспорта с расчётом blind index."""
-	return models.Passport(
-		client_id=user_id,
-		passport_hash=get_blind_index(f"{payload.series}{payload.number}"),
-		**payload.model_dump(),
-	)
-
-
-def _identifiers_model_factory(user_id: UUID, payload: schemas.IdentifiersPayload) -> models.Identifier:
-	"""Создаёт ORM-модель идентификаторов."""
-	return models.Identifier(client_id=user_id, **payload.model_dump())
-
-
-def _contacts_model_factory(user_id: UUID, payload: schemas.ContactsPayload) -> models.Contact:
-	"""Создаёт ORM-модель контактов с расчётом blind indexes."""
-	return models.Contact(
-		client_id=user_id,
-		email_hash=get_blind_index(payload.email),
-		phone_hash=get_blind_index(payload.phone),
-		**payload.model_dump(),
-	)
-
-
-STEP_DEFINITIONS: Dict[onboarding_drafts.StepName, StepDefinition] = {
-	"personal_data": StepDefinition(
-		step="personal_data",
-		payload_model=schemas.PersonalDataPayload,
-		response_model=schemas.PersonalDataResponse,
-		conflict_message="Personal data already captured for this user.",
-		ensure_no_record=_ensure_no_personal_data_record,
-		normalize=_normalize_personal_payload,
-		ensure_unique=None,
-		model_factory=_personal_model_factory,
-	),
-	"passport": StepDefinition(
-		step="passport",
-		payload_model=schemas.PassportPayload,
-		response_model=schemas.PassportResponse,
-		conflict_message="Passport data already captured for this user.",
-		ensure_no_record=_ensure_no_passport_record,
-		normalize=_normalize_passport_payload,
-		ensure_unique=_ensure_passport_unique,
-		model_factory=_passport_model_factory,
-	),
-	"identifiers": StepDefinition(
-		step="identifiers",
-		payload_model=schemas.IdentifiersPayload,
-		response_model=schemas.IdentifiersResponse,
-		conflict_message="Identifiers already captured for this user.",
-		ensure_no_record=_ensure_no_identifiers_record,
-		normalize=_normalize_identifiers_payload,
-		ensure_unique=_ensure_identifiers_unique,
-		model_factory=_identifiers_model_factory,
-	),
-	"contacts": StepDefinition(
-		step="contacts",
-		payload_model=schemas.ContactsPayload,
-		response_model=schemas.ContactsResponse,
-		conflict_message="Contact data already captured for this user.",
-		ensure_no_record=_ensure_no_contacts_record,
-		normalize=_normalize_contacts_payload,
-		ensure_unique=_ensure_contacts_unique,
-		model_factory=_contacts_model_factory,
-	),
-}
-
-STEP_SEQUENCE = tuple(STEP_DEFINITIONS[step] for step in onboarding_drafts.ALL_STEPS)
+from ..repository import CustomerRepository
+from ..exceptions import (
+	OnboardingConflict,
+	OnboardingError,
+)
 
 
 async def start_onboarding(session: AsyncSession) -> UUID:
-	"""Создаёт нового пользователя для онбординга и возвращает его идентификатор."""
+	"""Создаёт нового пользователя для процесса регистрации.
 
+	Args:
+		session: Асинхронная сессия базы данных.
+
+	Returns:
+		UUID: Идентификатор созданного пользователя.
+
+	Raises:
+		OnboardingError: Если не удалось создать пользователя после нескольких попыток.
+	"""
+	repo = CustomerRepository(session)
+	
 	for _ in range(5):
 		candidate_id = uuid4()
-		if await session.get(models.User, candidate_id):
-			continue  # крайне маловероятный коллизия UUID
+		if await repo.get(candidate_id):
+			continue
 			
-		await _get_or_create_user(session, candidate_id)
+		user = models.User(
+			id=candidate_id,
+			created_at=datetime.now(UTC),
+			updated_at=datetime.now(UTC),
+			status="pending",
+			is_verified=False,
+		)
+		await repo.add(user)
 		try:
-			await session.commit()
+			await repo.commit()
 		except Exception:
-			await session.rollback()
+			await repo.rollback()
 			raise
 		return candidate_id
 
-	raise AccountDataError("Не удалось создать нового пользователя для онбординга.")
-
-
-async def _ensure_user_exists(session: AsyncSession, user_id: UUID) -> None:
-	"""Проверяет, что пользователь с данным ID создан через start_onboarding."""
-	user = await session.get(models.User, user_id)
-	if user is None:
-		raise AccountDataError(f"Пользователь {user_id} не найден. Сначала вызовите /users/start.")
-
-
-async def _store_step(
-	session: AsyncSession,
-	user_id: UUID,
-	payload: BaseModel,
-	definition: StepDefinition,
-) -> BaseModel:
-	"""Проводит общий пайплайн шага: проверки → нормализация → сохранение черновика.
-
-	При повторном вызове шага черновик перезаписывается.
-	"""
-
-	await _ensure_user_exists(session, user_id)
-	normalized_payload = definition.normalize(payload)
-	if definition.ensure_unique:
-		await definition.ensure_unique(session, user_id, normalized_payload)
-	await onboarding_drafts.save_draft(
-		user_id,
-		definition.step,
-		normalized_payload.model_dump(mode="json"),
-	)
-	return definition.response_model(
-		client_id=user_id,
-		**normalized_payload.model_dump(),
-	)
-
-
-async def _persist_step(
-	session: AsyncSession,
-	user_id: UUID,
-	payload: BaseModel,
-	definition: StepDefinition,
-) -> None:
-	"""Переносит подготовленный payload шага в PostgreSQL."""
-
-	await definition.ensure_no_record(session, user_id)
-	normalized_payload = definition.normalize(payload)
-	if definition.ensure_unique:
-		await definition.ensure_unique(session, user_id, normalized_payload)
-	user = await _get_or_create_user(session, user_id)
-	session.add(definition.model_factory(user_id, normalized_payload))
-	user.updated_at = datetime.now(UTC)
+	raise OnboardingError("Не удалось инициализировать процесс регистрации.")
 
 
 async def store_personal_data(
@@ -337,9 +64,36 @@ async def store_personal_data(
 	user_id: UUID,
 	payload: schemas.PersonalDataPayload,
 ) -> schemas.PersonalDataResponse:
-	"""Пишет черновик шага персональных данных в Redis."""
-	definition = STEP_DEFINITIONS["personal_data"]
-	return await _store_step(session, user_id, payload, definition)
+	"""Сохраняет черновик первого шага (ФИО, дата рождения) в Redis.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		payload: Данные профиля.
+
+	Returns:
+		PersonalDataResponse: Сохранённые данные.
+
+	Raises:
+		OnboardingNotFound: Если сессия регистрации не найдена.
+	"""
+	repo = CustomerRepository(session)
+	await repo.get_active_user(user_id)  # Проверка существования
+
+	normalized = payload.model_copy(
+		update={
+			"last_name": normalize_name(payload.last_name),
+			"first_name": normalize_name(payload.first_name),
+			"middle_name": normalize_name(payload.middle_name),
+		},
+	)
+	
+	await onboarding_drafts.save_draft(user_id, "personal_data", normalized.model_dump(mode="json"))
+	
+	return schemas.PersonalDataResponse(
+		client_id=user_id,
+		**normalized.model_dump(),
+	)
 
 
 async def store_passport_data(
@@ -347,9 +101,40 @@ async def store_passport_data(
 	user_id: UUID,
 	payload: schemas.PassportPayload,
 ) -> schemas.PassportResponse:
-	"""Сохраняет черновик паспортного шага."""
-	definition = STEP_DEFINITIONS["passport"]
-	return await _store_step(session, user_id, payload, definition)
+	"""Сохраняет черновик паспортных данных с проверкой уникальности.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		payload: Данные паспорта.
+
+	Returns:
+		PassportResponse: Сохранённые данные.
+
+	Raises:
+		OnboardingConflict: Если паспорт уже используется.
+		OnboardingNotFound: Если пользователь не найден.
+	"""
+	repo = CustomerRepository(session)
+	await repo.get_active_user(user_id)
+
+	normalized = payload.model_copy(
+		update={
+			"issued_by": payload.issued_by.strip(),
+			"registration_address": payload.registration_address.strip(),
+		},
+	)
+	
+	# Проверка уникальности по хешу
+	p_hash = get_blind_index(f"{normalized.series}{normalized.number}")
+	await repo.check_passport_unique(p_hash, exclude_client_id=user_id)
+	
+	await onboarding_drafts.save_draft(user_id, "passport", normalized.model_dump(mode="json"))
+	
+	return schemas.PassportResponse(
+		client_id=user_id,
+		**normalized.model_dump(),
+	)
 
 
 async def store_identifiers(
@@ -357,9 +142,38 @@ async def store_identifiers(
 	user_id: UUID,
 	payload: schemas.IdentifiersPayload,
 ) -> schemas.IdentifiersResponse:
-	"""Сохраняет черновик ИНН/СНИЛС."""
-	definition = STEP_DEFINITIONS["identifiers"]
-	return await _store_step(session, user_id, payload, definition)
+	"""Сохраняет ИНН и СНИЛС в черновик.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		payload: Идентификаторы.
+
+	Returns:
+		IdentifiersResponse: Подтверждение сохранения.
+	"""
+	repo = CustomerRepository(session)
+	await repo.get_active_user(user_id)
+
+	normalized = payload.model_copy(
+		update={
+			"inn": digits_only(payload.inn),
+			"snils": digits_only(payload.snils),
+		},
+	)
+	
+	await repo.check_identifiers_unique(
+		inn_hash=normalized.inn, 
+		snils_hash=normalized.snils, 
+		exclude_client_id=user_id
+	)
+	
+	await onboarding_drafts.save_draft(user_id, "identifiers", normalized.model_dump(mode="json"))
+	
+	return schemas.IdentifiersResponse(
+		client_id=user_id,
+		**normalized.model_dump(),
+	)
 
 
 async def store_contacts(
@@ -367,88 +181,133 @@ async def store_contacts(
 	user_id: UUID,
 	payload: schemas.ContactsPayload,
 ) -> schemas.ContactsResponse:
-	"""Сохраняет черновик контактного шага."""
-	definition = STEP_DEFINITIONS["contacts"]
-	return await _store_step(session, user_id, payload, definition)
+	"""Сохраняет контакты (email, phone) в черновик.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		payload: Контактные данные.
+
+	Returns:
+		ContactsResponse: Сохранённые контакты.
+	"""
+	repo = CustomerRepository(session)
+	await repo.get_active_user(user_id)
+
+	normalized = payload.model_copy(
+		update={
+			"email": normalize_email(payload.email),
+			"phone": normalize_phone(payload.phone),
+		},
+	)
+	
+	await repo.check_contacts_unique(
+		email_hash=get_blind_index(normalized.email),
+		phone_hash=get_blind_index(normalized.phone),
+		exclude_client_id=user_id
+	)
+	
+	await onboarding_drafts.save_draft(user_id, "contacts", normalized.model_dump(mode="json"))
+	
+	return schemas.ContactsResponse(
+		client_id=user_id,
+		**normalized.model_dump(),
+	)
 
 
 async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
-	"""Переносит все черновики из Redis в PostgreSQL и очищает их."""
+	"""Переносит все накопленные черновики из Redis в Postgres.
 
-	draft_payloads: Dict[onboarding_drafts.StepName, BaseModel] = {}
-	missing_steps: list[str] = []
-	for definition in STEP_SEQUENCE:
-		record = await onboarding_drafts.load_draft(user_id, definition.step)
-		if record is None or not record.get("payload"):
-			missing_steps.append(definition.step)
+	Завершает процесс регистрации: переводит статус пользователя в 'active',
+	очищает черновики и отправляет событие в лог.
+
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+
+	Raises:
+		OnboardingError: Если не все шаги заполнены или email не верифицирован.
+		OnboardingConflict: При коллизии уникальных данных в БД.
+	"""
+	repo = CustomerRepository(session)
+	
+	# 1. Сбор и валидация черновиков
+	drafts: Dict[str, Any] = {}
+	missing = []
+	steps = [
+		("personal_data", schemas.PersonalDataPayload),
+		("passport", schemas.PassportPayload),
+		("identifiers", schemas.IdentifiersPayload),
+		("contacts", schemas.ContactsPayload),
+	]
+	
+	for step_name, schema in steps:
+		draft = await onboarding_drafts.load_draft(user_id, step_name)
+		if not draft or not draft.get("payload"):
+			missing.append(step_name)
 		else:
-			draft_payloads[definition.step] = definition.payload_model.model_validate(record["payload"])
+			drafts[step_name] = schema.model_validate(draft["payload"])
+			
+	if missing:
+		raise OnboardingError(f"Не все шаги онбординга завершены: {', '.join(missing)}")
 
-	if missing_steps:
-		raise AccountDataError(
-			f"Не заполнены или истекли черновики шагов: {', '.join(missing_steps)}. "
-			"Заполните их заново перед финализацией."
-		)
+	if not await is_email_verified(user_id):
+		raise OnboardingError("Email не подтверждён. Финализация невозможна.")
 
-	# Проверяем, что email подтверждён
-	verified = await is_email_verified(user_id)
-	logger.info("Finalizing onboarding for user %s. Email verified: %s", user_id, verified)
-	if not verified:
-		raise AccountDataError(
-			"Email не подтверждён. Пройдите верификацию перед финализацией."
-		)
-
+	# 2. Сохранение в БД
 	try:
-		for definition in STEP_SEQUENCE:
-			await _persist_step(session, user_id, draft_payloads[definition.step], definition)
-
-		user = await session.get(models.User, user_id)
-		if user:
-			user.status = "active"
-			user.is_verified = True
-			user.updated_at = datetime.now(UTC)
-
-		await session.commit()
+		# Personal Data
+		p_data = drafts["personal_data"]
+		await repo.add_profile_part(models.PersonalData(client_id=user_id, **p_data.model_dump()))
+		
+		# Passport
+		passport = drafts["passport"]
+		await repo.add_profile_part(models.Passport(
+			client_id=user_id,
+			passport_hash=get_blind_index(f"{passport.series}{passport.number}"),
+			**passport.model_dump()
+		))
+		
+		# Identifiers
+		ids = drafts["identifiers"]
+		await repo.add_profile_part(models.Identifier(client_id=user_id, **ids.model_dump()))
+		
+		# Contacts
+		contacts = drafts["contacts"]
+		await repo.add_profile_part(models.Contact(
+			client_id=user_id,
+			email_hash=get_blind_index(contacts.email),
+			phone_hash=get_blind_index(contacts.phone),
+			**contacts.model_dump()
+		))
+		
+		# Акцивация пользователя
+		user = await repo.get_active_user(user_id)
+		user.status = "active"
+		user.is_verified = True
+		user.updated_at = datetime.now(UTC)
+		
+		await repo.commit()
+		
 	except IntegrityError as exc:
-		await session.rollback()
-		raise AccountDataConflict(
-			"Данные конфликтуют с уже существующими записями (дубликат уникального поля)."
-		) from exc
+		await repo.rollback()
+		raise OnboardingConflict("Данные конфликтуют с существующим клиентом.") from exc
 	except Exception:
-		await session.rollback()
+		await repo.rollback()
 		raise
-	else:
-		await onboarding_drafts.clear_all(user_id)
-		await clear_email_verification(user_id)
 
-		# Логируем успешную регистрацию
-		try:
-			await publish(
-				exchange_name=LOGS_EXCHANGE,
-				routing_key=LOG_AUTH_KEY,
-				body={
-					"type": "auth",
-					"payload": {
-						"user_id": str(user_id),
-						"action": "registration",
-						"service": "customer_service",
-						"entity_type": "user",
-						"status": "success",
-						"details": "Регистрация завершена (онбординг финализирован)",
-					},
-				},
-			)
-		except Exception:
-			pass
-
-
-__all__ = [
-	"AccountDataConflict",
-	"AccountDataError",
-	"start_onboarding",
-	"persist_onboarding_data",
-	"store_contacts",
-	"store_identifiers",
-	"store_passport_data",
-	"store_personal_data",
-]
+	# 3. Очистка и логирование
+	await onboarding_drafts.clear_all(user_id)
+	await clear_email_verification(user_id)
+	
+	await log_event(
+		routing_key=LOG_AUTH_KEY,
+		event_type="auth",
+		payload={
+			"user_id": str(user_id),
+			"action": "registration",
+			"service": "customer_service",
+			"status": "success",
+			"details": "Регистрация завершена (онбординг финализирован)",
+		}
+	)

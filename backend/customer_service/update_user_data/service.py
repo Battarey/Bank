@@ -1,46 +1,44 @@
-"""Бизнес-логика обновления данных пользователя."""
+"""Бизнес-логика обновления данных пользователя (ФИО, паспорт, контакты)."""
 
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
-from shared.utils.normalize import normalize_name, normalize_email, normalize_phone
+from shared.utils.normalize import normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
 
-
-class UpdateDataError(Exception):
-	"""Общая ошибка при обновлении данных."""
-
-
-class UpdateDataNotFound(UpdateDataError):
-	"""Запись не найдена для обновления."""
-
-
-class UpdateDataConflict(UpdateDataError):
-	"""Конфликт уникальности при обновлении."""
+from ..repository import CustomerRepository
+from ..exceptions import (
+	UpdateDataConflict,
+	UpdateDataEmpty,
+	UpdateDataError,
+	UpdateDataNotFound,
+)
 
 
-class UpdateDataEmpty(UpdateDataError):
-	"""Пустой запрос — ни одно поле не передано."""
+async def _get_active_user(repo: CustomerRepository, user_id: UUID) -> models.User:
+	"""Возвращает активного пользователя для редактирования.
 
+	Args:
+		repo: Репозиторий клиентов.
+		user_id: ID пользователя.
 
-async def _get_active_user(session: AsyncSession, user_id: UUID) -> models.User:
-	"""Возвращает пользователя, если он в активном статусе."""
-	user = await session.get(models.User, user_id)
-	if user is None:
-		raise UpdateDataNotFound(f"Пользователь {user_id} не найден.")
+	Returns:
+		User: Объект пользователя.
+
+	Raises:
+		UpdateDataNotFound: Если пользователь не найден.
+		UpdateDataError: Если пользователь не в статусе active.
+	"""
+	user = await repo.get_active_user(user_id)
 	if user.status != "active":
 		raise UpdateDataError(
-			f"Обновление данных доступно только для активных пользователей (текущий статус: {user.status})."
+			f"Обновление данных запрещено: текущий статус пользователя '{user.status}'."
 		)
 	return user
-
-
-# ── Персональные данные (ФИО) ──────────────────────────────────────────
 
 
 async def update_personal_data(
@@ -48,41 +46,43 @@ async def update_personal_data(
 	user_id: UUID,
 	payload: schemas.PersonalDataUpdate,
 ) -> schemas.PersonalDataResponse:
-	"""Обновляет ФИО пользователя. birth_date и gender неизменяемы."""
+	"""Обновляет ФИО пользователя.
 
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		payload: Новые данные ФИО.
+
+	Returns:
+		PersonalDataResponse: Обновлённые данные.
+
+	Raises:
+		UpdateDataEmpty: Если не передано ни одного поля.
+		UpdateDataNotFound: Если профиль не найден.
+	"""
+	repo = CustomerRepository(session)
 	fields = payload.model_dump(exclude_unset=True)
 	if not fields:
 		raise UpdateDataEmpty("Необходимо передать хотя бы одно поле для обновления.")
 
-	user = await _get_active_user(session, user_id)
-	record = await session.get(models.PersonalData, user_id)
+	await _get_active_user(repo, user_id)
+	
+	record = await repo.get_personal_data(user_id)
 	if record is None:
-		raise UpdateDataNotFound("Персональные данные пользователя не найдены.")
+		raise UpdateDataNotFound("Персональные данные (профиль) не найдены.")
 
 	# Нормализация
-	if "last_name" in fields:
-		fields["last_name"] = normalize_name(fields["last_name"])
-	if "first_name" in fields:
-		fields["first_name"] = normalize_name(fields["first_name"])
-	if "middle_name" in fields:
-		fields["middle_name"] = normalize_name(fields["middle_name"])
+	for key in ["last_name", "first_name", "middle_name"]:
+		if key in fields:
+			fields[key] = normalize_name(fields[key])
 
 	for attr, value in fields.items():
 		setattr(record, attr, value)
 
-	user.updated_at = datetime.now(UTC)
-
-	try:
-		await session.commit()
-	except Exception:
-		await session.rollback()
-		raise
-
-	await session.refresh(record)
+	await repo.commit()
+	await repo.refresh(record)
+	
 	return schemas.PersonalDataResponse.model_validate(record)
-
-
-# ── Паспорт (замена целиком) ───────────────────────────────────────────
 
 
 async def replace_passport(
@@ -90,52 +90,43 @@ async def replace_passport(
 	user_id: UUID,
 	payload: schemas.PassportPayload,
 ) -> schemas.PassportResponse:
-	"""Полная замена паспортных данных (перевыпуск паспорта)."""
+	"""Полная замена паспортных данных клиента.
 
-	user = await _get_active_user(session, user_id)
-	record = await session.get(models.Passport, user_id)
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		payload: Новые данные паспорта.
+
+	Returns:
+		PassportResponse: Обновлённый паспорт.
+
+	Raises:
+		UpdateDataConflict: Если новый паспорт уже используется.
+	"""
+	repo = CustomerRepository(session)
+	await _get_active_user(repo, user_id)
+	
+	record = await repo.get_passport(user_id)
 	if record is None:
-		raise UpdateDataNotFound("Паспортные данные пользователя не найдены.")
+		raise UpdateDataNotFound("Паспортные данные профиля не найдены.")
 
-	# Нормализация
-	normalized = payload.model_copy(
-		update={
-			"issued_by": payload.issued_by.strip(),
-			"registration_address": payload.registration_address.strip(),
-		},
-	)
+	# Нормализация и проверка уникальности
+	p_hash = get_blind_index(f"{payload.series}{payload.number}")
+	await repo.check_passport_unique(p_hash, exclude_client_id=user_id)
 
-	# Проверка уникальности серии/номера через blind index
-	p_hash = get_blind_index(f"{normalized.series}{normalized.number}")
-	duplicate = await session.scalar(
-		select(models.Passport).where(
-			models.Passport.passport_hash == p_hash,
-		)
-	)
-	if duplicate and duplicate.client_id != user_id:
-		raise UpdateDataConflict("Паспорт с такой серией/номером уже привязан к другому клиенту.")
-
-	for attr, value in normalized.model_dump().items():
+	# Обновление полей
+	for attr, value in payload.model_dump().items():
 		setattr(record, attr, value)
-
-	record.passport_hash = p_hash  # Обновляем хеш
-
-	user.updated_at = datetime.now(UTC)
+	record.passport_hash = p_hash
 
 	try:
-		await session.commit()
+		await repo.commit()
 	except IntegrityError as exc:
-		await session.rollback()
-		raise UpdateDataConflict("Конфликт данных паспорта.") from exc
-	except Exception:
-		await session.rollback()
-		raise
-
-	await session.refresh(record)
+		await repo.rollback()
+		raise UpdateDataConflict("Паспорт с такими данными уже зарегистрирован.") from exc
+		
+	await repo.refresh(record)
 	return schemas.PassportResponse.model_validate(record)
-
-
-# ── Контакты (partial) ────────────────────────────────────────────────
 
 
 async def update_contacts(
@@ -143,66 +134,51 @@ async def update_contacts(
 	user_id: UUID,
 	payload: schemas.ContactsUpdate,
 ) -> schemas.ContactsResponse:
-	"""Частичное обновление email и/или phone."""
+	"""Частичное обновление контактов (Email, телефон).
 
+	Args:
+		session: Сессия БД.
+		user_id: ID пользователя.
+		payload: Обновляемые поля контактов.
+
+	Returns:
+		ContactsResponse: Обновлённый набор контактов.
+	"""
+	repo = CustomerRepository(session)
 	fields = payload.model_dump(exclude_unset=True)
 	if not fields:
-		raise UpdateDataEmpty("Необходимо передать хотя бы одно поле для обновления.")
+		raise UpdateDataEmpty("Необходимо передать email или телефон.")
 
-	user = await _get_active_user(session, user_id)
-	record = await session.get(models.Contact, user_id)
+	await _get_active_user(repo, user_id)
+	
+	record = await repo.get_contact(user_id)
 	if record is None:
-		raise UpdateDataNotFound("Контактные данные пользователя не найдены.")
+		raise UpdateDataNotFound("Контактные данные профиля не найдены.")
 
-	# Нормализация
+	# Нормализация и расчет хешей
+	email_hash = get_blind_index(normalize_email(fields["email"])) if "email" in fields else None
+	phone_hash = get_blind_index(normalize_phone(fields["phone"])) if "phone" in fields else None
+
+	# Проверка уникальности
+	await repo.check_contacts_unique(
+		email_hash=email_hash, 
+		phone_hash=phone_hash, 
+		exclude_client_id=user_id
+	)
+
+	# Применяем изменения
 	if "email" in fields:
-		fields["email"] = normalize_email(fields["email"])
+		record.email = normalize_email(fields["email"])
+		record.email_hash = email_hash
 	if "phone" in fields:
-		fields["phone"] = normalize_phone(fields["phone"])
-
-	# Проверка уникальности через blind index
-	conditions = []
-	if "email" in fields:
-		conditions.append(models.Contact.email_hash == get_blind_index(fields["email"]))
-	if "phone" in fields:
-		conditions.append(models.Contact.phone_hash == get_blind_index(fields["phone"]))
-
-	if conditions:
-		duplicate = await session.scalar(
-			select(models.Contact).where(or_(*conditions))
-		)
-		if duplicate and duplicate.client_id != user_id:
-			raise UpdateDataConflict("Email или телефон уже используется другим клиентом.")
-
-	for attr, value in fields.items():
-		setattr(record, attr, value)
-		# Если поле изменилось, обновляем и его хеш
-		if attr == "email":
-			record.email_hash = get_blind_index(fields["email"])
-		if attr == "phone":
-			record.phone_hash = get_blind_index(fields["phone"])
-
-	user.updated_at = datetime.now(UTC)
+		record.phone = normalize_phone(fields["phone"])
+		record.phone_hash = phone_hash
 
 	try:
-		await session.commit()
+		await repo.commit()
 	except IntegrityError as exc:
-		await session.rollback()
-		raise UpdateDataConflict("Email или телефон уже используется другим клиентом.") from exc
-	except Exception:
-		await session.rollback()
-		raise
+		await repo.rollback()
+		raise UpdateDataConflict("Конфликт уникальности контактов.") from exc
 
-	await session.refresh(record)
+	await repo.refresh(record)
 	return schemas.ContactsResponse.model_validate(record)
-
-
-__all__ = [
-	"UpdateDataConflict",
-	"UpdateDataEmpty",
-	"UpdateDataError",
-	"UpdateDataNotFound",
-	"replace_passport",
-	"update_contacts",
-	"update_personal_data",
-]

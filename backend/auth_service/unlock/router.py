@@ -1,55 +1,41 @@
-"""Эндпоинты разблокировки аккаунта."""
+"""Роутер разблокировки аккаунта: запрос кода и подтверждение."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database_core.db import get_session
-from shared.schemas.unlock import RequestUnlockRequest, UnlockRequest
 from shared.schemas.auth import MessageResponse
+from shared.schemas.unlock import RequestUnlockRequest, UnlockRequest
 from . import service
 
 router = APIRouter(tags=["auth-unlock"])
 
 
-def _raise(exc: service.UnlockError) -> None:
-	if isinstance(exc, service.UnlockNotFound):
-		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
-	if isinstance(exc, service.UnlockNotBlocked):
-		raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
-	if isinstance(exc, service.UnlockInvalidCode):
-		raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
-	raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-
 @router.post(
-	"/request-unlock",
+	"/unlock-codes",
 	response_model=MessageResponse,
+	status_code=status.HTTP_201_CREATED,
 	summary="Запросить код разблокировки",
 )
 async def request_unlock(
 	body: RequestUnlockRequest,
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Отправляет 6-значный код на email для разблокировки аккаунта."""
-	try:
-		await service.request_unlock(session, body.email)
-	except service.UnlockError as exc:
-		_raise(exc)
-	return MessageResponse(message="Код разблокировки отправлен на привязанный email.")
+	"""Генерирует 6-значный код и отправляет его на Email пользователя."""
+	await service.request_unlock(session, body.email)
+	return MessageResponse(message="Код разблокировки отправлен на привязанный Email.")
 
 
 @router.post(
-	"/unlock",
+	"/unlock-codes/confirm",
 	response_model=MessageResponse,
-	summary="Разблокировать аккаунт",
+	status_code=status.HTTP_200_OK,
+	summary="Подтвердить разблокировку",
 )
-async def unlock(
+async def confirm_unlock(
 	body: UnlockRequest,
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Проверяет код и разблокирует аккаунт."""
-	try:
-		await service.unlock_account(session, body.email, body.code)
-	except service.UnlockError as exc:
-		_raise(exc)
-	return MessageResponse(message="Аккаунт успешно разблокирован. Теперь вы можете войти по PIN-коду.")
+	"""Проверяет код и переводит аккаунт в статус 'active'."""
+	await service.confirm_unlock(session, body.email, body.code)
+	return MessageResponse(message="Аккаунт успешно разблокирован. Теперь вы можете войти.")

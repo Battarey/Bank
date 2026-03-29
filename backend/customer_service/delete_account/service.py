@@ -3,80 +3,71 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.rabbitmq.client import publish
 from shared.rabbitmq.constants import (
-	LOGS_EXCHANGE,
+	EMAIL_ROUTING_KEY,
 	LOG_AUTH_KEY,
 	NOTIFICATIONS_EXCHANGE,
-	EMAIL_ROUTING_KEY,
+)
+from shared.utils.log_event import log_event
+
+from ..repository import CustomerRepository
+from ..exceptions import (
+	AccountAlreadyDeleted,
+	AccountNotFound,
 )
 
 
-class DeleteAccountError(Exception):
-	"""Базовая ошибка удаления аккаунта."""
-
-
-class DeleteAccountNotFound(DeleteAccountError):
-	"""Пользователь не найден."""
-
-
-class DeleteAccountAlreadyDeleted(DeleteAccountError):
-	"""Аккаунт уже удалён."""
-
-
 async def delete_account(session: AsyncSession, user_id: UUID) -> None:
-	"""Soft delete аккаунта пользователя.
+	"""Выполняет мягкое удаление аккаунта клиента.
 
-	1. user.status → "deleted", updated_at → now
-	2. Каскадная заморозка всех open-счетов (frozen_by=system)
-	3. Email-уведомление
-	4. Аудит-лог
+	Процесс включает:
+	1. Перевод статуса пользователя в 'deleted'.
+	2. Заморозку всех открытых счетов клиента.
+	3. Отправку уведомления на Email.
+	4. Запись события в аудит-лог.
 
-	Отзыв сессий (revoke_all) выполняется на уровне gateway.
+	Args:
+		session: Асинхронная сессия базы данных.
+		user_id: Идентификатор удаляемого пользователя.
+
+	Raises:
+		AccountNotFound: Если пользователь не найден.
+		AccountAlreadyDeleted: Если статус пользователя уже 'deleted'.
 	"""
-
-	user = await session.get(models.User, user_id)
+	repo = CustomerRepository(session)
+	user = await repo.get(user_id)
+	
 	if user is None:
-		raise DeleteAccountNotFound("Пользователь не найден.")
+		raise AccountNotFound(f"Пользователь {user_id} не найден.")
 	if user.status == "deleted":
-		raise DeleteAccountAlreadyDeleted("Аккаунт уже удалён.")
+		raise AccountAlreadyDeleted("Аккаунт уже был удалён ранее.")
 
 	now = datetime.now(UTC)
 
-	# 1. Статус → deleted
+	# 1. Помечаем пользователя как удаленного
 	user.status = "deleted"
 	user.updated_at = now
 
-	# 2. Каскадная заморозка open-счетов
-	stmt = (
-		select(models.BankAccount)
-		.where(
-			models.BankAccount.client_id == user_id,
-			models.BankAccount.status == "open",
-		)
-		.with_for_update()
-	)
-	result = await session.execute(stmt)
-	accounts = result.scalars().all()
-
+	# 2. Замораживаем все открытые счета
+	accounts = await repo.get_open_accounts(user_id)
 	for acc in accounts:
 		acc.status = "frozen"
 		acc.frozen_by = "system"
 		acc.frozen_at = now
-		acc.freeze_reason = "Удаление аккаунта"
+		acc.freeze_reason = "Удаление аккаунта пользователя"
 
 	try:
-		await session.commit()
+		await repo.commit()
 	except Exception:
-		await session.rollback()
+		await repo.rollback()
 		raise
 
-	# 3. Email-уведомление
-	contact = await session.get(models.Contact, user_id)
+	# 3. Отправляем уведомление (Best effort)
+	contact = await repo.get_contact(user_id)
 	if contact:
 		try:
 			await publish(
@@ -86,29 +77,22 @@ async def delete_account(session: AsyncSession, user_id: UUID) -> None:
 					"type": "account_deleted",
 					"payload": {
 						"to": contact.email,
-						"variables": {},
+						"variables": {"user_id": str(user_id)},
 					},
 				},
 			)
 		except Exception:
 			pass
 
-	# 4. Аудит-лог
-	try:
-		await publish(
-			exchange_name=LOGS_EXCHANGE,
-			routing_key=LOG_AUTH_KEY,
-			body={
-				"type": "auth",
-				"payload": {
-					"user_id": str(user_id),
-					"action": "delete_account",
-					"service": "customer_service",
-					"entity_type": "user",
-					"status": "success",
-					"details": "Аккаунт удалён (soft delete)",
-				},
-			},
-		)
-	except Exception:
-		pass
+	# 4. Логируем событие
+	await log_event(
+		routing_key=LOG_AUTH_KEY,
+		event_type="auth",
+		payload={
+			"user_id": str(user_id),
+			"action": "delete_account",
+			"service": "customer_service",
+			"status": "success",
+			"details": "Soft delete аккаунта завершен",
+		}
+	)

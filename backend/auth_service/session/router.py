@@ -1,71 +1,60 @@
-"""Эндпоинты управления сессиями и PIN-кодом."""
+"""Роутер управления сессиями и блокировки аккаунта."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database_core.db import get_session
 from shared.internal_auth import require_user_id
-from shared.schemas.auth import MessageResponse, SetPinRequest
+from shared.schemas.auth import MessageResponse
 from . import service
 
-router = APIRouter(tags=["auth-session"])
+router = APIRouter(tags=["auth-sessions"])
 
 
-# ── Обработка ошибок ───────────────────────────────────────────────────
-
-def _raise(exc: service.SessionError) -> None:
-	if isinstance(exc, service.SessionNotFound):
-		raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
-	if isinstance(exc, service.SessionAlreadyBlocked):
-		raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
-	raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-
-# ── Эндпоинты ──────────────────────────────────────────────────────────
-
-@router.post("/set-pin", response_model=MessageResponse, summary="Установить / сменить PIN")
-async def set_pin(
-	body: SetPinRequest,
-	user_id: UUID = Depends(require_user_id),
-	session: AsyncSession = Depends(get_session),
-):
-	"""Устанавливает или обновляет PIN-код текущего пользователя."""
-	try:
-		await service.set_pin(session, user_id, body.pin)
-	except service.SessionError as exc:
-		_raise(exc)
-	return MessageResponse(message="PIN-код успешно установлен.")
-
-
-@router.post("/logout", response_model=MessageResponse, summary="Выход")
+@router.delete(
+	"/sessions/current",
+	response_model=MessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Завершить текущую сессию (Logout)",
+)
 async def logout(
 	x_session_token: str = Header(..., alias="X-Session-Token"),
 ):
-	"""Завершает текущий сеанс."""
+	"""Удаляет текущий сессионный токен из Redis."""
 	await service.logout(x_session_token)
-	return MessageResponse(message="Сеанс завершён.")
+	return MessageResponse(message="Сеанс успешно завершён.")
 
 
-@router.post("/logout-all", response_model=MessageResponse, summary="Выход со всех устройств")
+@router.delete(
+	"/sessions",
+	response_model=MessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Завершить все сессии пользователя",
+)
 async def logout_all(
 	user_id: UUID = Depends(require_user_id),
 ):
-	"""Завершает все сеансы пользователя."""
+	"""Отзывает все сессионные токены, выданные данному пользователю."""
 	await service.logout_all(user_id)
-	return MessageResponse(message="Все сеансы завершены.")
+	return MessageResponse(message="Все активные сессии завершены.")
 
 
-@router.post("/self-block", response_model=MessageResponse, summary="Самоблокировка аккаунта")
+@router.post(
+	"/sessions/me/block",
+	response_model=MessageResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Самоблокировка аккаунта",
+)
 async def self_block(
 	user_id: UUID = Depends(require_user_id),
-	x_session_token: str = Header(..., alias="X-Session-Token"),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Блокирует аккаунт по запросу владельца. Замораживает все счета, завершает все сессии."""
-	try:
-		await service.self_block(session, user_id, x_session_token)
-	except service.SessionError as exc:
-		_raise(exc)
-	return MessageResponse(message="Аккаунт заблокирован. Используйте /auth/request-unlock для разблокировки.")
+	"""Блокирует аккаунт пользователя по его инициативе.
+	
+	Замораживает счета и завершает все сессии. Восстановление доступа
+	возможно только через процедуру разблокировки.
+	"""
+	await service.self_block(session, user_id)
+	return MessageResponse(message="Аккаунт заблокирован. Все сессии завершены.")

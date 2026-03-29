@@ -1,73 +1,53 @@
-"""Бизнес-логика разблокировки аккаунта.
+"""Бизнес-логика разблокировки аккаунта по Email-коду."""
 
-Поток:
-1. POST /request-unlock {phone} — отправляет 6-значный код на email.
-2. POST /unlock {phone, code} — проверяет код, снимает блокировку.
-"""
-
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared import models
 from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, LOGS_EXCHANGE, LOG_AUTH_KEY
-from shared.redis_sessions import rate_limit
-from shared.redis_sessions import unlock_codes
+from shared.rabbitmq.constants import (
+	EMAIL_ROUTING_KEY,
+	LOG_AUTH_KEY,
+	NOTIFICATIONS_EXCHANGE,
+)
+from shared.redis_sessions import rate_limit, unlock_codes
+from shared.utils.log_event import log_event
 from shared.utils.security import get_blind_index
 
+from ..repository import AuthRepository
+from ..exceptions import (
+	AuthInvalidCode,
+	AuthNotBlocked,
+	AuthNotFound,
+)
 
-# ── Исключения ─────────────────────────────────────────────────────────
-
-class UnlockError(Exception):
-	"""Базовая ошибка разблокировки."""
-
-
-class UnlockNotFound(UnlockError):
-	"""Пользователь не найден."""
-
-
-class UnlockNotBlocked(UnlockError):
-	"""Аккаунт не заблокирован."""
-
-
-class UnlockInvalidCode(UnlockError):
-	"""Неверный или истёкший код разблокировки."""
-
-
-# ── Вспомогательные ────────────────────────────────────────────────────
-
-async def _find_user_by_email(
-	session: AsyncSession,
-	email: str,
-) -> tuple[models.User, models.Contact]:
-	"""Ищет пользователя по email."""
-
-	stmt = (
-		select(models.User, models.Contact)
-		.join(models.Contact, models.User.id == models.Contact.client_id)
-		.where(models.Contact.email_hash == get_blind_index(email))
-	)
-	result = await session.execute(stmt)
-	row = result.first()
-	if row is None:
-		raise UnlockNotFound("Пользователь с таким email не найден.")
-	return row.tuple()
-
-
-# ── Операции ───────────────────────────────────────────────────────────
 
 async def request_unlock(session: AsyncSession, email: str) -> None:
-	"""Отправить код разблокировки на email пользователя."""
+	"""Отправляет 6-значный код разблокировки на Email пользователя.
 
-	user, contact = await _find_user_by_email(session, email)
+	Проверяет, что аккаунт действительно заблокирован, генерирует код и сохраняет его в Redis.
+
+	Args:
+		session: Сессия БД.
+		email: Email пользователя.
+
+	Raises:
+		AuthNotFound: Если пользователь не найден.
+		AuthNotBlocked: Если аккаунт не в статусе 'blocked'.
+	"""
+	repo = AuthRepository(session)
+	row = await repo.get_by_email(get_blind_index(email))
+	if not row:
+		raise AuthNotFound(f"Пользователь с email '{email}' не найден.")
+	
+	user, contact = row
 
 	if user.status != "blocked":
-		raise UnlockNotBlocked("Аккаунт не заблокирован.")
+		raise AuthNotBlocked("Аккаунт не заблокирован. Восстановление доступа не требуется.")
 
+	# Генерация и сохранение кода
 	code = unlock_codes.generate_code()
 	await unlock_codes.save_unlock_code(user.id, code)
 
-	# Отправляем email через RabbitMQ
+	# Отправка Email-уведомления
 	await publish(
 		exchange_name=NOTIFICATIONS_EXCHANGE,
 		routing_key=EMAIL_ROUTING_KEY,
@@ -80,35 +60,53 @@ async def request_unlock(session: AsyncSession, email: str) -> None:
 		},
 	)
 
+	await log_event(
+		routing_key=LOG_AUTH_KEY,
+		event_type="auth",
+		payload={
+			"user_id": str(user.id),
+			"action": "unlock_request",
+			"service": "auth_service",
+			"status": "success",
+		}
+	)
 
-async def unlock_account(session: AsyncSession, email: str, code: str) -> None:
-	"""Проверить код и разблокировать аккаунт."""
 
-	user, contact = await _find_user_by_email(session, email)
+async def confirm_unlock(session: AsyncSession, email: str, code: str) -> None:
+	"""Проверяет код и разблокирует аккаунт.
+
+	При успешной проверке:
+	1. Статус пользователя → 'active'.
+	2. Все счета, замороженные системой, возвращаются в 'open'.
+	3. Сбрасывается rate-limit попыток входа (по телефону).
+
+	Args:
+		session: Сессия БД.
+		email: Email пользователя.
+		code: Код из письма.
+
+	Raises:
+		AuthInvalidCode: Если код неверный или истёк.
+	"""
+	repo = AuthRepository(session)
+	row = await repo.get_by_email(get_blind_index(email))
+	if not row:
+		raise AuthNotFound(f"Пользователь с email '{email}' не найден.")
+	
+	user, contact = row
 
 	if user.status != "blocked":
-		raise UnlockNotBlocked("Аккаунт не заблокирован.")
+		raise AuthNotBlocked("Аккаунт не заблокирован.")
 
-	# Проверяем код
-	valid = await unlock_codes.verify_unlock_code(user.id, code)
-	if not valid:
-		raise UnlockInvalidCode("Неверный или истёкший код разблокировки.")
+	# Проверка кода в Redis
+	if not await unlock_codes.verify_unlock_code(user.id, code):
+		raise AuthInvalidCode("Неверный или истёкший код разблокировки.")
 
-	# Разблокируем
+	# Активация пользователя
 	user.status = "active"
 
-	# Каскадная разморозка системно-замороженных счетов
-	stmt_freeze = (
-		select(models.BankAccount)
-		.where(
-			models.BankAccount.client_id == user.id,
-			models.BankAccount.status == "frozen",
-			models.BankAccount.frozen_by == "system",
-		)
-		.with_for_update()
-	)
-	result_freeze = await session.execute(stmt_freeze)
-	frozen_accounts = result_freeze.scalars().all()
+	# Каскадная разморозка счетов
+	frozen_accounts = await repo.get_system_frozen_accounts(user.id)
 	for acc in frozen_accounts:
 		acc.status = "open"
 		acc.frozen_by = None
@@ -116,15 +114,15 @@ async def unlock_account(session: AsyncSession, email: str, code: str) -> None:
 		acc.freeze_reason = None
 
 	try:
-		await session.commit()
+		await repo.commit()
 	except Exception:
-		await session.rollback()
+		await repo.rollback()
 		raise
 
-	# Сбрасываем rate-limit по телефону
+	# Сброс лимитов входа
 	await rate_limit.reset(contact.phone)
 
-	# Уведомляем пользователя
+	# Уведомления и лог
 	await publish(
 		exchange_name=NOTIFICATIONS_EXCHANGE,
 		routing_key=EMAIL_ROUTING_KEY,
@@ -137,32 +135,14 @@ async def unlock_account(session: AsyncSession, email: str, code: str) -> None:
 		},
 	)
 
-	# Логируем разблокировку
-	try:
-		await publish(
-			exchange_name=LOGS_EXCHANGE,
-			routing_key=LOG_AUTH_KEY,
-			body={
-				"type": "auth",
-				"payload": {
-					"user_id": str(user.id),
-					"action": "unlock",
-					"service": "auth_service",
-					"entity_type": "user",
-					"status": "success",
-					"details": "Аккаунт разблокирован по коду",
-				},
-			},
-		)
-	except Exception:
-		pass
-
-
-__all__ = [
-	"UnlockError",
-	"UnlockInvalidCode",
-	"UnlockNotBlocked",
-	"UnlockNotFound",
-	"request_unlock",
-	"unlock_account",
-]
+	await log_event(
+		routing_key=LOG_AUTH_KEY,
+		event_type="auth",
+		payload={
+			"user_id": str(user.id),
+			"action": "unlock",
+			"service": "auth_service",
+			"status": "success",
+			"details": "Доступ восстановлен по Email-коду",
+		}
+	)
