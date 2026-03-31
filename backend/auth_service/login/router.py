@@ -29,7 +29,7 @@ async def login(
 
 
 @router.put(
-	"/pin",
+	"/pins",
 	response_model=MessageResponse,
 	status_code=status.HTTP_200_OK,
 	summary="Установить/сменить PIN",

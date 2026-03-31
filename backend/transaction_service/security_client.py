@@ -59,7 +59,7 @@ async def check_transaction(
 
 	try:
 		response = await _client.post(
-			"/check",
+			"/evaluations",
 			json=payload.model_dump(mode="json"),
 			headers={"X-Internal-Key": INTERNAL_API_KEY},
 		)

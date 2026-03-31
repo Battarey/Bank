@@ -27,7 +27,7 @@ async def request_unlock(
 
 
 @router.post(
-	"/unlock-codes/confirm",
+	"/unlock-codes/verifications",
 	response_model=MessageResponse,
 	status_code=status.HTTP_200_OK,
 	summary="Подтвердить разблокировку",

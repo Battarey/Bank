@@ -25,10 +25,10 @@ func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
 	// Публичные (вход и разблокировка)
 	v1.POST("/sessions", h.Login)             // Создать сессию (Вход)
 	v1.POST("/auth/unlock-codes", h.RequestUnlock)         // Запросить код
-	v1.POST("/auth/unlock-codes/confirm", h.ConfirmUnlock) // Подтвердить разблокировку
+	v1.POST("/auth/unlock-codes/verifications", h.ConfirmUnlock) // Подтверждение разблокировки
 
 	// Защищённые (управление сессиями и PIN)
-	v1.PUT("/auth/pin", h.SetPin)                         // Обновить PIN
+	v1.PUT("/auth/pins", h.SetPin)                         // Обновить PIN
 	v1.DELETE("/sessions/current", h.Logout)             // Выход (текущая)
 	v1.DELETE("/sessions", h.LogoutAll)                  // Выход (все устройства)
 	v1.POST("/auth/self-block", h.SelfBlock)             // Самоблокировка
@@ -73,10 +73,10 @@ func (h *AuthHandler) RequestUnlock(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.UnlockRequest true "Данные для разблокировки"
 // @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/auth/unlock-codes/confirm [post]
+// @Router      /api/v1/auth/unlock-codes/verifications [post]
 func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {
 	body, _ := ReadBody(c)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock-codes/confirm", body, "auth", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock-codes/verifications", body, "auth", h.APIKey)
 }
 
 // ── Защищённые ─────────────────────────────────────────────────────────
@@ -90,11 +90,11 @@ func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.SetPinRequest true "Новый PIN"
 // @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/auth/pin [put]
+// @Router      /api/v1/auth/pins [put]
 func (h *AuthHandler) SetPin(c echo.Context) error {
 	body, _ := ReadBody(c)
 
-	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPut, "/pin", body, "auth", h.APIKey)
+	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPut, "/pins", body, "auth", h.APIKey)
 	if err != nil {
 		return c.JSON(http.StatusBadGateway, map[string]string{
 			"detail": fmt.Sprintf("Ошибка проксирования: %v", err),

@@ -17,7 +17,7 @@ from . import service
 router = APIRouter(prefix="/security", tags=["Security"])
 
 @router.post(
-	"/check",
+	"/evaluations",
 	response_model=SecurityCheckResponse,
 	status_code=status.HTTP_200_OK,
 	summary="Проверить транзакцию",
