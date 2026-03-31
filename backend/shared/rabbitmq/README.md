@@ -1,45 +1,18 @@
-# RabbitMQ & Message Bus
+# Брокер сообщений и События (rabbitmq / events)
 
-Модуль для асинхронного межсервисного взаимодействия (**EDA**) через RabbitMQ. Обеспечивает публикацию доменных событий и доставку уведомлений.
+Инфраструктура для асинхронного взаимодействия микросервисов (EDA — Event-Driven Architecture).
 
----
+## Иерархия событий (events)
+Все события наследуются от `BaseEvent` и делятся на три типа:
 
-## 🏗 Файловая архитектура
-```
-shared/rabbitmq/
-├── bus.py         # Message Bus для трансляции событий из UoW
-├── helpers.py     # Вспомогательные функции публикации (send_log, send_notification)
-├── client.py      # Низкоуровневое подключение aio-pika
-├── constants.py   # Имена обменников (Exchanges) и ключей маршрутизации
-└── README.md
-```
+1.  **DomainEvent**: Бизнес-события, инициирующие действия в других сервисах (например, создание аккаунта после онбординга).
+2.  **NotificationEvent**: Запросы на отправку уведомлений пользователю (Email/SMS).
+3.  **LogEvent**: Системные события для аудита и аналитики.
 
-## Message Bus (bus.py)
+## RabbitMQ Клиент
+- Автоматическое переподключение (Robust Connection).
+- Унифицированный интерфейс публикации сообщений в Exchange.
+- Сериализация событий в JSON по стандарту Pydantic.
 
-Центральный компонент для обработки **Domain Events**.
--   **`MessageBus.handle(events)`**: Принимает список событий из `Unit of Work`.
--   **`MessageBus._publish(event)`**: Мапит событие на соответствующий RabbitMQ Exchange.
--   Автоматически обрабатывает `NotificationEvent` (отправка email) и `LogEvent` (аудит/аналитика).
-
-## Полезные утилиты (helpers.py)
-
-Функции для ручной регистрации событий (если не используется UoW):
--   **`send_notification(...)`**: Отправка Email-кода верификации, пароля и т.д.
--   **`send_log(...)`**: Запись бизнес-действия в глобальный аудит-лог.
-
-## Константы и Роутинг (constants.py)
-
-| Exchange         | Тип     | Routing Key       | Consumer                 |
-|------------------|---------|-------------------|--------------------------|
-| `notifications`  | `topic` | `email.send`      | `notification_service`   |
-| `logs`           | `topic` | `log.auth`        | `log_service`            |
-| `logs`           | `topic` | `log.account`     | `log_service`            |
-| `logs`           | `topic` | `log.transaction` | `log_service`            |
-
-## Пример использования
-
-События автоматически отправляются в `RMQ` при вызове `uow.commit()`:
-```python
-uow.add_event(NotificationEvent(to="user@mail.ru", type="welcome"))
-await uow.commit() # Событие попадет в MessageBus и улетит в RabbitMQ
-```
+## Маршрутизация
+Используется `Topic Exchange`. Каждый тип события имеет свой `routing_key` (например, `notifications.email.welcome`), что позволяет гибко настраивать потребителей.

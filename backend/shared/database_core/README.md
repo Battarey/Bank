@@ -1,45 +1,17 @@
-# Database Core
+# Ядро базы данных (database_core)
 
-Ядро для работы с данными, реализующее паттерны **Unit of Work** и **Repository/Query**. Обеспечивает асинхронное подключение к PostgreSQL через SQLAlchemy 2.0.
+Набор базовых абстракций и инструментов для работы с реляционными данными в PostgreSQL. Реализует паттерны Unit of Work и Repository/Query.
 
-## Файловая архитектура
-```
-database_core/
-├── db.py                     # Подключение, движок и фабрика сессий
-├── uow.py                    # Паттерн Unit of Work (Abstract & SqlAlchemy)
-├── base_repository.py         # Базовый ORM-репозиторий (Write)
-├── base_query_repository.py   # Базовый Query-репозиторий (Read/CQRS)
-└── env.py                    # Настройки окружения
-```
+## Состав модуля
+- `db.py`: Конфигурация SQLAlchemy движка и фабрика асинхронных сессий.
+- `uow.py`: Базовые классы `BaseUnitOfWork` для атомарных транзакций и шины событий.
+- `base_repository.py`: Абстрактный репозиторий для ORM-операций (запись/обновление).
+- `base_query_repository.py`: Репозиторий для CQRS (чтение через Raw SQL).
 
-## Основные компоненты
+## Unit of Work (UoW)
+Паттерн используется для:
+1.  **Атомарности**: Гарантия того, что все изменения в рамках одного бизнес-процесса будут зафиксированы одновременно.
+2.  **Шины событий**: Регистрация `DomainEvents` в процессе работы и их автоматическая публикация в RabbitMQ только после успешного `commit()`.
 
-### 1. Unit of Work (`uow.py`)
-Управляет жизненным циклом сессии и атомарностью операций.
-- **`AbstractUnitOfWork`**: Интерфейс с поддержкой `commit`, `rollback` и очереди событий.
-- **`SqlAlchemyUnitOfWork`**: Реализация для SQLAlchemy. Автоматически закрывает сессию и публикует доменные события после коммита.
-
-### 2. Repository (`base_repository.py`)
-Инкапсулирует логику работы с сущностями через ORM.
-- Методы: `get`, `list`, `add`, `add_all`, `delete`, `delete_older_than`.
-- Скрывает использование `select`, `delete` и других конструкций SQLAlchemy.
-
-### 3. Query Layer (`base_query_repository.py`)
-Используется для **CQRS (Read Model)**.
-- Выполняет высокопроизводительные сырые SQL-запросы (`text()`).
-- Возвращает Pydantic-схемы вместо ORM-моделей.
-- Идеально для сложных отчетов и агрегации данных.
-
-## Пример использования (Service Layer)
-
-```python
-async def transfer_money(uow: AbstractUnitOfWork, ...):
-    async with uow:
-        sender = await uow.accounts.get(sender_id)
-        receiver = await uow.accounts.get(receiver_id)
-        
-        # ... логика перевода ...
-        
-        uow.add_event(TransactionEvent(...))
-        await uow.commit() # Фиксация БД + Отправка события в RabbitMQ
-```
+## Query Layer (CQRS)
+Для высоконагруженных операций чтения (история транзакций, профиль клиента) используются Query-репозитории. Они работают в обход ORM, выполняя оптимизированные SQL-запросы сразу в Pydantic-схемы.
