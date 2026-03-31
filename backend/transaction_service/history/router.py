@@ -43,7 +43,7 @@ async def list_transactions(
 	)
 	
 	return schemas.TransactionListResponse(
-		transactions=[schemas.TransactionResponse.model_validate(tx) for tx in transactions],
+		transactions=transactions,
 		total=total,
 		limit=limit,
 		offset=offset,

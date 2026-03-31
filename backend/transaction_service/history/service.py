@@ -1,7 +1,7 @@
 from typing import Sequence
 from uuid import UUID
 
-from shared import models
+from shared import models, schemas
 from ..uow import TransactionUnitOfWork
 from ..repository import TransactionRepository
 
@@ -15,7 +15,7 @@ async def list_transactions(
 	offset: int = 0,
 	tx_type: str | None = None,
 	direction: str | None = None,
-) -> tuple[Sequence[models.Transaction], int]:
+) -> tuple[list[schemas.TransactionResponse], int]:
 	"""Возвращает историю операций по счёту с поддержкой пагинации и фильтрации.
 
 	Args:
@@ -37,8 +37,8 @@ async def list_transactions(
 			from ..exceptions import AccountNotFound
 			raise AccountNotFound("Счёт не принадлежит вам.")
 
-		# 2. Получение данных через репозиторий
-		return await uow.transactions.list_with_total(
+		# 2. Получение данных через репозиторий чтения (CQRS Query Layer)
+		return await uow.history_query.get_history_with_total(
 			account_id,
 			limit=limit,
 			offset=offset,
