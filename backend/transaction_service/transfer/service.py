@@ -31,6 +31,7 @@ async def transfer(
 	to_account_id: UUID,
 	amount: Decimal,
 	description: str | None,
+	idempotency_key: UUID | None = None,
 ) -> models.Transaction:
 	"""Выполняет перевод средств между банковскими счетами.
 
@@ -65,6 +66,12 @@ async def transfer(
 		raise SameAccountTransfer("Перевод на тот же счёт невозможен.")
 
 	async with uow:
+		# 0. Проверка идемпотентности (анти-дубль)
+		if idempotency_key:
+			existing = await uow.transactions.get_by_idempotency_key(idempotency_key)
+			if existing:
+				return existing
+
 		# 1. Атомарная блокировка счетов
 		accounts = await uow.transactions.lock_accounts([from_account_id, to_account_id])
 		from_acc = accounts.get(from_account_id)
@@ -147,6 +154,7 @@ async def transfer(
 			balance_before=from_bal_before,
 			balance_after=from_acc.balance,
 			external_ref=str(rate) if cross_currency else None,
+			idempotency_key=idempotency_key,
 		)
 
 		tx_in = models.Transaction(

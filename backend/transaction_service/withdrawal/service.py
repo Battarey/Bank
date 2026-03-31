@@ -18,9 +18,9 @@ from ..exceptions import (
 async def withdraw(
 	uow: TransactionUnitOfWork,
 	user_id: UUID,
-	account_id: UUID,
 	amount: Decimal,
 	description: str | None,
+	idempotency_key: UUID | None = None,
 ) -> models.Transaction:
 	"""Выполняет снятие (списание) средств со счёта.
 
@@ -45,6 +45,12 @@ async def withdraw(
 		TransactionConflict: При системных ошибках записи в БД.
 	"""
 	async with uow:
+		# 0. Проверка идемпотентности
+		if idempotency_key:
+			existing = await uow.transactions.get_by_idempotency_key(idempotency_key)
+			if existing:
+				return existing
+
 		# 1. Блокировка счёта
 		account = await uow.transactions.get_account_for_update(account_id)
 		
@@ -102,6 +108,7 @@ async def withdraw(
 			balance_before=balance_before,
 			balance_after=balance_after,
 			external_ref=None,
+			idempotency_key=idempotency_key,
 		)
 		await uow.transactions.add(tx)
 

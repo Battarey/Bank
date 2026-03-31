@@ -38,6 +38,7 @@ async def create_transaction(
 			account_id=payload.account_id,
 			amount=payload.amount,
 			description=payload.description,
+			idempotency_key=payload.idempotency_key,
 		)
 		message = "Пополнение успешно выполнено."
 		
@@ -48,6 +49,7 @@ async def create_transaction(
 			account_id=payload.account_id,
 			amount=payload.amount,
 			description=payload.description,
+			idempotency_key=payload.idempotency_key,
 		)
 		message = "Снятие успешно выполнено."
 		
@@ -59,6 +61,7 @@ async def create_transaction(
 			to_account_id=payload.to_account_id,
 			amount=payload.amount,
 			description=payload.description,
+			idempotency_key=payload.idempotency_key,
 		)
 		message = "Перевод успешно выполнен."
 	else:

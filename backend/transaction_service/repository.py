@@ -17,6 +17,12 @@ class TransactionRepository(BaseRepository[models.Transaction]):
 	def __init__(self, session: AsyncSession):
 		super().__init__(session, models.Transaction)
 
+	async def get_by_idempotency_key(self, key: UUID) -> models.Transaction | None:
+		"""Возвращает транзакцию по ключу идемпотентности."""
+		stmt = select(models.Transaction).where(models.Transaction.idempotency_key == key)
+		result = await self.session.execute(stmt)
+		return result.scalar_one_or_none()
+
 	async def lock_accounts(self, account_ids: list[UUID]) -> dict[UUID, models.BankAccount]:
 		"""Атомарно блокирует несколько счетов в БД (FOR UPDATE).
 		

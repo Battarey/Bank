@@ -24,6 +24,7 @@ class DepositRequest(BaseModel):
 	account_id: UUID = Field(description="UUID счёта пополнения")
 	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма пополнения")
 	description: str | None = Field(default=None, max_length=256, description="Комментарий")
+	idempotency_key: UUID | None = Field(default=None, description="Ключ идемпотентности")
 
 	model_config = ConfigDict(extra="forbid")
 
@@ -35,6 +36,7 @@ class WithdrawalRequest(BaseModel):
 	account_id: UUID = Field(description="UUID счёта списания")
 	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма снятия")
 	description: str | None = Field(default=None, max_length=256, description="Комментарий")
+	idempotency_key: UUID | None = Field(default=None, description="Ключ идемпотентности")
 
 	model_config = ConfigDict(extra="forbid")
 
@@ -47,6 +49,7 @@ class TransferRequest(BaseModel):
 	to_account_id: UUID = Field(description="UUID счёта-получателя")
 	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма перевода")
 	description: str | None = Field(default=None, max_length=256, description="Комментарий")
+	idempotency_key: UUID | None = Field(default=None, description="Ключ идемпотентности")
 
 	model_config = ConfigDict(extra="forbid")
 
@@ -72,6 +75,7 @@ class TransactionResponse(BaseModel):
 	balance_before: Decimal = Field(description="Баланс до операции")
 	balance_after: Decimal = Field(description="Баланс после операции")
 	external_ref: str | None = Field(default=None, description="Внешняя ссылка")
+	idempotency_key: UUID | None = Field(default=None, description="Ключ идемпотентности")
 
 	model_config = ConfigDict(from_attributes=True)
 

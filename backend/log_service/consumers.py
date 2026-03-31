@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import signal
+from datetime import timedelta
 import aio_pika
 
 from .config import settings
@@ -55,6 +56,23 @@ async def _process_message(
 			logger.error("Ошибка валидации или записи лога: %s", exc)
 
 
+async def _background_cleanup(repo: PostgresHistoryRepository) -> None:
+	"""Фоновая задача для периодической очистки старых логов (TTL)."""
+	while True:
+		try:
+			logger.info("Запуск плановой очистки старых логов...")
+			deleted_count = await repo.delete_old_history(days=90)  # Срок хранения 90 дней
+			if deleted_count > 0:
+				logger.info("Очистка завершена: удалено %d записей.", deleted_count)
+			else:
+				logger.info("Очистка не требуется: старых записей не обнаружено.")
+		except Exception as exc:
+			logger.error("Ошибка при выполнении очистки логов: %s", exc)
+		
+		# Спим 24 часа перед следующей очисткой
+		await asyncio.sleep(86400)
+
+
 async def run_consumers() -> None:
 	"""Запуск процесса потребления логов из RabbitMQ.
 
@@ -69,6 +87,9 @@ async def run_consumers() -> None:
 	postgres_repo = PostgresHistoryRepository()
 	clickhouse_repo = ClickHouseRepository()
 	service = LogService(postgres_repo, clickhouse_repo)
+
+	# 1.1 Запуск фоновой задачи очистки
+	asyncio.create_task(_background_cleanup(postgres_repo))
 
 	# 2. Подключение к RabbitMQ
 	logger.info("Подключение к RabbitMQ: %s", settings.RABBIT_URL)

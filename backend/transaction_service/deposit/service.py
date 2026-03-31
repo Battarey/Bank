@@ -18,9 +18,9 @@ _DEPOSIT_ALLOWED_STATUSES = {"open", "frozen"}
 async def deposit(
 	uow: TransactionUnitOfWork,
 	user_id: UUID,
-	account_id: UUID,
 	amount: Decimal,
 	description: str | None,
+	idempotency_key: UUID | None = None,
 ) -> models.Transaction:
 	"""Пополняет баланс банковского счёта.
 
@@ -42,6 +42,12 @@ async def deposit(
 		TransactionConflict: При системных ошибках записи в БД.
 	"""
 	async with uow:
+		# 0. Проверка идемпотентности
+		if idempotency_key:
+			existing = await uow.transactions.get_by_idempotency_key(idempotency_key)
+			if existing:
+				return existing
+
 		# 1. Получение счёта с блокировкой
 		account = await uow.transactions.get_account_for_update(account_id)
 		
@@ -72,6 +78,7 @@ async def deposit(
 			balance_before=balance_before,
 			balance_after=balance_after,
 			external_ref=None,
+			idempotency_key=idempotency_key,
 		)
 		await uow.transactions.add(tx)
 

@@ -8,6 +8,7 @@ from shared.history_core import (
 	HistorySessionLocal,
 	UserAction,
 )
+from sqlalchemy import delete
 from .schemas import LogPayload
 
 logger = logging.getLogger("log_service")
@@ -41,6 +42,21 @@ class PostgresHistoryRepository:
 		async with HistorySessionLocal() as session:
 			session.add(action_record)
 			await session.commit()
+
+	async def delete_old_history(self, days: int) -> int:
+		"""Удаляет записи истории старше N дней.
+		
+		Модель UserAction имеет поле created_at.
+		"""
+		from datetime import datetime, timedelta, UTC
+		cutoff = datetime.now(UTC) - timedelta(days=days)
+		
+		stmt = delete(UserAction).where(UserAction.created_at < cutoff)
+		
+		async with HistorySessionLocal() as session:
+			result = await session.execute(stmt)
+			await session.commit()
+			return result.rowcount
 
 
 class ClickHouseRepository:

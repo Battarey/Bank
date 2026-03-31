@@ -44,6 +44,21 @@ class BaseRepository(Generic[ModelT]):
 		result = await self.session.execute(stmt)
 		return result.rowcount > 0
 
+	async def delete_older_than(self, dt: Any, field_name: str = "created_at") -> int:
+		"""Удаляет записи старше указанной даты.
+		
+		Args:
+			dt: Дата/время, всё что раньше которой подлежит удалению.
+			field_name: Имя поля для фильтрации (по умолчанию 'created_at').
+			
+		Returns:
+			int: Количество удаленных строк.
+		"""
+		field = getattr(self.model, field_name)
+		stmt = delete(self.model).where(field < dt)
+		result = await self.session.execute(stmt)
+		return result.rowcount
+
 	async def refresh(self, entity: ModelT) -> None:
 		"""Обновляет состояние сущности из базы данных."""
 		await self.session.refresh(entity)

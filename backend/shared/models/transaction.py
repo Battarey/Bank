@@ -38,6 +38,14 @@ class Transaction(Base):
 	balance_before: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
 	balance_after: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
 	external_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+	
+	# Ключ идемпотентности для предотвращения дублей операций
+	idempotency_key: Mapped[UUID | None] = mapped_column(
+		PGUUID(as_uuid=True), 
+		unique=True, 
+		index=True, 
+		nullable=True
+	)
 
 	__table_args__ = (
 		Index("ix_transactions_acc_created", "account_id", text("created_at DESC")),
