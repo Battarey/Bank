@@ -15,7 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 logger = logging.getLogger("notification_service")
 
-MONGO_URL: str = os.getenv("MONGO_URL", "mongodb://mongodb:27017/bank_notifications_db")
+# MongoDB
 COLLECTION_NAME = "email_log"
 TTL_DAYS = 90
 
@@ -23,12 +23,12 @@ _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
 
 
-async def init_mongo() -> None:
+async def init_mongo(mongo_url: str) -> None:
 	"""Подключение к MongoDB и создание TTL-индекса."""
 
 	global _client, _db  # noqa: PLW0603
 
-	_client = AsyncIOMotorClient(MONGO_URL)
+	_client = AsyncIOMotorClient(mongo_url)
 	_db = _client.get_default_database()
 
 	# TTL-индекс: документы удаляются автоматически через 90 дней

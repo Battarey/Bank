@@ -5,8 +5,7 @@ from typing import Dict, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
-from shared import models, schemas
-from shared.events.base import LogEvent
+from shared.events.base import LogEvent, NotificationEvent
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
 from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
@@ -292,6 +291,15 @@ async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> Non
 				action="registration",
 				service="customer_service",
 				details="Регистрация завершена (онбординг финализирован)",
+			))
+			
+			uow.add_event(NotificationEvent(
+				type="registration_success",
+				to=contacts.email,
+				variables={
+					"user_id": str(user_id),
+					"first_name": drafts["personal_data"].first_name,
+				},
 			))
 
 			await uow.commit()

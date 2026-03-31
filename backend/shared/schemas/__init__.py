@@ -35,6 +35,7 @@ from .passport import PassportPayload, PassportResponse
 from .personal_data import PersonalDataPayload, PersonalDataResponse, PersonalDataUpdate
 from .transaction import (
 	DepositRequest,
+	TransactionCreateRequest,
 	TransactionListResponse,
 	TransactionMessageResponse,
 	TransactionResponse,
@@ -76,6 +77,7 @@ __all__ = [
 	"SetPinRequest",
 	"StartInternalResponse",
 	"StartOnboardingResponse",
+	"TransactionCreateRequest",
 	"TransactionListResponse",
 	"TransactionMessageResponse",
 	"TransactionResponse",

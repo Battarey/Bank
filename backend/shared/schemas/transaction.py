@@ -102,4 +102,5 @@ __all__ = [
 	"TransactionType",
 	"TransferRequest",
 	"WithdrawalRequest",
+	"TransactionCreateRequest",
 ]

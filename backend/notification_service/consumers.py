@@ -7,14 +7,13 @@ import os
 import signal
 import aio_pika
 
+from .config import settings
 from .repository import NotificationRepository
 from .schemas import NotificationTask
 from .service import NotificationService
 from .store import close_mongo, init_mongo
 
 logger = logging.getLogger("notification_service.consumers")
-
-RABBITMQ_URL: str = os.getenv("RABBITMQ_URL")
 
 MAX_RETRIES = 10
 RETRY_DELAY = 3
@@ -51,16 +50,16 @@ async def run_consumers() -> None:
 	затем устанавливает соединение с очередью и начинает прослушивание.
 	"""
 	# 1. Инициализация слоев
-	await init_mongo()
+	await init_mongo(settings.MONGO_URL)
 	repository = NotificationRepository()
 	service = NotificationService(repository)
 
 	# 2. Подключение к RabbitMQ
-	logger.info("Подключение к RabbitMQ: %s", RABBITMQ_URL)
+	logger.info("Подключение к RabbitMQ: %s", settings.RABBIT_URL)
 	connection = None
 	for attempt in range(1, MAX_RETRIES + 1):
 		try:
-			connection = await aio_pika.connect_robust(RABBITMQ_URL)
+			connection = await aio_pika.connect_robust(settings.RABBIT_URL)
 			break
 		except Exception as exc:
 			logger.warning("Попытка %d/%d не удалась: %s", attempt, MAX_RETRIES, exc)
@@ -73,15 +72,15 @@ async def run_consumers() -> None:
 		await channel.set_qos(prefetch_count=10)
 
 		exchange = await channel.declare_exchange(
-			EXCHANGE_NAME,
+			settings.NOTIFICATIONS_EXCHANGE,
 			aio_pika.ExchangeType.TOPIC,
 			durable=True,
 		)
 
-		queue = await channel.declare_queue(QUEUE_NAME, durable=True)
-		await queue.bind(exchange, BINDING_KEY)
+		queue = await channel.declare_queue(settings.EMAIL_QUEUE, durable=True)
+		await queue.bind(exchange, settings.EMAIL_BINDING_KEY)
 
-		logger.info("Слушаю очередь '%s' (binding: %s)", QUEUE_NAME, BINDING_KEY)
+		logger.info("Слушаю очередь '%s' (binding: %s)", settings.EMAIL_QUEUE, settings.EMAIL_BINDING_KEY)
 		await queue.consume(lambda msg: _process_message(msg, service))
 
 		# Ожидание сигнала остановки

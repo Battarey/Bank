@@ -7,6 +7,7 @@ import os
 import signal
 import aio_pika
 
+from .config import settings
 from .repository import PostgresHistoryRepository, ClickHouseRepository
 from .schemas import LogEvent
 from .service import LogService
@@ -18,8 +19,6 @@ from shared.history_core import (
 from shared.history_core.models import HistoryBase
 
 logger = logging.getLogger("log_service.consumers")
-
-RABBITMQ_URL: str = os.getenv("RABBITMQ_URL")
 
 MAX_RETRIES = 10
 RETRY_DELAY = 3
@@ -72,11 +71,11 @@ async def run_consumers() -> None:
 	service = LogService(postgres_repo, clickhouse_repo)
 
 	# 2. Подключение к RabbitMQ
-	logger.info("Подключение к RabbitMQ: %s", RABBITMQ_URL)
+	logger.info("Подключение к RabbitMQ: %s", settings.RABBIT_URL)
 	connection = None
 	for attempt in range(1, MAX_RETRIES + 1):
 		try:
-			connection = await aio_pika.connect_robust(RABBITMQ_URL)
+			connection = await aio_pika.connect_robust(settings.RABBIT_URL)
 			break
 		except Exception as exc:
 			logger.warning("Попытка %d/%d не удалась: %s", attempt, MAX_RETRIES, exc)
@@ -89,15 +88,15 @@ async def run_consumers() -> None:
 		await channel.set_qos(prefetch_count=10)
 
 		exchange = await channel.declare_exchange(
-			EXCHANGE_NAME,
+			settings.LOGS_EXCHANGE,
 			aio_pika.ExchangeType.TOPIC,
 			durable=True,
 		)
 
-		queue = await channel.declare_queue(QUEUE_NAME, durable=True)
-		await queue.bind(exchange, BINDING_KEY)
+		queue = await channel.declare_queue(settings.LOG_QUEUE, durable=True)
+		await queue.bind(exchange, settings.LOG_BINDING_KEY)
 
-		logger.info("Слушаю очередь '%s' (binding: %s)", QUEUE_NAME, BINDING_KEY)
+		logger.info("Слушаю очередь '%s' (binding: %s)", settings.LOG_QUEUE, settings.LOG_BINDING_KEY)
 		await queue.consume(lambda msg: _process_message(msg, service))
 
 		# Ожидание сигнала остановки

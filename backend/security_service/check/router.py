@@ -14,6 +14,8 @@ from . import service
 
 # ── Эндпоинты ──────────────────────────────────────────────────────────
 
+router = APIRouter(prefix="/security", tags=["Security"])
+
 @router.post(
 	"/check",
 	response_model=SecurityCheckResponse,

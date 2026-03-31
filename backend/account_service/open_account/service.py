@@ -48,6 +48,8 @@ _TYPE_LABELS: dict[str, str] = {
 
 async def _generate_unique_number(uow: AccountUnitOfWork, account_type: str, currency: str) -> str:
 	"""Генерирует уникальный 20-значный номер банковского счёта.
+	
+	Формат: [Тип][Валюта][Бранч][Рандом] (5 + 3 + 4 + 8 = 20 цифр).
 
 	Args:
 		uow: Unit of Work для проверки уникальности.
@@ -60,8 +62,20 @@ async def _generate_unique_number(uow: AccountUnitOfWork, account_type: str, cur
 	Raises:
 		AccountError: Если после 10 попыток не удалось сгенерировать уникальный номер.
 	"""
+	type_prefix = _ACCOUNT_TYPE_CODES.get(account_type, "40817")
+	curr_prefix = _CURRENCY_CODES.get(currency, "810")
+	branch = _BRANCH_CODE
+
+	for _ in range(10):
+		random_part = "".join(str(secrets.randbelow(10)) for _ in range(8))
+		number = f"{type_prefix}{curr_prefix}{branch}{random_part}"
+		
+		# Проверка уникальности
+		existing = await uow.accounts.get_by_number(number)
+		if not existing:
+			return number
 			
-	raise AccountError("Системная ошибка: не удалось сгенерировать уникальный номер счёта.")
+	raise AccountError("Системная ошибка: не удалось сгенерировать уникальный номер счёта после 10 попыток.")
 
 
 async def open_account(

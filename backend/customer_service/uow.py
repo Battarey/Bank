@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Unit of Work для Customer Service."""
 
 from typing import Any, Type, AsyncGenerator

@@ -1,5 +1,6 @@
 """Унифицированный роутер для всех типов транзакций (пополнение, снятие, перевод)."""
 
+from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +25,7 @@ router = APIRouter(
 )
 async def create_transaction(
 	payload: schemas.TransactionCreateRequest,
-	user_id: schemas.UUID = Depends(require_user_id),
+	user_id: UUID = Depends(require_user_id),
 	uow: TransactionUnitOfWork = Depends(get_uow),
 ):
 	"""Создаёт новую транзакцию (пополнение, снятие или перевод).

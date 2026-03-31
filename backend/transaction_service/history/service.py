@@ -3,6 +3,7 @@ from uuid import UUID
 
 from shared import models
 from ..uow import TransactionUnitOfWork
+from ..repository import TransactionRepository
 
 
 async def list_transactions(
