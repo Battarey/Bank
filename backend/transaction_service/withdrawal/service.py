@@ -1,9 +1,7 @@
-"""Бизнес-логика снятия средств с банковского счёта."""
+from sqlalchemy.exc import IntegrityError
 
-from datetime import UTC, datetime
-from decimal import Decimal
-from uuid import UUID, uuid4
-
+from shared import models
+from shared.events.base import LogEvent, NotificationEvent
 from ..uow import TransactionUnitOfWork
 from ..exceptions import (
 	AccountFrozen,
@@ -26,14 +24,22 @@ async def withdraw(
 	Включает AML-проверку (Unit of Work). В случае подозрительной активности счёт блокируется.
 
 	Args:
-		uow: Unit of Work для управления транзакцией.
+		uow: Unit of Work для управления транзакцией и событиями.
 		user_id: ID владельца.
 		account_id: ID счёта.
 		amount: Сумма снятия.
-		description: Комментарий.
+		description: Комментарий к операции.
 
 	Returns:
-		Transaction: Запись о транзакции списания.
+		models.Transaction: Запись о транзакции списания.
+
+	Raises:
+		AccountNotFound: Если счёт не найден или не принадлежит пользователю.
+		AccountFrozen: Если счёт заморожен.
+		AccountNotOpen: Если счёт не активен.
+		SecurityViolation: Если операция отклонена антифрод-системой.
+		InsufficientFunds: Если на балансе недостаточно средств.
+		TransactionConflict: При системных ошибках записи в БД.
 	"""
 	async with uow:
 		# 1. Блокировка счёта
@@ -59,12 +65,14 @@ async def withdraw(
 			account.frozen_by = "system"
 			account.frozen_at = datetime.now(UTC)
 			account.freeze_reason = f"AML: {reason}"
+			
+			uow.add_event(NotificationEvent(
+				type="security_freeze",
+				to="owner", 
+				variables={"account_number": account.account_number, "rule": reason}
+			))
+			
 			await uow.commit() # Сохраняем блокировку даже при нарушении правил
-			
-			# Уведомление о блокировке
-			from ..history.service import _notify_security_freeze
-			await _notify_security_freeze(uow.transactions, user_id, account, reason)
-			
 			raise SecurityViolation(f"Операция отклонена безопасностью. Счёт заморожен: {reason}")
 
 		# 3. Проверка баланса
@@ -94,39 +102,35 @@ async def withdraw(
 		)
 		await uow.transactions.add(tx)
 
+		# 6. Регистрация событий в UoW (ДО коммита для авто-публикации)
+		contact = await uow.transactions.get_owner_contact(user_id)
+		if contact:
+			uow.add_event(NotificationEvent(
+				type="transaction_withdrawal",
+				to=contact.email,
+				variables={
+					"account_number": account.account_number,
+					"amount": str(amount),
+					"currency": account.currency,
+					"balance_after": str(balance_after),
+				},
+			))
+
+		uow.add_event(LogEvent(
+			user_id=user_id,
+			action="withdrawal",
+			service="transaction_service",
+			details=f"Снятие со счёта {account.account_number}",
+			entity_id=tx.id,
+			amount=float(amount),
+			currency=account.currency,
+		))
+
 		try:
 			await uow.commit()
 		except IntegrityError as exc:
 			raise TransactionConflict("Ошибка при списании средств. Попробуйте снова.") from exc
 
 		await uow.transactions.refresh(tx)
-
-		# Уведомление на Email (best effort)
-		contact = await uow.transactions.get_owner_contact(user_id)
-		if contact:
-			try:
-				await send_notification(
-					notification_type="transaction_withdrawal",
-					to=contact.email,
-					variables={
-						"account_number": account.account_number,
-						"amount": str(amount),
-						"currency": account.currency,
-						"balance_after": str(balance_after),
-					},
-				)
-			except Exception:
-				pass
-
-		await send_log(
-			routing_key=LOG_TRANSACTION_KEY,
-			user_id=user_id,
-			action="withdrawal",
-			service="transaction_service",
-			details=f"Снятие со счёта {account.account_number}",
-			entity_id=str(tx.id),
-			amount=str(amount),
-			currency=account.currency,
-		)
 
 		return tx

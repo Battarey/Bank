@@ -5,27 +5,25 @@ from typing import Dict, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared import models, schemas
+from shared.events.base import LogEvent
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
 from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
-from shared.rabbitmq import LOG_AUTH_KEY, send_log
 
-from ..repository import CustomerRepository
+from ..uow import CustomerUnitOfWork
 from ..exceptions import (
 	OnboardingConflict,
 	OnboardingError,
 )
 
 
-async def start_onboarding(session: AsyncSession) -> UUID:
+async def start_onboarding(uow: CustomerUnitOfWork) -> UUID:
 	"""Создаёт нового пользователя для процесса регистрации.
 
 	Args:
-		session: Асинхронная сессия базы данных.
+		uow: Unit of Work для управления транзакциями.
 
 	Returns:
 		UUID: Идентификатор созданного пользователя.
@@ -33,51 +31,46 @@ async def start_onboarding(session: AsyncSession) -> UUID:
 	Raises:
 		OnboardingError: Если не удалось создать пользователя после нескольких попыток.
 	"""
-	repo = CustomerRepository(session)
-	
-	for _ in range(5):
-		candidate_id = uuid4()
-		if await repo.get(candidate_id):
-			continue
-			
-		user = models.User(
-			id=candidate_id,
-			created_at=datetime.now(UTC),
-			updated_at=datetime.now(UTC),
-			status="pending",
-			is_verified=False,
-		)
-		await repo.add(user)
-		try:
-			await repo.commit()
-		except Exception:
-			await repo.rollback()
-			raise
-		return candidate_id
+	async with uow:
+		for _ in range(5):
+			candidate_id = uuid4()
+			if await uow.customers.get(candidate_id):
+				continue
+				
+			user = models.User(
+				id=candidate_id,
+				created_at=datetime.now(UTC),
+				updated_at=datetime.now(UTC),
+				status="pending",
+				is_verified=False,
+			)
+			await uow.customers.add(user)
+			await uow.commit()
+			return candidate_id
 
 	raise OnboardingError("Не удалось инициализировать процесс регистрации.")
 
 
 async def store_personal_data(
-	session: AsyncSession,
+	uow: CustomerUnitOfWork,
 	user_id: UUID,
 	payload: schemas.PersonalDataPayload,
 ) -> schemas.PersonalDataResponse:
-	"""Сохраняет черновик первого шага (ФИО, дата рождения) в Redis.
+	"""Сохраняет черновик первого шага (ФИО) в Redis.
 
 	Args:
-		session: Сессия БД.
+		uow: Unit of Work для проверки существования пользователя.
 		user_id: ID пользователя.
-		payload: Данные профиля.
+		payload: Данные профиля (ФИО).
 
 	Returns:
-		PersonalDataResponse: Сохранённые данные.
+		schemas.PersonalDataResponse: Сохранённые нормализованные данные.
 
 	Raises:
 		OnboardingNotFound: Если сессия регистрации не найдена.
 	"""
-	repo = CustomerRepository(session)
-	await repo.get_active_user(user_id)  # Проверка существования
+	async with uow:
+		await uow.customers.get_active_user(user_id)  # Проверка существования
 
 	normalized = payload.model_copy(
 		update={
@@ -96,26 +89,26 @@ async def store_personal_data(
 
 
 async def store_passport_data(
-	session: AsyncSession,
+	uow: CustomerUnitOfWork,
 	user_id: UUID,
 	payload: schemas.PassportPayload,
 ) -> schemas.PassportResponse:
-	"""Сохраняет черновик паспортных данных с проверкой уникальности.
+	"""Сохраняет черновик паспортных данных в Redis с проверкой уникальности.
 
 	Args:
-		session: Сессия БД.
+		uow: Unit of Work для проверки уникальности паспорта.
 		user_id: ID пользователя.
 		payload: Данные паспорта.
 
 	Returns:
-		PassportResponse: Сохранённые данные.
+		schemas.PassportResponse: Сохранённые данные.
 
 	Raises:
-		OnboardingConflict: Если паспорт уже используется.
+		OnboardingConflict: Если паспорт уже используется другим пользователем.
 		OnboardingNotFound: Если пользователь не найден.
 	"""
-	repo = CustomerRepository(session)
-	await repo.get_active_user(user_id)
+	async with uow:
+		await uow.customers.get_active_user(user_id)
 
 	normalized = payload.model_copy(
 		update={
@@ -126,7 +119,7 @@ async def store_passport_data(
 	
 	# Проверка уникальности по хешу
 	p_hash = get_blind_index(f"{normalized.series}{normalized.number}")
-	await repo.check_passport_unique(p_hash, exclude_client_id=user_id)
+	await uow.customers.check_passport_unique(p_hash, exclude_client_id=user_id)
 	
 	await onboarding_drafts.save_draft(user_id, "passport", normalized.model_dump(mode="json"))
 	
@@ -137,22 +130,25 @@ async def store_passport_data(
 
 
 async def store_identifiers(
-	session: AsyncSession,
+	uow: CustomerUnitOfWork,
 	user_id: UUID,
 	payload: schemas.IdentifiersPayload,
 ) -> schemas.IdentifiersResponse:
-	"""Сохраняет ИНН и СНИЛС в черновик.
+	"""Сохраняет ИНН и СНИЛС в черновик (Redis).
 
 	Args:
-		session: Сессия БД.
+		uow: Unit of Work для проверки уникальности идентификаторов.
 		user_id: ID пользователя.
-		payload: Идентификаторы.
+		payload: Идентификаторы (ИНН, СНИЛС).
 
 	Returns:
-		IdentifiersResponse: Подтверждение сохранения.
+		schemas.IdentifiersResponse: Подтверждение сохранения.
+
+	Raises:
+		OnboardingConflict: Если ИНН или СНИЛС уже заняты.
 	"""
-	repo = CustomerRepository(session)
-	await repo.get_active_user(user_id)
+	async with uow:
+		await uow.customers.get_active_user(user_id)
 
 	normalized = payload.model_copy(
 		update={
@@ -161,7 +157,7 @@ async def store_identifiers(
 		},
 	)
 	
-	await repo.check_identifiers_unique(
+	await uow.customers.check_identifiers_unique(
 		inn_hash=normalized.inn, 
 		snils_hash=normalized.snils, 
 		exclude_client_id=user_id
@@ -176,22 +172,25 @@ async def store_identifiers(
 
 
 async def store_contacts(
-	session: AsyncSession,
+	uow: CustomerUnitOfWork,
 	user_id: UUID,
 	payload: schemas.ContactsPayload,
 ) -> schemas.ContactsResponse:
-	"""Сохраняет контакты (email, phone) в черновик.
+	"""Сохраняет контактные данные (Email, телефон) в черновик.
 
 	Args:
-		session: Сессия БД.
+		uow: Unit of Work для проверки уникальности контактов.
 		user_id: ID пользователя.
 		payload: Контактные данные.
 
 	Returns:
-		ContactsResponse: Сохранённые контакты.
+		schemas.ContactsResponse: Сохранённые контакты.
+
+	Raises:
+		OnboardingConflict: Если Email или телефон уже используются.
 	"""
-	repo = CustomerRepository(session)
-	await repo.get_active_user(user_id)
+	async with uow:
+		await uow.customers.get_active_user(user_id)
 
 	normalized = payload.model_copy(
 		update={
@@ -200,7 +199,7 @@ async def store_contacts(
 		},
 	)
 	
-	await repo.check_contacts_unique(
+	await uow.customers.check_contacts_unique(
 		email_hash=get_blind_index(normalized.email),
 		phone_hash=get_blind_index(normalized.phone),
 		exclude_client_id=user_id
@@ -214,95 +213,92 @@ async def store_contacts(
 	)
 
 
-async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
-	"""Переносит все накопленные черновики из Redis в Postgres.
+async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> None:
+	"""Переносит все накопленные черновики из Redis в Postgres, завершая регистрацию.
 
-	Завершает процесс регистрации: переводит статус пользователя в 'active',
-	очищает черновики и отправляет событие в лог.
+	1. Сбор и валидация всех черновиков из Redis.
+	2. Проверка верификации Email.
+	3. Сохранение данных во все связанные таблицы профиля.
+	4. Активация пользователя и логирование.
 
 	Args:
-		session: Сессия БД.
+		uow: Unit of Work для управления транзакцией и событиями.
 		user_id: ID пользователя.
 
 	Raises:
 		OnboardingError: Если не все шаги заполнены или email не верифицирован.
 		OnboardingConflict: При коллизии уникальных данных в БД.
 	"""
-	repo = CustomerRepository(session)
-	
-	# 1. Сбор и валидация черновиков
-	drafts: Dict[str, Any] = {}
-	missing = []
-	steps = [
-		("personal_data", schemas.PersonalDataPayload),
-		("passport", schemas.PassportPayload),
-		("identifiers", schemas.IdentifiersPayload),
-		("contacts", schemas.ContactsPayload),
-	]
-	
-	for step_name, schema in steps:
-		draft = await onboarding_drafts.load_draft(user_id, step_name)
-		if not draft or not draft.get("payload"):
-			missing.append(step_name)
-		else:
-			drafts[step_name] = schema.model_validate(draft["payload"])
+	async with uow:
+		# 1. Сбор и валидация черновиков
+		drafts: Dict[str, Any] = {}
+		missing = []
+		steps = [
+			("personal_data", schemas.PersonalDataPayload),
+			("passport", schemas.PassportPayload),
+			("identifiers", schemas.IdentifiersPayload),
+			("contacts", schemas.ContactsPayload),
+		]
+		
+		for step_name, schema in steps:
+			draft = await onboarding_drafts.load_draft(user_id, step_name)
+			if not draft or not draft.get("payload"):
+				missing.append(step_name)
+			else:
+				drafts[step_name] = schema.model_validate(draft["payload"])
+				
+		if missing:
+			raise OnboardingError(f"Не все шаги онбординга завершены: {', '.join(missing)}")
+
+		if not await is_email_verified(user_id):
+			raise OnboardingError("Email не подтверждён. Финализация невозможна.")
+
+		# 2. Сохранение в БД
+		try:
+			# Personal Data
+			p_data = drafts["personal_data"]
+			await uow.customers.add_profile_part(models.PersonalData(client_id=user_id, **p_data.model_dump()))
 			
-	if missing:
-		raise OnboardingError(f"Не все шаги онбординга завершены: {', '.join(missing)}")
+			# Passport
+			passport = drafts["passport"]
+			await uow.customers.add_profile_part(models.Passport(
+				client_id=user_id,
+				passport_hash=get_blind_index(f"{passport.series}{passport.number}"),
+				**passport.model_dump()
+			))
+			
+			# Identifiers
+			ids = drafts["identifiers"]
+			await uow.customers.add_profile_part(models.Identifier(client_id=user_id, **ids.model_dump()))
+			
+			# Contacts
+			contacts = drafts["contacts"]
+			await uow.customers.add_profile_part(models.Contact(
+				client_id=user_id,
+				email_hash=get_blind_index(contacts.email),
+				phone_hash=get_blind_index(contacts.phone),
+				**contacts.model_dump()
+			))
+			
+			# Активация пользователя
+			user = await uow.customers.get_active_user(user_id)
+			user.status = "active"
+			user.is_verified = True
+			user.updated_at = datetime.now(UTC)
+			
+			# Регистрация событий ДО коммита
+			uow.add_event(LogEvent(
+				user_id=user_id,
+				action="registration",
+				service="customer_service",
+				details="Регистрация завершена (онбординг финализирован)",
+			))
 
-	if not await is_email_verified(user_id):
-		raise OnboardingError("Email не подтверждён. Финализация невозможна.")
+			await uow.commit()
+			
+		except IntegrityError as exc:
+			raise OnboardingConflict("Данные конфликтуют с существующим клиентом.") from exc
 
-	# 2. Сохранение в БД
-	try:
-		# Personal Data
-		p_data = drafts["personal_data"]
-		await repo.add_profile_part(models.PersonalData(client_id=user_id, **p_data.model_dump()))
-		
-		# Passport
-		passport = drafts["passport"]
-		await repo.add_profile_part(models.Passport(
-			client_id=user_id,
-			passport_hash=get_blind_index(f"{passport.series}{passport.number}"),
-			**passport.model_dump()
-		))
-		
-		# Identifiers
-		ids = drafts["identifiers"]
-		await repo.add_profile_part(models.Identifier(client_id=user_id, **ids.model_dump()))
-		
-		# Contacts
-		contacts = drafts["contacts"]
-		await repo.add_profile_part(models.Contact(
-			client_id=user_id,
-			email_hash=get_blind_index(contacts.email),
-			phone_hash=get_blind_index(contacts.phone),
-			**contacts.model_dump()
-		))
-		
-		# Акцивация пользователя
-		user = await repo.get_active_user(user_id)
-		user.status = "active"
-		user.is_verified = True
-		user.updated_at = datetime.now(UTC)
-		
-		await repo.commit()
-		
-	except IntegrityError as exc:
-		await repo.rollback()
-		raise OnboardingConflict("Данные конфликтуют с существующим клиентом.") from exc
-	except Exception:
-		await repo.rollback()
-		raise
-
-	# 3. Очистка и логирование
-	await onboarding_drafts.clear_all(user_id)
-	await clear_email_verification(user_id)
-	
-	await send_log(
-		routing_key=LOG_AUTH_KEY,
-		user_id=user_id,
-		action="registration",
-		service="customer_service",
-		details="Регистрация завершена (онбординг финализирован)",
-	)
+		# 3. Очистка черновиков (внешние по отношению к БД ресурсы)
+		await onboarding_drafts.clear_all(user_id)
+		await clear_email_verification(user_id)

@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 class AbstractUnitOfWork(abc.ABC):
 	"""Абстрактный базовый класс для Unit of Work."""
 
+	def __init__(self):
+		self._events: list = []
+
 	async def __aenter__(self) -> AbstractUnitOfWork:
 		return self
 
@@ -27,11 +30,30 @@ class AbstractUnitOfWork(abc.ABC):
 	async def rollback(self) -> None:
 		"""Откатывает изменения в текущей транзакции."""
 
+	def add_event(self, event) -> None:
+		"""Добавляет событие в очередь Unit of Work."""
+		self._events.append(event)
+
+	def collect_events(self) -> list:
+		"""Возвращает накопленные события и очищает очередь."""
+		events = self._events
+		self._events = []
+		return events
+
+	async def publish_events(self) -> None:
+		"""Публикует накопленные события через MessageBus."""
+		from shared.rabbitmq.bus import MessageBus
+
+		events = self.collect_events()
+		if events:
+			await MessageBus.handle(events)
+
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 	"""Реализация Unit of Work на базе SQLAlchemy."""
 
 	def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
+		super().__init__()
 		self.session_factory = session_factory
 		self._session: AsyncSession | None = None
 
@@ -48,6 +70,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 	async def commit(self) -> None:
 		if self._session:
 			await self._session.commit()
+			await self.publish_events()
 
 	async def rollback(self) -> None:
 		if self._session:

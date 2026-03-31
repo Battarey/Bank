@@ -4,6 +4,10 @@ from datetime import UTC, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID, uuid4
 
+from sqlalchemy.exc import IntegrityError
+
+from shared import models
+from shared.events.base import LogEvent, NotificationEvent
 from ..uow import TransactionUnitOfWork
 from ..exceptions import (
 	AccountFrozen,
@@ -37,7 +41,7 @@ async def transfer(
 	4. Создает записи транзакций для обоих участников.
 
 	Args:
-		uow: Unit of Work для управления транзакцией.
+		uow: Unit of Work для управления транзакцией и событиями.
 		user_id: ID отправителя.
 		from_account_id: Счёт списания.
 		to_account_id: Счёт зачисления.
@@ -45,7 +49,17 @@ async def transfer(
 		description: Комментарий к платежу.
 
 	Returns:
-		Transaction: Созданная запись транзакции списания.
+		models.Transaction: Созданная запись транзакции списания.
+
+	Raises:
+		SameAccountTransfer: Если счета списания и зачисления совпадают.
+		AccountNotFound: Если один из счетов не найден или не принадлежит пользователю.
+		AccountFrozen: Если счёт отправителя заморожен.
+		AccountNotOpen: Если один из счетов закрыт.
+		InsufficientFunds: Если на счёте отправителя недостаточно средств.
+		RateUnavailable: Если произошла ошибка при конвертации валют.
+		SecurityViolation: Если операция заблокирована антифрод-системой.
+		TransactionConflict: При системных ошибках записи в БД.
 	"""
 	if from_account_id == to_account_id:
 		raise SameAccountTransfer("Перевод на тот же счёт невозможен.")
@@ -98,6 +112,13 @@ async def transfer(
 			from_acc.frozen_by = "system"
 			from_acc.frozen_at = datetime.now(UTC)
 			from_acc.freeze_reason = f"AML: {reason}"
+			
+			uow.add_event(NotificationEvent(
+				type="security_freeze",
+				to="owner", 
+				variables={"account_number": from_acc.account_number, "rule": reason}
+			))
+			
 			await uow.commit() # Сохраняем блокировку даже при нарушении правил
 			
 			raise SecurityViolation(f"Операция отклонена безопасностью. Счёт заморожен: {reason}")
@@ -145,6 +166,47 @@ async def transfer(
 
 		await uow.transactions.add_all([tx_out, tx_in])
 
+		# 6. Регистрация событий в UoW (ДО коммита для авто-публикации)
+		# Уведомление отправителю
+		contact = await uow.transactions.get_owner_contact(user_id)
+		if contact:
+			uow.add_event(NotificationEvent(
+				type="transaction_transfer",
+				to=contact.email,
+				variables={
+					"from_account": from_acc.account_number, 
+					"to_account": to_acc.account_number,
+					"amount": f"{amount} {from_acc.currency}", 
+					"balance_after": str(from_acc.balance)
+				}
+			))
+
+		# Уведомление получателю (если это другой клиент)
+		if to_acc.client_id != user_id:
+			to_contact = await uow.transactions.get_owner_contact(to_acc.client_id)
+			if to_contact:
+				uow.add_event(NotificationEvent(
+					type="transaction_incoming",
+					to=to_contact.email,
+					variables={
+						"account_number": to_acc.account_number, 
+						"from_account": from_acc.account_number,
+						"amount": f"{credited_amount} {to_acc.currency}", 
+						"balance_after": str(to_acc.balance)
+					}
+				))
+
+		# Бизнес-лог
+		uow.add_event(LogEvent(
+			user_id=user_id,
+			action="transfer",
+			service="transaction_service",
+			details=f"Перевод {from_acc.account_number} -> {to_acc.account_number}",
+			entity_id=tx_out.id,
+			amount=float(amount),
+			currency=from_acc.currency,
+		))
+
 		try:
 			await uow.commit()
 		except IntegrityError as exc:
@@ -152,59 +214,6 @@ async def transfer(
 
 		await uow.transactions.refresh(tx_out)
 
-		# 6. Асинхронные уведомления и логи (Best effort)
-		try:
-			await _notify_transfer(uow.transactions, user_id, from_acc, to_acc, amount, from_acc.balance, 
-								  credited_amount if cross_currency else None, rate if cross_currency else None)
-			if to_acc.client_id != user_id:
-				await _notify_incoming_transfer(uow.transactions, to_acc, from_acc, credited_amount, to_acc.balance, 
-											   amount if cross_currency else None, rate if cross_currency else None)
-		except Exception:
-			pass
-
-		await send_log(
-			routing_key=LOG_TRANSACTION_KEY,
-			user_id=user_id,
-			action="transfer",
-			service="transaction_service",
-			details=f"Перевод {from_acc.account_number} -> {to_acc.account_number}",
-			entity_id=str(tx_out.id),
-			amount=str(amount),
-			currency=from_acc.currency,
-		)
-
 		return tx_out
 
 
-async def _notify_transfer(repo: TransactionRepository, user_id: UUID, from_acc, to_acc, amount, bal_after, conv_amount=None, rate=None):
-	contact = await repo.get_owner_contact(user_id)
-	if not contact: return
-	txt = f"{amount} {from_acc.currency} -> {conv_amount} {to_acc.currency}" if conv_amount else f"{amount} {from_acc.currency}"
-	await send_notification(
-		notification_type="transaction_transfer",
-		to=contact.email,
-		variables={
-			"from_account": from_acc.account_number, 
-			"to_account": to_acc.account_number,
-			"amount": txt, 
-			"currency": from_acc.currency, 
-			"balance_after": str(bal_after)
-		}
-	)
-
-
-async def _notify_incoming_transfer(repo: TransactionRepository, to_acc, from_acc, amount, bal_after, orig_amount=None, rate=None):
-	contact = await repo.get_owner_contact(to_acc.client_id)
-	if not contact: return
-	txt = f"{orig_amount} {from_acc.currency} -> {amount} {to_acc.currency}" if orig_amount else f"{amount} {to_acc.currency}"
-	await send_notification(
-		notification_type="transaction_incoming",
-		to=contact.email,
-		variables={
-			"account_number": to_acc.account_number, 
-			"from_account": from_acc.account_number,
-			"amount": txt, 
-			"currency": to_acc.currency, 
-			"balance_after": str(bal_after)
-		}
-	)

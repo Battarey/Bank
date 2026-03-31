@@ -3,11 +3,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
-from shared.database_core.db import get_session
 from shared.internal_auth import require_user_id
+from ..uow import AccountUnitOfWork, get_uow
 from . import service
 
 router = APIRouter(
@@ -25,13 +24,13 @@ router = APIRouter(
 async def suspend_account(
 	account_id: UUID,
 	user_id: UUID = Depends(require_user_id),
-	session: AsyncSession = Depends(get_session),
+	uow: AccountUnitOfWork = Depends(get_uow),
 ):
 	"""Приостанавливает операции по банковскому счёту (заморозка).
 	
 	Замороженный счёт недоступен для любых расходных операций (переводы, оплата).
 	"""
-	account = await service.freeze_account(session, user_id, account_id)
+	account = await service.freeze_account(uow, user_id, account_id)
 	
 	return schemas.AccountMessageResponse(
 		message="Обслуживание счёта приостановлено.",
@@ -48,10 +47,10 @@ async def suspend_account(
 async def resume_account(
 	account_id: UUID,
 	user_id: UUID = Depends(require_user_id),
-	session: AsyncSession = Depends(get_session),
+	uow: AccountUnitOfWork = Depends(get_uow),
 ):
 	"""Снимает приостановку со счёта (разморозка), если она была установлена пользователем."""
-	account = await service.unfreeze_account(session, user_id, account_id)
+	account = await service.unfreeze_account(uow, user_id, account_id)
 	
 	return schemas.AccountMessageResponse(
 		message="Обслуживание счёта возобновлено.",

@@ -4,18 +4,10 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared import models
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import (
-	EMAIL_ROUTING_KEY,
-	LOG_ACCOUNT_KEY,
-	NOTIFICATIONS_EXCHANGE,
-)
-from shared.utils.log_event import log_event
+from shared.events.base import LogEvent, NotificationEvent
 
-from ..repository import AccountRepository
+from ..uow import AccountUnitOfWork
 from ..exceptions import (
 	AccountConflict,
 	AccountNonZeroBalance,
@@ -24,7 +16,7 @@ from ..exceptions import (
 
 
 async def close_account(
-	session: AsyncSession,
+	uow: AccountUnitOfWork,
 	user_id: UUID,
 	account_id: UUID,
 ) -> models.BankAccount:
@@ -36,12 +28,12 @@ async def close_account(
 	3. Его баланс равен нулю.
 
 	Args:
-		session: Сессия БД.
+		uow: Unit of Work для управления транзакцией и событиями.
 		user_id: ID владельца.
 		account_id: ID закрываемого счёта.
 
 	Returns:
-		BankAccount: Счёт в статусе 'closed'.
+		models.BankAccount: Счёт в статусе 'closed'.
 
 	Raises:
 		AccountNotFound: Если счёт не найден.
@@ -49,67 +41,51 @@ async def close_account(
 		AccountNonZeroBalance: Если на счёте остались средства.
 		AccountConflict: При системных ошибках обновления.
 	"""
-	repo = AccountRepository(session)
-	
-	# 1. Поиск и принадлежность
-	account = await repo.get_by_user(user_id, account_id)
+	async with uow:
+		# 1. Поиск и принадлежность
+		account = await uow.accounts.get_by_user(user_id, account_id)
 
-	# 2. Валидация состояния
-	if account.status != "open":
-		raise AccountNotOpen(
-			f"Невозможно закрыть счёт со статусом «{account.status}»."
-		)
-
-	if account.balance != 0:
-		raise AccountNonZeroBalance(
-			f"На счёте остаток {account.balance} {account.currency}. "
-			"Снимите все средства перед закрытием."
-		)
-
-	# 3. Закрытие
-	account.status = "closed"
-	account.closed_at = datetime.now(UTC)
-
-	try:
-		await repo.commit()
-	except IntegrityError as exc:
-		await repo.rollback()
-		raise AccountConflict("Конфликт данных при закрытии счёта.") from exc
-
-	await repo.refresh(account)
-
-	# 4. Уведомление и логирование (Best effort)
-	contact = await repo.get_owner_contact(user_id)
-	if contact:
-		try:
-			await publish(
-				exchange_name=NOTIFICATIONS_EXCHANGE,
-				routing_key=EMAIL_ROUTING_KEY,
-				body={
-					"type": "account_closed",
-					"payload": {
-						"to": contact.email,
-						"variables": {
-							"account_number": account.account_number,
-						},
-					},
-				},
+		# 2. Валидация состояния
+		if account.status != "open":
+			raise AccountNotOpen(
+				f"Невозможно закрыть счёт со статусом «{account.status}»."
 			)
-		except Exception:
-			pass
 
-	await log_event(
-		routing_key=LOG_ACCOUNT_KEY,
-		event_type="account",
-		payload={
-			"user_id": str(user_id),
-			"action": "close_account",
-			"service": "account_service",
-			"entity_id": str(account.id),
-			"entity_type": "bank_account",
-			"status": "success",
-			"details": f"Счёт {account.account_number} закрыт",
-		}
-	)
+		if account.balance != 0:
+			raise AccountNonZeroBalance(
+				f"На счёте остаток {account.balance} {account.currency}. "
+				"Снимите все средства перед закрытием."
+			)
+
+		# 3. Закрытие
+		account.status = "closed"
+		account.closed_at = datetime.now(UTC)
+
+		# 4. Регистрация событий ДО коммита
+		contact = await uow.accounts.get_owner_contact(user_id)
+		if contact:
+			uow.add_event(NotificationEvent(
+				type="account_closed",
+				to=contact.email,
+				variables={
+					"account_number": account.account_number,
+				},
+			))
+
+		uow.add_event(LogEvent(
+			user_id=user_id,
+			action="close_account",
+			service="account_service",
+			details=f"Счёт {account.account_number} закрыт",
+			entity_id=account.id,
+			entity_type="bank_account",
+		))
+
+		try:
+			await uow.commit()
+		except IntegrityError as exc:
+			raise AccountConflict("Конфликт данных при закрытии счёта.") from exc
+
+		await uow.accounts.refresh(account)
 
 	return account

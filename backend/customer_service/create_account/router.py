@@ -3,10 +3,9 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
-from shared.database_core.db import get_session
+from ..uow import CustomerUnitOfWork, get_uow
 from . import service
 
 router = APIRouter(
@@ -21,9 +20,9 @@ router = APIRouter(
 	status_code=status.HTTP_201_CREATED,
 	summary="Начать процесс регистрации",
 )
-async def start_onboarding(session: AsyncSession = Depends(get_session)):
+async def start_onboarding(uow: CustomerUnitOfWork = Depends(get_uow)):
 	"""Создаёт временного пользователя и возвращает UUID для прохождения шагов."""
-	user_id = await service.start_onboarding(session)
+	user_id = await service.start_onboarding(uow)
 	return schemas.StartOnboardingResponse(client_id=user_id)
 
 
@@ -35,10 +34,10 @@ async def start_onboarding(session: AsyncSession = Depends(get_session)):
 async def store_personal_data(
 	user_id: UUID,
 	payload: schemas.PersonalDataPayload,
-	session: AsyncSession = Depends(get_session),
+	uow: CustomerUnitOfWork = Depends(get_uow),
 ):
 	"""Сохраняет ФИО и дату рождения в черновик."""
-	return await service.store_personal_data(session, user_id, payload)
+	return await service.store_personal_data(uow, user_id, payload)
 
 
 @router.post(
@@ -49,10 +48,10 @@ async def store_personal_data(
 async def store_passport_data(
 	user_id: UUID,
 	payload: schemas.PassportPayload,
-	session: AsyncSession = Depends(get_session),
+	uow: CustomerUnitOfWork = Depends(get_uow),
 ):
 	"""Сохраняет данные паспорта с проверкой уникальности."""
-	return await service.store_passport_data(session, user_id, payload)
+	return await service.store_passport_data(uow, user_id, payload)
 
 
 @router.post(
@@ -63,10 +62,10 @@ async def store_passport_data(
 async def store_identifiers(
 	user_id: UUID,
 	payload: schemas.IdentifiersPayload,
-	session: AsyncSession = Depends(get_session),
+	uow: CustomerUnitOfWork = Depends(get_uow),
 ):
 	"""Сохраняет ИНН и СНИЛС в черновик."""
-	return await service.store_identifiers(session, user_id, payload)
+	return await service.store_identifiers(uow, user_id, payload)
 
 
 @router.post(
@@ -77,10 +76,10 @@ async def store_identifiers(
 async def store_contacts(
 	user_id: UUID,
 	payload: schemas.ContactsPayload,
-	session: AsyncSession = Depends(get_session),
+	uow: CustomerUnitOfWork = Depends(get_uow),
 ):
 	"""Сохраняет Email и телефон. Требуется последующая верификация Email."""
-	return await service.store_contacts(session, user_id, payload)
+	return await service.store_contacts(uow, user_id, payload)
 
 
 @router.post(
@@ -90,14 +89,10 @@ async def store_contacts(
 )
 async def complete_onboarding(
 	user_id: UUID,
-	session: AsyncSession = Depends(get_session),
+	uow: CustomerUnitOfWork = Depends(get_uow),
 ):
-	"""Переносит данные из черновиков в основной профиль и активирует пользователя.
-	
-	Финальный шаг регистрации (Onboarding Completion). 
-	Требует, чтобы все предыдущие шаги были заполнены и email был подтверждён.
-	"""
-	await service.persist_onboarding_data(session, user_id)
+	"""Переносит данные из черновиков в основной профиль и активирует пользователя."""
+	await service.persist_onboarding_data(uow, user_id)
 	return schemas.FinalizeResponse(
 		client_id=user_id,
 		message="Регистрация успешно завершена. Теперь вы можете войти в систему.",
