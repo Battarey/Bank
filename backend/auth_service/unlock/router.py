@@ -3,9 +3,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.database_core.db import get_session
-from shared.schemas.auth import MessageResponse
-from shared.schemas.unlock import RequestUnlockRequest, UnlockRequest
+from .uow import AuthUnitOfWork, get_uow
 from . import service
 
 router = APIRouter(tags=["auth-unlock"])
@@ -19,10 +17,18 @@ router = APIRouter(tags=["auth-unlock"])
 )
 async def request_unlock(
 	body: RequestUnlockRequest,
-	session: AsyncSession = Depends(get_session),
+	uow: AuthUnitOfWork = Depends(get_uow),
 ):
-	"""Генерирует 6-значный код и отправляет его на Email пользователя."""
-	await service.request_unlock(session, body.email)
+	"""Генерирует 6-значный код и отправляет его на Email пользователя.
+
+	Args:
+		body: Email пользователя для поиска аккаунта.
+		uow: Unit of Work для управления транзакцией и событиями.
+
+	Returns:
+		MessageResponse: Подтверждение отправки кода.
+	"""
+	await service.request_unlock(uow, body.email)
 	return MessageResponse(message="Код разблокировки отправлен на привязанный Email.")
 
 
@@ -34,8 +40,16 @@ async def request_unlock(
 )
 async def confirm_unlock(
 	body: UnlockRequest,
-	session: AsyncSession = Depends(get_session),
+	uow: AuthUnitOfWork = Depends(get_uow),
 ):
-	"""Проверяет код и переводит аккаунт в статус 'active'."""
-	await service.confirm_unlock(session, body.email, body.code)
+	"""Проверяет код и переводит аккаунт в статус 'active'.
+
+	Args:
+		body: Email пользователя и 6-значный код из письма.
+		uow: Unit of Work для управления транзакцией и событиями.
+
+	Returns:
+		MessageResponse: Подтверждение успешной разблокировки.
+	"""
+	await service.confirm_unlock(uow, body.email, body.code)
 	return MessageResponse(message="Аккаунт успешно разблокирован. Теперь вы можете войти.")
