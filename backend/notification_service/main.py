@@ -14,9 +14,10 @@ import signal
 
 import aio_pika
 
-from .smtp import send_email
-from .store import close_mongo, init_mongo, save_notification
-from .templates import get_template
+from .repository import NotificationRepository
+from .schemas import NotificationTask
+from .service import NotificationService
+from .store import close_mongo, init_mongo
 
 logging.basicConfig(
 	level=logging.INFO,
@@ -31,7 +32,10 @@ QUEUE_NAME = "email_queue"
 BINDING_KEY = "email.#"
 
 
-async def _process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None:
+async def _process_message(
+	message: aio_pika.abc.AbstractIncomingMessage, 
+	service: NotificationService,
+) -> None:
 	"""Обработка одного сообщения из очереди."""
 
 	async with message.process():
@@ -41,50 +45,12 @@ async def _process_message(message: aio_pika.abc.AbstractIncomingMessage) -> Non
 			logger.error("Невалидный JSON: %s", message.body[:200])
 			return
 
-		msg_type: str = data.get("type", "")
-		payload: dict = data.get("payload", {})
-		variables: dict = payload.get("variables", {})
-
-		logger.info("Получено сообщение: type=%s", msg_type)
-
 		try:
-			template = get_template(msg_type)
-			subject, body = template.render(variables)
-
-			await send_email(
-				to=payload["to"],
-				subject=subject,
-				body=body,
-			)
-			logger.info("%s → %s", msg_type, payload["to"])
-
-			await save_notification(
-				msg_type=msg_type,
-				to=payload["to"],
-				subject=subject,
-				body=body,
-				variables=variables,
-				status="sent",
-			)
-
-		except (ValueError, KeyError, Exception) as exc:
-			if isinstance(exc, ValueError):
-				logger.warning("Неизвестный шаблон: %s", msg_type)
-			elif isinstance(exc, KeyError):
-				logger.error("Не хватает переменной для шаблона %s: %s", msg_type, exc)
-			else:
-				logger.exception("Ошибка обработки сообщения type=%s", msg_type)
-
-			# Фиксируем неудачную попытку в журнале
-			await save_notification(
-				msg_type=msg_type,
-				to=payload.get("to", "unknown"),
-				subject="",
-				body="",
-				variables=variables,
-				status="failed",
-				error=str(exc),
-			)
+			# Валидация входных данных через Pydantic
+			task = NotificationTask.model_validate(data)
+			await service.process_notification(task)
+		except Exception as exc:
+			logger.error("Ошибка валидации или обработки сообщения: %s", exc)
 
 
 MAX_RETRIES = 10
@@ -96,6 +62,8 @@ async def run() -> None:
 
 	# ── MongoDB ────────────────────────────────────────────────────────
 	await init_mongo()
+	repository = NotificationRepository()
+	service = NotificationService(repository)
 
 	# ── RabbitMQ ───────────────────────────────────────────────────────
 	logger.info("Подключение к RabbitMQ: %s", RABBITMQ_URL)
@@ -127,7 +95,9 @@ async def run() -> None:
 		await queue.bind(exchange, BINDING_KEY)
 
 		logger.info("Слушаю очередь '%s' (binding: %s)", QUEUE_NAME, BINDING_KEY)
-		await queue.consume(_process_message)
+		
+		# Передаем сервис в обработчик через лямбду или partial
+		await queue.consume(lambda msg: _process_message(msg, service))
 
 		# Ждём сигнала остановки
 		stop_event = asyncio.Event()
