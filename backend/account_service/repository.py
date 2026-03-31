@@ -32,16 +32,6 @@ class AccountRepository(BaseRepository[models.BankAccount]):
 			raise AccountNotFound("Счёт не найден.")
 		return account
 
-	async def list_by_user(self, user_id: UUID) -> Sequence[models.BankAccount]:
-		"""Возвращает список всех счетов пользователя."""
-		stmt = (
-			select(models.BankAccount)
-			.where(models.BankAccount.client_id == user_id)
-			.order_by(models.BankAccount.opened_at.desc())
-		)
-		result = await self.session.execute(stmt)
-		return result.scalars().all()
-
 	async def count_open_by_type(self, user_id: UUID, acc_type: str, currency: str) -> int:
 		"""Считает количество открытых счетов конкретного типа и валюты."""
 		stmt = (

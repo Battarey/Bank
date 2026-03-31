@@ -157,22 +157,22 @@ async def open_account(
 	return account
 
 
-async def list_accounts(uow: AccountUnitOfWork, user_id: UUID) -> Sequence[models.BankAccount]:
-	"""Возвращает список всех счетов пользователя.
+async def list_accounts(uow: AccountUnitOfWork, user_id: UUID) -> tuple[list[schemas.AccountResponse], int]:
+	"""Возвращает список всех счетов пользователя через Query Layer (CQRS).
 
 	Args:
 		uow: Unit of Work для доступа к репозиторию.
 		user_id: ID владельца счетов.
 
 	Returns:
-		Sequence[models.BankAccount]: Список объектов счетов.
+		tuple[list[schemas.AccountResponse], int]: Список объектов счетов и их общее количество.
 	"""
 	async with uow:
-		return await uow.accounts.list_by_user(user_id)
+		return await uow.account_queries.list_by_user_with_total(user_id)
 
 
-async def get_account(uow: AccountUnitOfWork, user_id: UUID, account_id: UUID) -> models.BankAccount:
-	"""Возвращает детальную информацию о конкретном счёте.
+async def get_account(uow: AccountUnitOfWork, user_id: UUID, account_id: UUID) -> schemas.AccountResponse:
+	"""Возвращает детальную информацию о конкретном счёте через Query Layer (CQRS).
 
 	Args:
 		uow: Unit of Work для доступа к репозиторию.
@@ -180,10 +180,14 @@ async def get_account(uow: AccountUnitOfWork, user_id: UUID, account_id: UUID) -
 		account_id: ID запрашиваемого счёта.
 
 	Returns:
-		models.BankAccount: Объект счёта.
+		schemas.AccountResponse: Объект счёта.
 
 	Raises:
 		AccountNotFound: Если счёт не найден или не принадлежит пользователю.
 	"""
 	async with uow:
-		return await uow.accounts.get_by_user(user_id, account_id)
+		account = await uow.account_queries.get_by_id_raw(user_id, account_id)
+		if not account:
+			from ..exceptions import AccountNotFound
+			raise AccountNotFound("Счёт не найден или не принадлежит вам.")
+		return account

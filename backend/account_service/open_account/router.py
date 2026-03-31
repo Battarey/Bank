@@ -46,11 +46,11 @@ async def list_accounts(
 	uow: AccountUnitOfWork = Depends(get_uow),
 ):
 	"""Возвращает список всех счетов (активных, закрытых, замороженных) текущего пользователя."""
-	accounts = await service.list_accounts(uow, user_id)
+	accounts, total = await service.list_accounts(uow, user_id)
 	
 	return schemas.AccountListResponse(
-		accounts=[schemas.AccountResponse.model_validate(a) for a in accounts],
-		total=len(accounts),
+		accounts=accounts,
+		total=total,
 	)
 
 
