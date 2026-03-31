@@ -7,7 +7,6 @@ from typing import Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
 from shared.events.base import LogEvent, NotificationEvent

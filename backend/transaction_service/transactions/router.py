@@ -2,7 +2,6 @@
 
 from uuid import UUID
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
 from shared.internal_auth import require_user_id
