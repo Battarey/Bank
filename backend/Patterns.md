@@ -73,10 +73,12 @@
 └── README.md
 ```
 
-### 3.2 Разделение router / service
+### 3.2 Разделение router / service / uow / repository
 
-- **`router.py`** — принимает HTTP-запрос, вызывает сервисный слой, возвращает результат. Не содержит логики маппинга ошибок и SQL-запросов. Ошибки всплывают автоматически.
-- **`service.py`** — чистая бизнес-логика и работа с БД через SQLAlchemy. Не знает о FastAPI (`HTTPException` не импортируется). Бросает бизнес-исключения из `exceptions.py`.
+- **`router.py`** — принимает HTTP-запрос, вызывает сервисный слой, возвращает результат. Не содержит логики маппинга ошибок и SQL-запросов. Внедряет `Unit of Work` через `Depends(get_uow)`.
+- **`service.py`** — чистая бизнес-логика. Не знает о FastAPI и деталях SQLAlchemy. Работает исключительно через `uow: AbstractUnitOfWork`. Вместо прямых вызовов внешних сервисов (Email, Logs) регистрирует события в `uow.add_event()`.
+- **`uow.py`** — реализация паттерна Unit of Work. Управляет жизненным циклом сессии БД и автоматической публикацией накопленных событий после успешного коммита.
+- **`repository.py`** — инкапсулирует все SQL-запросы. Методы репозитория возвращают модели или DTO, полностью скрывая использование `select`, `where` и т.д.
 
 ### 3.3 Единая система обработки ошибок
 
@@ -116,9 +118,10 @@ async def lifespan(app: FastAPI):
 
 ### 4.1 PostgreSQL — источник истины
 
-- SQLAlchemy 2.0 с `AsyncSession` (asyncpg-драйвер)
-- Сессия получается через `Depends(get_session)` — автоматический commit/rollback
-- `IntegrityError` из SQLAlchemy ловится явно (а не `except Exception`) и преобразуется в бизнес-исключение (`AccountConflict`)
+- SQLAlchemy 2.0 с `AsyncSession` (asyncpg-драйвер).
+- **Паттерн Unit of Work (UoW)**: сессия больше не передается в сервисы напрямую. Вместо этого используется `Depends(get_uow)`, что гарантирует атомарность операций и консистентность данных.
+- Метод `uow.commit()` выполняет не только `session.commit()`, но и инициирует отправку всех зарегистрированных доменных событий.
+- `IntegrityError` ловится внутри UoW или репозитория и преобразуется в бизнес-исключение (`ConflictError`).
 
 ### 4.2 Redis — эфемерное хранилище
 
@@ -160,15 +163,15 @@ async def lifespan(app: FastAPI):
 
 Gateway проксирует запросы клиента к микросервисам через `httpx.AsyncClient`. Каждый сервис — отдельный `AsyncClient` в `app.state.services`, созданный в lifespan.
 
-### 5.2 Асинхронное — RabbitMQ (events)
+### 5.2 Асинхронное — RabbitMQ (Domain Events / EDA)
 
-- **Exchange `notifications`** (topic, durable), routing key `email.send`
-  - Публикация: `shared.rabbitmq.publish()` — fire-and-forget из любого сервиса
-  - Потребление: `notification_service` — единственный consumer
-
-- **Exchange `logs`** (topic, durable), routing keys `log.auth`, `log.account`, `log.transaction`
-  - Публикация: `shared.rabbitmq.publish()` — fire-and-forget из бизнес-сервисов
-  - Потребление: `log_service` — запись в PostgreSQL (history) + ClickHouse (analytics)
+- **Domain Events (EDA)**: сервисы не вызывают друг друга напрямую для побочных эффектов.
+  - Событие (н-р, `NotificationEvent`) регистрируется в `uow`.
+  - После `uow.commit()` Message Bus автоматически публикует события в RabbitMQ.
+- **Exchange `notifications`** (topic, durable), routing key `email.send`:
+  - Потребление: `notification_service` — единственный consumer.
+- **Exchange `logs`** (topic, durable):
+  - Потребление: `log_service` — запись в PostgreSQL (history) + ClickHouse (analytics).
 
 Формат сообщения (уведомления):
 ```json

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
+from shared.internal_auth import require_user_id
 from .uow import CurrencyUnitOfWork, get_uow
 from . import service
 
