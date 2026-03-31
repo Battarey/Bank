@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.schemas import MessageResponse, RequestUnlockRequest, UnlockRequest
-from .uow import AuthUnitOfWork, get_uow
+from ..uow import AuthUnitOfWork, get_uow
 from . import service
 
 router = APIRouter(tags=["auth-unlock"])

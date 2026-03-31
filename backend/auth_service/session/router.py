@@ -5,7 +5,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .uow import AuthUnitOfWork, get_uow
+from shared.schemas import MessageResponse
+from shared.internal_auth import require_user_id
+from ..uow import AuthUnitOfWork, get_uow
 from . import service
 
 router = APIRouter(tags=["auth-sessions"])

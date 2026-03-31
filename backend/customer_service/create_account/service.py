@@ -5,6 +5,7 @@ from typing import Dict, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
+from shared import models, schemas
 from shared.events.base import LogEvent, NotificationEvent
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified

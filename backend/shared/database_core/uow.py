@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Type
+from typing import Any, TYPE_CHECKING, Type
 
 if TYPE_CHECKING:
 	from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,8 @@ class AbstractUnitOfWork(abc.ABC):
 		return self
 
 	async def __aexit__(self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
-		await self.rollback()
+		if exc_type:
+			await self.rollback()
 
 	@abc.abstractmethod
 	async def commit(self) -> None:

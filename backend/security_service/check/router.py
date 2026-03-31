@@ -9,7 +9,7 @@ from shared.schemas import (
 	SecurityCheckResponse,
 	ViolationItem,
 )
-from .uow import SecurityUnitOfWork, get_uow
+from ..uow import SecurityUnitOfWork, get_uow
 from . import service
 
 
