@@ -15,6 +15,20 @@ router = APIRouter(
 )
 
 
+@router.get(
+	"/me",
+	response_model=schemas.FullProfileResponse,
+	status_code=status.HTTP_200_OK,
+	summary="Получить полный агрегированный профиль",
+)
+async def get_my_profile(
+	user_id: UUID = Depends(require_user_id),
+	uow: CustomerUnitOfWork = Depends(get_uow),
+):
+	"""Возвращает все данные профиля пользователя (ФИО, паспорт, контакты, ИНН/СНИЛС) в одном ответе."""
+	return await service.get_full_profile(uow, user_id)
+
+
 @router.patch(
 	"/personal-data",
 	response_model=schemas.PersonalDataResponse,

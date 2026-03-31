@@ -40,6 +40,26 @@ async def _get_active_user(uow: CustomerUnitOfWork, user_id: UUID) -> models.Use
 	return user
 
 
+async def get_full_profile(uow: CustomerUnitOfWork, user_id: UUID) -> schemas.FullProfileResponse:
+	"""Возвращает полную агрегированную карточку профиля пользователя через Query Layer (CQRS).
+
+	Args:
+		uow: Unit of Work для доступа к репозиторию.
+		user_id: ID пользователя.
+
+	Returns:
+		schemas.FullProfileResponse: Агрегированные расшифрованные данные.
+
+	Raises:
+		UpdateDataNotFound: Если профиль пользователя не найден.
+	"""
+	async with uow:
+		profile = await uow.customer_queries.get_full_profile(user_id)
+		if not profile:
+			raise UpdateDataNotFound(f"Профиль пользователя {user_id} не найден.")
+		return profile
+
+
 async def update_personal_data(
 	uow: CustomerUnitOfWork,
 	user_id: UUID,

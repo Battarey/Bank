@@ -7,6 +7,7 @@ from shared.database_core.uow import SqlAlchemyUnitOfWork
 from shared.database_core.db import async_sessionmaker, engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from .repository import CustomerRepository
+from .queries.repository import CustomerQueryRepository
 
 # Создаем локальный sessionmaker для сервиса
 SessionLocal = async_sessionmaker(
@@ -22,16 +23,19 @@ class CustomerUnitOfWork(SqlAlchemyUnitOfWork):
 	def __init__(self):
 		super().__init__(SessionLocal)
 		self.customers: CustomerRepository | None = None
+		self.customer_queries: CustomerQueryRepository | None = None
 
 	async def __aenter__(self) -> CustomerUnitOfWork:
 		uow = await super().__aenter__()
 		if self._session:
 			self.customers = CustomerRepository(self._session)
+			self.customer_queries = CustomerQueryRepository(self._session)
 		return uow
 
 	async def __aexit__(self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 		self.customers = None
+		self.customer_queries = None
 
 
 async def get_uow() -> AsyncGenerator[CustomerUnitOfWork, None]:
