@@ -24,7 +24,7 @@ router = APIRouter(
 )
 async def withdraw(
 	account_id: UUID,
-	payload: schemas.WithdrawRequest,
+	payload: schemas.WithdrawalRequest,
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):

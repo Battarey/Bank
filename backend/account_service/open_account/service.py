@@ -3,6 +3,7 @@
 import secrets
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError

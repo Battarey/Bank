@@ -34,6 +34,10 @@ class BaseRepository(Generic[ModelT]):
 		self.session.add(entity)
 		return entity
 
+	async def add_all(self, entities: Sequence[ModelT]) -> None:
+		"""Добавляет список сущностей в сессию."""
+		self.session.add_all(entities)
+
 	async def delete(self, id: UUID) -> bool:
 		"""Удаляет запись по её идентификатору."""
 		stmt = delete(self.model).where(self.model.id == id)
