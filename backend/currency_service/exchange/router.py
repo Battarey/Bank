@@ -6,8 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models, schemas
-from shared.database_core.db import get_session
-from shared.internal_auth import require_user_id
+from .uow import CurrencyUnitOfWork, get_uow
 from . import service
 
 router = APIRouter(
@@ -26,14 +25,22 @@ router = APIRouter(
 async def convert_currency(
 	payload: schemas.ExchangeRequest,
 	user_id: UUID = Depends(require_user_id),
-	session: AsyncSession = Depends(get_session),
+	uow: CurrencyUnitOfWork = Depends(get_uow),
 ):
 	"""Конвертирует средства между двумя банковскими счетами разных валют текущего пользователя.
 	
 	Курс конвертации запрашивается в реальном времени. Операция атомарна.
+
+	Args:
+		payload: Схема запроса с ID счетов и суммой.
+		user_id: ID текущего пользователя (из токена).
+		uow: Unit of Work для управления транзакцией.
+
+	Returns:
+		schemas.ExchangeResponse: Результат конвертации с деталями списания и зачисления.
 	"""
 	from_amount, to_amount, rate = await service.exchange(
-		session, 
+		uow, 
 		user_id,
 		from_account_id=payload.from_account_id,
 		to_account_id=payload.to_account_id,
@@ -41,8 +48,9 @@ async def convert_currency(
 	)
 
 	# Получаем актуальные данные счетов для формирования ответа
-	from_account = await session.get(models.BankAccount, payload.from_account_id)
-	to_account = await session.get(models.BankAccount, payload.to_account_id)
+	async with uow:
+		from_account = await uow.accounts.get_by_user(user_id, payload.from_account_id)
+		to_account = await uow.accounts.get_by_user(user_id, payload.to_account_id)
 
 	return schemas.ExchangeResponse(
 		message="Конвертация успешно выполнена.",

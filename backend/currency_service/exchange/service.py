@@ -5,19 +5,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from shared import models
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import (
-	EMAIL_ROUTING_KEY,
-	LOG_TRANSACTION_KEY,
-	NOTIFICATIONS_EXCHANGE,
-)
-from shared.utils.log_event import log_event
-
-from .. import exchange_client
-from ..repository import CurrencyRepository
+from shared.events.base import LogEvent, NotificationEvent
+from ..uow import CurrencyUnitOfWork
 from ..exceptions import (
 	AccountNotOpen,
 	InsufficientFunds,
@@ -28,7 +17,7 @@ from ..exceptions import (
 
 
 async def exchange(
-	session: AsyncSession,
+	uow: CurrencyUnitOfWork,
 	user_id: UUID,
 	from_account_id: UUID,
 	to_account_id: UUID,
@@ -36,14 +25,15 @@ async def exchange(
 ) -> tuple[Decimal, Decimal, Decimal]:
 	"""Выполняет конвертацию средств между двумя счетами одного пользователя.
 
-	Атомарная операция:
+	Атомарная операция (Unit of Work):
 	1. Блокировка обоих счетов (FOR UPDATE).
 	2. Проверка доступности валют и суммы.
 	3. Конвертация по актуальному курсу внешнего API.
 	4. Создание проводок (транзакций) списания и зачисления.
+	5. Регистрация событий NotificationEvent и LogEvent.
 
 	Args:
-		session: Сессия БД.
+		uow: Unit of Work для управления транзакцией и событиями.
 		user_id: ID владельца счетов.
 		from_account_id: Счёт списания.
 		to_account_id: Счёт зачисления.
@@ -58,127 +48,116 @@ async def exchange(
 		AccountNotOpen: Если счета закрыты или заморожены.
 		SameCurrencyExchange: Если валюты счетов совпадают.
 		InsufficientFunds: Если не хватает средств на счёте списания.
-		RateUnavailable: Если не удалось получить актуальный курс.
+		RateUnavailable: Если не удалось получить актуальный курс или сохранить транзакцию.
 	"""
 	if from_account_id == to_account_id:
 		raise SameAccountExchange("Обмен на тот же счёт невозможен.")
 
-	repo = CurrencyRepository(session)
+	async with uow:
+		# 1. Атомарная блокировка счетов
+		accounts = await uow.accounts.lock_accounts([from_account_id, to_account_id])
+		from_acc = accounts.get(from_account_id)
+		to_acc = accounts.get(to_account_id)
 
-	# 1. Атомарная блокировка счетов
-	accounts = await repo.lock_accounts([from_account_id, to_account_id])
-	from_acc = accounts.get(from_account_id)
-	to_acc = accounts.get(to_account_id)
+		if not from_acc or from_acc.client_id != user_id:
+			from ..exceptions import AccountNotFound
+			raise AccountNotFound(f"Счёт списания {from_account_id} не найден.")
+		if not to_acc or to_acc.client_id != user_id:
+			from ..exceptions import AccountNotFound
+			raise AccountNotFound(f"Счёт зачисления {to_account_id} не найден.")
 
-	if not from_acc or from_acc.client_id != user_id:
-		from ..exceptions import AccountNotFound
-		raise AccountNotFound(f"Счёт списания {from_account_id} не найден.")
-	if not to_acc or to_acc.client_id != user_id:
-		from ..exceptions import AccountNotFound
-		raise AccountNotFound(f"Счёт зачисления {to_account_id} не найден.")
+		# 2. Проверка статусов и валют
+		if from_acc.status != "open":
+			raise AccountNotOpen(f"Счёт списания в статусе «{from_acc.status}».")
+		if to_acc.status != "open":
+			raise AccountNotOpen(f"Счёт зачисления в статусе «{to_acc.status}».")
 
-	# 2. Проверка статусов и валют
-	if from_acc.status != "open":
-		raise AccountNotOpen(f"Счёт списания в статусе «{from_acc.status}».")
-	if to_acc.status != "open":
-		raise AccountNotOpen(f"Счёт зачисления в статусе «{to_acc.status}».")
+		if from_acc.currency == to_acc.currency:
+			raise SameCurrencyExchange("Валюты совпадают — используйте обычный перевод.")
 
-	if from_acc.currency == to_acc.currency:
-		raise SameCurrencyExchange("Валюты совпадают — используйте обычный перевод.")
+		if from_acc.balance < amount:
+			raise InsufficientFunds(
+				f"Недостаточно средств. Доступно: {from_acc.balance} {from_acc.currency}."
+			)
 
-	if from_acc.balance < amount:
-		raise InsufficientFunds(
-			f"Недостаточно средств. Доступно: {from_acc.balance} {from_acc.currency}."
+		# 3. Получение курса
+		try:
+			rate, _ = await exchange_client.get_fresh_rate(from_acc.currency, to_acc.currency)
+		except Exception as exc:
+			raise RateUnavailable(f"Не удалось получить курс {from_acc.currency}/{to_acc.currency}: {exc}") from exc
+
+		# 4. Расчёт суммы зачисления
+		converted = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+		# 5. Проводки
+		now = datetime.now(UTC)
+		from_bal_before, to_bal_before = from_acc.balance, to_acc.balance
+		
+		from_acc.balance -= amount
+		to_acc.balance += converted
+
+		tx_desc = f"Обмен {from_acc.currency}→{to_acc.currency}, курс {rate}"
+
+		tx_out = models.Transaction(
+			id=uuid4(),
+			account_id=from_account_id,
+			type="exchange",
+			amount=amount,
+			created_at=now,
+			description=tx_desc,
+			related_account_id=to_account_id,
+			direction="outgoing",
+			status="posted",
+			balance_before=from_bal_before,
+			balance_after=from_acc.balance,
+			external_ref=str(rate),
 		)
 
-	# 3. Получение курса
-	try:
-		rate, _ = await exchange_client.get_fresh_rate(from_acc.currency, to_acc.currency)
-	except Exception as exc:
-		raise RateUnavailable(f"Не удалось получить курс {from_acc.currency}/{to_acc.currency}: {exc}") from exc
+		tx_in = models.Transaction(
+			id=uuid4(),
+			account_id=to_account_id,
+			type="exchange",
+			amount=converted,
+			created_at=now,
+			description=tx_desc,
+			related_account_id=from_account_id,
+			direction="incoming",
+			status="posted",
+			balance_before=to_bal_before,
+			balance_after=to_acc.balance,
+			external_ref=str(rate),
+		)
 
-	# 4. Расчёт суммы зачисления
-	converted = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+		await uow.accounts.add_all([tx_out, tx_in])
 
-	# 5. Проводки
-	now = datetime.now(UTC)
-	from_bal_before, to_bal_before = from_acc.balance, to_acc.balance
-	
-	from_acc.balance -= amount
-	to_acc.balance += converted
+		# 6. Регистрация событий в UoW
+		contact = await uow.accounts.get_owner_contact(user_id)
+		if contact:
+			uow.add_event(NotificationEvent(
+				type="transaction_transfer",
+				to=contact.email,
+				variables={
+					"from_account": from_acc.account_number, 
+					"to_account": to_acc.account_number,
+					"amount": f"{amount} {from_acc.currency} → {converted} {to_acc.currency}",
+					"currency": from_acc.currency, 
+					"balance_after": str(from_acc.balance)
+				}
+			))
 
-	tx_desc = f"Обмен {from_acc.currency}→{to_acc.currency}, курс {rate}"
+		uow.add_event(LogEvent(
+			user_id=user_id,
+			action="currency_exchange",
+			service="currency_service",
+			details=f"Обмен {from_acc.currency} -> {to_acc.currency}",
+			entity_id=tx_out.id,
+			amount=float(amount),
+			currency=from_acc.currency,
+		))
 
-	tx_out = models.Transaction(
-		id=uuid4(),
-		account_id=from_account_id,
-		type="exchange",
-		amount=amount,
-		created_at=now,
-		description=tx_desc,
-		related_account_id=to_account_id,
-		direction="outgoing",
-		status="posted",
-		balance_before=from_bal_before,
-		balance_after=from_acc.balance,
-		external_ref=str(rate),
-	)
+		try:
+			await uow.commit() # Выполняет коммит и публикует события
+		except IntegrityError as exc:
+			raise RateUnavailable("Системная ошибка при сохранении транзакции.") from exc
 
-	tx_in = models.Transaction(
-		id=uuid4(),
-		account_id=to_account_id,
-		type="exchange",
-		amount=converted,
-		created_at=now,
-		description=tx_desc,
-		related_account_id=from_account_id,
-		direction="incoming",
-		status="posted",
-		balance_before=to_bal_before,
-		balance_after=to_acc.balance,
-		external_ref=str(rate),
-	)
-
-	await repo.add_all([tx_out, tx_in])
-
-	try:
-		await repo.commit()
-	except IntegrityError:
-		await repo.rollback()
-		raise
-
-	# 6. Уведомление и логи (Best effort)
-	try:
-		await _notify_exchange(repo, user_id, from_acc, to_acc, amount, converted, rate)
-	except Exception:
-		pass
-
-	await log_event(
-		routing_key=LOG_TRANSACTION_KEY,
-		event_type="transaction",
-		payload={
-			"user_id": str(user_id),
-			"action": "currency_exchange",
-			"service": "currency_service",
-			"entity_id": str(tx_out.id),
-			"amount": str(amount),
-			"currency": from_acc.currency,
-			"status": "success",
-			"details": f"Обмен {from_acc.currency} -> {to_acc.currency}",
-		}
-	)
-
-	return amount, converted, rate
-
-
-async def _notify_exchange(repo, user_id, from_acc, to_acc, from_amt, to_amt, rate):
-	contact = await repo.get_owner_contact(user_id)
-	if not contact: return
-	await publish(NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, {
-		"type": "transaction_transfer", # Используем общий шаблон уведомления
-		"payload": {"to": contact.email, "variables": {
-			"from_account": from_acc.account_number, "to_account": to_acc.account_number,
-			"amount": f"{from_amt} {from_acc.currency} → {to_amt} {to_acc.currency}",
-			"currency": from_acc.currency, "balance_after": str(from_acc.balance)
-		}}
-	})
+		return amount, converted, rate
