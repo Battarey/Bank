@@ -84,17 +84,18 @@ async def store_contacts(
 
 
 @router.post(
-	"/{user_id}/activation",
+	"/{user_id}/completion",
 	response_model=schemas.FinalizeResponse,
-	summary="Завершить регистрацию",
+	summary="Завершить регистрацию и создать профиль",
 )
-async def finalize_onboarding(
+async def complete_onboarding(
 	user_id: UUID,
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Переносит данные из черновиков в БД и активирует пользователя.
+	"""Переносит данные из черновиков в основной профиль и активирует пользователя.
 	
-	Требует, чтобы все 4 шага были заполнены и email был подтверждён.
+	Финальный шаг регистрации (Onboarding Completion). 
+	Требует, чтобы все предыдущие шаги были заполнены и email был подтверждён.
 	"""
 	await service.persist_onboarding_data(session, user_id)
 	return schemas.FinalizeResponse(

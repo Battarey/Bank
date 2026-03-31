@@ -19,65 +19,26 @@ type TransactionHandler struct {
 func (h *TransactionHandler) RegisterTransactionRoutes(e *echo.Echo) {
 	v1 := e.Group("/api/v1")
 
-	// Операции по конкретному счету
-	v1.POST("/accounts/:account_id/deposit", h.Deposit)       // Пополнение
-	v1.POST("/accounts/:account_id/withdrawal", h.Withdrawal) // Снятие (обновленный путь)
-	v1.POST("/accounts/:account_id/transfer", h.Transfer)     // Перевод другому клиенту
-	v1.GET("/accounts/:account_id/transactions", h.TransactionHistory) // История операций
+	// Унифицированный эндпоинт для всех типов операций
+	v1.POST("/transactions", h.CreateTransaction)
+
+	// История операций (только чтение)
+	v1.GET("/accounts/:account_id/transactions", h.TransactionHistory)
 }
 
-// Deposit godoc
-// @Summary     Пополнить счёт
-// @Description Вносит указанную сумму на банковский счёт текущего пользователя.
+// CreateTransaction godoc
+// @Summary     Выполнить финансовую операцию
+// @Description Создаёт новую транзакцию (пополнение, снятие или перевод). Тип определяется полем 'type' в JSON-теле.
 // @Tags        transactions
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       account_id path string true "UUID счёта"
-// @Param       payload body schemas.DepositRequest true "Данные пополнения"
+// @Param       payload body schemas.TransactionCreateRequest true "Данные операции"
 // @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/accounts/{account_id}/deposit [post]
-func (h *TransactionHandler) Deposit(c echo.Context) error {
-	accountID := c.Param("account_id")
+// @Router      /api/v1/transactions [post]
+func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 	body, _ := ReadBody(c)
-	path := fmt.Sprintf("/accounts/%s/deposit", accountID)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, path, body, "transaction", h.APIKey)
-}
-
-// Withdrawal godoc
-// @Summary     Снять средства
-// @Description Списывает указанную сумму с банковского счёта пользователя.
-// @Tags        transactions
-// @Security    SessionToken
-// @Accept      json
-// @Produce     json
-// @Param       account_id path string true "UUID счёта"
-// @Param       payload body schemas.WithdrawRequest true "Данные снятия"
-// @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/accounts/{account_id}/withdrawal [post]
-func (h *TransactionHandler) Withdrawal(c echo.Context) error {
-	accountID := c.Param("account_id")
-	body, _ := ReadBody(c)
-	path := fmt.Sprintf("/accounts/%s/withdrawal", accountID)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, path, body, "transaction", h.APIKey)
-}
-
-// Transfer godoc
-// @Summary     Перевод средств
-// @Description Переводит деньги между счетами разных клиентов банка.
-// @Tags        transactions
-// @Security    SessionToken
-// @Accept      json
-// @Produce     json
-// @Param       account_id path string true "UUID исходного счёта"
-// @Param       payload body schemas.TransferRequest true "Данные перевода"
-// @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/accounts/{account_id}/transfer [post]
-func (h *TransactionHandler) Transfer(c echo.Context) error {
-	accountID := c.Param("account_id")
-	body, _ := ReadBody(c)
-	path := fmt.Sprintf("/accounts/%s/transfer", accountID)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, path, body, "transaction", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/transactions", body, "transaction", h.APIKey)
 }
 
 // TransactionHistory godoc

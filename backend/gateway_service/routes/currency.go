@@ -18,10 +18,13 @@ type CurrencyHandler struct {
 // RegisterCurrencyRoutes регистрирует маршруты валютных операций в API Gateway.
 func (h *CurrencyHandler) RegisterCurrencyRoutes(e *echo.Echo) {
 	v1 := e.Group("/api/v1/currencies")
+	v1_root := e.Group("/api/v1")
 
-	v1.GET("/rates", h.GetRates)                        // Список всех курсов
-	v1.GET("/rates/:base/:target", h.GetPairRate)       // Курс конкретной пары
-	v1.POST("/exchange", h.Exchange)                     // Обмен между счетами
+	v1.GET("/rates", h.GetRates)                  // Список всех курсов
+	v1.GET("/rates/:base/:target", h.GetPairRate) // Курс конкретной пары
+
+	// Конвертация валют (вынесено на уровень /api/v1/)
+	v1_root.POST("/currency-conversions", h.Convert)
 }
 
 // GetRates godoc
@@ -57,17 +60,17 @@ func (h *CurrencyHandler) GetPairRate(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodGet, path, nil, "currency", h.APIKey)
 }
 
-// Exchange godoc
-// @Summary     Обмен валюты
-// @Description Конвертирует средства между двумя валютными счетами пользователя.
+// Convert godoc
+// @Summary     Конвертировать валюту
+// @Description Конвертирует средства между двумя валютными счетами текущего пользователя.
 // @Tags        currencies
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.ExchangeRequest true "Данные обмена"
+// @Param       payload body schemas.ExchangeRequest true "Данные конвертации"
 // @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/currencies/exchange [post]
-func (h *CurrencyHandler) Exchange(c echo.Context) error {
+// @Router      /api/v1/currency-conversions [post]
+func (h *CurrencyHandler) Convert(c echo.Context) error {
 	body, _ := ReadBody(c)
-	return h.Proxy.ForwardRaw(c, http.MethodPost, "/exchange", body, "currency", h.APIKey)
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/currency-conversions", body, "currency", h.APIKey)
 }

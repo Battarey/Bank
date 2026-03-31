@@ -8,9 +8,7 @@ from shared.internal_auth import verify_internal_key
 from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .deposit.router import router as deposit_router
-from .withdrawal.router import router as withdrawal_router
-from .transfer.router import router as transfer_router
+from .transactions.router import router as transactions_router
 from .history.router import router as history_router
 from . import security_client
 from . import currency_client
@@ -30,7 +28,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
 	title="Transaction Service",
-	version="0.2.0",
+	version="0.2.1",
 	description="Сервис управления финансовыми операциями: переводы, пополнение, снятие и мониторинг истории.",
 	lifespan=lifespan,
 	dependencies=[Depends(verify_internal_key)],
@@ -55,7 +53,5 @@ async def health_check() -> dict[str, str]:
 	return {"status": "ok"}
 
 
-app.include_router(deposit_router)
-app.include_router(withdrawal_router)
-app.include_router(transfer_router)
+app.include_router(transactions_router)
 app.include_router(history_router)

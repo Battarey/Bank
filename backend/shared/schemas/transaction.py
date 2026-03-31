@@ -20,6 +20,8 @@ TransactionStatus = Literal["pending", "posted", "failed"]
 class DepositRequest(BaseModel):
 	"""Запрос на пополнение счёта."""
 
+	type: Literal["deposit"] = Field(default="deposit", description="Тип операции")
+	account_id: UUID = Field(description="UUID счёта пополнения")
 	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма пополнения")
 	description: str | None = Field(default=None, max_length=256, description="Комментарий")
 
@@ -29,6 +31,8 @@ class DepositRequest(BaseModel):
 class WithdrawalRequest(BaseModel):
 	"""Запрос на снятие со счёта."""
 
+	type: Literal["withdrawal"] = Field(default="withdrawal", description="Тип операции")
+	account_id: UUID = Field(description="UUID счёта списания")
 	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма снятия")
 	description: str | None = Field(default=None, max_length=256, description="Комментарий")
 
@@ -38,11 +42,17 @@ class WithdrawalRequest(BaseModel):
 class TransferRequest(BaseModel):
 	"""Запрос на перевод между счетами (свои или чужие внутри банка)."""
 
+	type: Literal["transfer"] = Field(default="transfer", description="Тип операции")
+	from_account_id: UUID = Field(description="UUID счёта-отправителя")
 	to_account_id: UUID = Field(description="UUID счёта-получателя")
 	amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2, description="Сумма перевода")
 	description: str | None = Field(default=None, max_length=256, description="Комментарий")
 
 	model_config = ConfigDict(extra="forbid")
+
+
+import typing as t
+TransactionCreateRequest = t.Union[DepositRequest, WithdrawalRequest, TransferRequest]
 
 
 # ── Ответы ─────────────────────────────────────────────────────────────

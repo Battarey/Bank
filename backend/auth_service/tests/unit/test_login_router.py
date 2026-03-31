@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 from fastapi import HTTPException
 
-from auth_service.login.router import _raise, login_pin
+from auth_service.login.router import login_pin
 from auth_service.login.service import (
     AuthAccountLocked,
     AuthCooldown,
@@ -12,29 +12,6 @@ from auth_service.login.service import (
     AuthNotFound,
 )
 from shared.schemas.auth import LoginPinRequest
-
-
-def test_raise_exceptions():
-    with pytest.raises(HTTPException) as exc:
-        _raise(AuthAccountLocked())
-    assert exc.value.status_code == 423
-    
-    with pytest.raises(HTTPException) as exc:
-        _raise(AuthCooldown(retry_after=60, total_failures=5))
-    assert exc.value.status_code == 429
-    assert exc.value.headers["Retry-After"] == "60"
-    
-    with pytest.raises(HTTPException) as exc:
-        _raise(AuthNotFound("x"))
-    assert exc.value.status_code == 404
-    
-    with pytest.raises(HTTPException) as exc:
-        _raise(AuthForbidden("x"))
-    assert exc.value.status_code == 401
-    
-    with pytest.raises(HTTPException) as exc:
-        _raise(AuthError("x"))
-    assert exc.value.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -61,7 +38,7 @@ async def test_login_pin_error(mock_svc):
     
     payload = LoginPinRequest.model_validate({"phone": "+79991234567", "pin": "1234"})
     
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(AuthForbidden) as exc:
         await login_pin(body=payload, session=session)
         
-    assert exc.value.status_code == 401
+    assert "wrong pin" in str(exc.value)

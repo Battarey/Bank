@@ -30,7 +30,7 @@ func (h *CustomerHandler) RegisterCustomerRoutes(e *echo.Echo) {
 	v1.POST("/onboarding/passport", h.SubmitPassport)             // Шаг 2: Паспорт
 	v1.POST("/onboarding/identifiers", h.SubmitIdentifiers)       // Шаг 3: ИНН/СНИЛС
 	v1.POST("/onboarding/contacts", h.SubmitContacts)             // Шаг 4: Контакты
-	v1.POST("/onboarding/finalize", h.FinalizeOnboarding)         // Завершение
+	v1.POST("/onboarding/completion", h.CompleteOnboarding)       // Завершение
 
 	// Управление профилем (Требуется сессия X-Session-Token)
 	v1.PATCH("/customers/me/personal-data", h.UpdatePersonalData) // Смена ФИО
@@ -135,19 +135,19 @@ func (h *CustomerHandler) SubmitContacts(c echo.Context) error {
 	return h.OnboardingStep(c, "contacts")
 }
 
-// FinalizeOnboarding godoc
+// CompleteOnboarding godoc
 // @Summary     Завершение регистрации
 // @Description Переносит данные из черновиков в основной профиль и активирует аккаунт.
 // @Tags        onboarding
-// @Router      /api/v1/onboarding/finalize [post]
-func (h *CustomerHandler) FinalizeOnboarding(c echo.Context) error {
+// @Router      /api/v1/onboarding/completion [post]
+func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 	userID, err := h.resolveOnboarding(c)
 	if err != nil {
 		return err
 	}
 
 	onbToken := c.Request().Header.Get("X-Onboarding-Token")
-	path := fmt.Sprintf("/onboarding/%s/activation", userID)
+	path := fmt.Sprintf("/onboarding/%s/completion", userID)
 	
 	respData, statusCode, fwdErr := ForwardAndParse(c, h.Proxy, http.MethodPost, path, nil, "customer", h.APIKey)
 	if fwdErr != nil {

@@ -24,9 +24,9 @@ func (h *AccountHandler) RegisterAccountRoutes(e *echo.Echo) {
 	v1.GET("/accounts/:account_id", h.GetAccount)    // Информация о конкретном счёте
 	v1.DELETE("/accounts/:account_id", h.CloseAccount) // Закрыть счёт (архивировать)
 
-	// Заморозка/разморозка
-	v1.POST("/accounts/:account_id/freeze", h.FreezeAccount)   // Заморозить счёт
-	v1.DELETE("/accounts/:account_id/freeze", h.UnfreezeAccount) // Разморозить счёт
+	// Приостановка/возобновление обслуживания (вместо freeze)
+	v1.POST("/accounts/:account_id/suspensions", h.SuspendAccount)   // Приостановить обслуживание
+	v1.DELETE("/accounts/:account_id/suspensions", h.ResumeAccount) // Возобновить обслуживание
 }
 
 // OpenAccount godoc
@@ -86,32 +86,32 @@ func (h *AccountHandler) CloseAccount(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodDelete, path, nil, "account", h.APIKey)
 }
 
-// FreezeAccount godoc
-// @Summary     Заморозить счёт
-// @Description Временно блокирует операции по счёту.
+// SuspendAccount godoc
+// @Summary     Приостановить обслуживание
+// @Description Временно блокирует операции по счёту (заморозка).
 // @Tags        accounts
 // @Security    SessionToken
 // @Produce     json
 // @Param       account_id path string true "UUID счёта"
 // @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/accounts/{account_id}/freeze [post]
-func (h *AccountHandler) FreezeAccount(c echo.Context) error {
+// @Router      /api/v1/accounts/{account_id}/suspensions [post]
+func (h *AccountHandler) SuspendAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
-	path := fmt.Sprintf("/accounts/%s/freeze", accountID)
+	path := fmt.Sprintf("/accounts/%s/suspensions", accountID)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, path, nil, "account", h.APIKey)
 }
 
-// UnfreezeAccount godoc
-// @Summary     Разморозить счёт
-// @Description Снимает временную блокировку со счёта.
+// ResumeAccount godoc
+// @Summary     Возобновить обслуживание
+// @Description Снимает временную блокировку со счёта (разморозка).
 // @Tags        accounts
 // @Security    SessionToken
 // @Produce     json
 // @Param       account_id path string true "UUID счёта"
 // @Success     200 {object} map[string]interface{}
-// @Router      /api/v1/accounts/{account_id}/freeze [delete]
-func (h *AccountHandler) UnfreezeAccount(c echo.Context) error {
+// @Router      /api/v1/accounts/{account_id}/suspensions [delete]
+func (h *AccountHandler) ResumeAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
-	path := fmt.Sprintf("/accounts/%s/freeze", accountID)
+	path := fmt.Sprintf("/accounts/%s/suspensions", accountID)
 	return h.Proxy.ForwardRaw(c, http.MethodDelete, path, nil, "account", h.APIKey)
 }

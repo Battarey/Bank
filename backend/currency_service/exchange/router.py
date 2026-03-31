@@ -11,25 +11,26 @@ from shared.internal_auth import require_user_id
 from . import service
 
 router = APIRouter(
-	prefix="/exchange",
-	tags=["exchange"],
+	prefix="/currency-conversions",
+	tags=["conversions"],
 )
 
 
 @router.post(
 	"",
+	# response_model=schemas.ExchangeResponse,
 	response_model=schemas.ExchangeResponse,
 	status_code=status.HTTP_200_OK,
-	summary="Обменять валюту",
+	summary="Конвертировать валюту",
 )
-async def exchange_currency(
+async def convert_currency(
 	payload: schemas.ExchangeRequest,
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Конвертирует средства между двумя банковскими счетами текущего пользователя.
+	"""Конвертирует средства между двумя банковскими счетами разных валют текущего пользователя.
 	
-	Курс обмена запрашивается в реальном времени. Операция атомарна.
+	Курс конвертации запрашивается в реальном времени. Операция атомарна.
 	"""
 	from_amount, to_amount, rate = await service.exchange(
 		session, 
@@ -44,7 +45,7 @@ async def exchange_currency(
 	to_account = await session.get(models.BankAccount, payload.to_account_id)
 
 	return schemas.ExchangeResponse(
-		message="Обмен успешно выполнен.",
+		message="Конвертация успешно выполнена.",
 		from_account_id=payload.from_account_id,
 		to_account_id=payload.to_account_id,
 		from_amount=from_amount,

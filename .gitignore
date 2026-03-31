@@ -26,3 +26,6 @@ mongodb_data/
 postgres_data/
 clickhouse_data/
 redis_data/
+
+# Tasks
+Tasks.md

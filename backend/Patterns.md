@@ -75,31 +75,27 @@
 
 ### 3.2 Разделение router / service
 
-- **`router.py`** — принимает HTTP-запрос, вызывает сервисный слой, маппит бизнес-исключения в HTTP-коды через `_raise()`. Не содержит SQL-запросов.
+- **`router.py`** — принимает HTTP-запрос, вызывает сервисный слой, возвращает результат. Не содержит логики маппинга ошибок и SQL-запросов. Ошибки всплывают автоматически.
 - **`service.py`** — чистая бизнес-логика и работа с БД через SQLAlchemy. Не знает о FastAPI (`HTTPException` не импортируется). Бросает бизнес-исключения из `exceptions.py`.
 
-### 3.3 Единая иерархия исключений
+### 3.3 Единая система обработки ошибок
 
-Каждый сервис определяет свои исключения в `exceptions.py`, наследуя от одного базового:
+Вместо ручного маппинга через `try/except` или вспомогательные функции в роутерах, используется глобальный обработчик (middleware) `setup_exception_handlers`.
 
-```python
-class AccountError(Exception): ...
-class AccountNotFound(AccountError): ...
-class AccountConflict(AccountError): ...
-```
+1. **Доменные исключения** наследуются от `BaseBusinessError` (из `shared.utils.exceptions`):
+   ```python
+   from shared.utils.exceptions import BaseBusinessError, NotFoundError
 
-В роутере — единая функция `_raise()` для маппинга:
+   class AccountError(BaseBusinessError): 
+       status_code = 400
 
-```python
-def _raise(exc: AccountError) -> None:
-    if isinstance(exc, AccountNotFound):
-        raise HTTPException(404, detail=str(exc))
-    if isinstance(exc, (AccountNotOpen, AccountConflict)):
-        raise HTTPException(409, detail=str(exc))
-    raise HTTPException(400, detail=str(exc))
-```
+   class AccountNotFound(AccountError, NotFoundError): 
+       title = "Счёт не найден"
+   ```
 
-Это исключает разрозненные `try/except` блоки и гарантирует единообразие HTTP-ответов.
+2. **Глобальный обработчик** автоматически ловит любое исключение, наследуемое от `BaseBusinessError`, и формирует стандартный JSON-ответ, используя `status_code` и `title` класса.
+
+Это гарантирует единообразие ответов во всех микросервисах и избавляет от дублирования кода в роутерах.
 
 ### 3.4 Lifespan и подключения
 

@@ -17,43 +17,43 @@ router = APIRouter(
 
 
 @router.post(
-	"/{account_id}/freeze",
+	"/{account_id}/suspensions",
 	response_model=schemas.AccountMessageResponse,
 	status_code=status.HTTP_200_OK,
-	summary="Заморозить счёт",
+	summary="Приостановить обслуживание счёта",
 )
-async def freeze_account(
+async def suspend_account(
 	account_id: UUID,
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Замораживает банковский счёт текущего пользователя.
+	"""Приостанавливает операции по банковскому счёту (заморозка).
 	
 	Замороженный счёт недоступен для любых расходных операций (переводы, оплата).
 	"""
 	account = await service.freeze_account(session, user_id, account_id)
 	
 	return schemas.AccountMessageResponse(
-		message="Счёт успешно заморожен.",
+		message="Обслуживание счёта приостановлено.",
 		account=schemas.AccountResponse.model_validate(account),
 	)
 
 
 @router.delete(
-	"/{account_id}/freeze",
+	"/{account_id}/suspensions",
 	response_model=schemas.AccountMessageResponse,
 	status_code=status.HTTP_200_OK,
-	summary="Разморозить счёт",
+	summary="Возобновить обслуживание счёта",
 )
-async def unfreeze_account(
+async def resume_account(
 	account_id: UUID,
 	user_id: UUID = Depends(require_user_id),
 	session: AsyncSession = Depends(get_session),
 ):
-	"""Снимает заморозку со счёта, если она была установлена пользователем."""
+	"""Снимает приостановку со счёта (разморозка), если она была установлена пользователем."""
 	account = await service.unfreeze_account(session, user_id, account_id)
 	
 	return schemas.AccountMessageResponse(
-		message="Счёт успешно разморожен.",
+		message="Обслуживание счёта возобновлено.",
 		account=schemas.AccountResponse.model_validate(account),
 	)
