@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
-from shared.database_core.db import get_session
 from shared.internal_auth import require_user_id
+from ..uow import TransactionUnitOfWork, get_uow
 from . import service
 
 router = APIRouter(
@@ -29,11 +29,11 @@ async def list_transactions(
 	type: str | None = Query(default=None, description="Фильтр: deposit / withdrawal / transfer"),
 	direction: str | None = Query(default=None, description="Фильтр: incoming / outgoing"),
 	user_id: UUID = Depends(require_user_id),
-	session: AsyncSession = Depends(get_session),
+	uow: TransactionUnitOfWork = Depends(get_uow),
 ):
 	"""Возвращает историю операций по конкретному счёту с поддержкой пагинации и фильтров по типам/направлению."""
 	transactions, total = await service.list_transactions(
-		session, 
+		uow, 
 		user_id, 
 		account_id,
 		limit=limit,

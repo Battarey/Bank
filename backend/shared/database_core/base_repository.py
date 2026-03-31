@@ -44,14 +44,6 @@ class BaseRepository(Generic[ModelT]):
 		result = await self.session.execute(stmt)
 		return result.rowcount > 0
 
-	async def commit(self) -> None:
-		"""Фиксирует изменения в текущей сессии."""
-		await self.session.commit()
-
-	async def rollback(self) -> None:
-		"""Откатывает изменения в текущей сессии."""
-		await self.session.rollback()
-
 	async def refresh(self, entity: ModelT) -> None:
 		"""Обновляет состояние сущности из базы данных."""
 		await self.session.refresh(entity)

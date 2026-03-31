@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
-from shared.database_core.db import get_session
 from shared.internal_auth import require_user_id
+from ..uow import TransactionUnitOfWork, get_uow
 from ..deposit import service as deposit_service
 from ..withdrawal import service as withdrawal_service
 from ..transfer import service as transfer_service
@@ -25,7 +25,7 @@ router = APIRouter(
 async def create_transaction(
 	payload: schemas.TransactionCreateRequest,
 	user_id: schemas.UUID = Depends(require_user_id),
-	session: AsyncSession = Depends(get_session),
+	uow: TransactionUnitOfWork = Depends(get_uow),
 ):
 	"""Создаёт новую транзакцию (пополнение, снятие или перевод).
 	
@@ -33,7 +33,7 @@ async def create_transaction(
 	"""
 	if payload.type == "deposit":
 		tx = await deposit_service.deposit(
-			session, 
+			uow, 
 			user_id,
 			account_id=payload.account_id,
 			amount=payload.amount,
@@ -43,7 +43,7 @@ async def create_transaction(
 		
 	elif payload.type == "withdrawal":
 		tx = await withdrawal_service.withdraw(
-			session, 
+			uow, 
 			user_id,
 			account_id=payload.account_id,
 			amount=payload.amount,
@@ -53,7 +53,7 @@ async def create_transaction(
 		
 	elif payload.type == "transfer":
 		tx = await transfer_service.transfer(
-			session, 
+			uow, 
 			user_id,
 			from_account_id=payload.from_account_id,
 			to_account_id=payload.to_account_id,
