@@ -12,8 +12,7 @@ from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
 from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
-from shared.utils.log_event import log_event
-from shared.rabbitmq.constants import LOG_AUTH_KEY
+from shared.rabbitmq import LOG_AUTH_KEY, send_log
 
 from ..repository import CustomerRepository
 from ..exceptions import (
@@ -300,14 +299,10 @@ async def persist_onboarding_data(session: AsyncSession, user_id: UUID) -> None:
 	await onboarding_drafts.clear_all(user_id)
 	await clear_email_verification(user_id)
 	
-	await log_event(
+	await send_log(
 		routing_key=LOG_AUTH_KEY,
-		event_type="auth",
-		payload={
-			"user_id": str(user_id),
-			"action": "registration",
-			"service": "customer_service",
-			"status": "success",
-			"details": "Регистрация завершена (онбординг финализирован)",
-		}
+		user_id=user_id,
+		action="registration",
+		service="customer_service",
+		details="Регистрация завершена (онбординг финализирован)",
 	)

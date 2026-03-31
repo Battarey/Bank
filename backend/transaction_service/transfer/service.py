@@ -8,13 +8,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import (
-	EMAIL_ROUTING_KEY,
+from shared.rabbitmq import (
 	LOG_TRANSACTION_KEY,
-	NOTIFICATIONS_EXCHANGE,
+	send_log,
+	send_notification,
 )
-from shared.utils.log_event import log_event
 
 from ..repository import TransactionRepository
 from ..exceptions import (
@@ -193,19 +191,15 @@ async def transfer(
 	except Exception:
 		pass
 
-	await log_event(
+	await send_log(
 		routing_key=LOG_TRANSACTION_KEY,
-		event_type="transaction",
-		payload={
-			"user_id": str(user_id),
-			"action": "transfer",
-			"service": "transaction_service",
-			"entity_id": str(tx_out.id),
-			"amount": str(amount),
-			"currency": from_acc.currency,
-			"status": "success",
-			"details": f"Перевод {from_acc.account_number} -> {to_acc.account_number}",
-		}
+		user_id=user_id,
+		action="transfer",
+		service="transaction_service",
+		details=f"Перевод {from_acc.account_number} -> {to_acc.account_number}",
+		entity_id=str(tx_out.id),
+		amount=str(amount),
+		currency=from_acc.currency,
 	)
 
 	return tx_out
@@ -215,22 +209,30 @@ async def _notify_transfer(repo, user_id, from_acc, to_acc, amount, bal_after, c
 	contact = await repo.get_owner_contact(user_id)
 	if not contact: return
 	txt = f"{amount} {from_acc.currency} -> {conv_amount} {to_acc.currency}" if conv_amount else f"{amount} {from_acc.currency}"
-	await publish(NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, {
-		"type": "transaction_transfer",
-		"payload": {"to": contact.email, "variables": {
-			"from_account": from_acc.account_number, "to_account": to_acc.account_number,
-			"amount": txt, "currency": from_acc.currency, "balance_after": str(bal_after)
-		}}
-	})
+	await send_notification(
+		notification_type="transaction_transfer",
+		to=contact.email,
+		variables={
+			"from_account": from_acc.account_number, 
+			"to_account": to_acc.account_number,
+			"amount": txt, 
+			"currency": from_acc.currency, 
+			"balance_after": str(bal_after)
+		}
+	)
 
 async def _notify_incoming_transfer(repo, to_acc, from_acc, amount, bal_after, orig_amount=None, rate=None):
 	contact = await repo.get_owner_contact(to_acc.client_id)
 	if not contact: return
 	txt = f"{orig_amount} {from_acc.currency} -> {amount} {to_acc.currency}" if orig_amount else f"{amount} {to_acc.currency}"
-	await publish(NOTIFICATIONS_EXCHANGE, EMAIL_ROUTING_KEY, {
-		"type": "transaction_incoming",
-		"payload": {"to": contact.email, "variables": {
-			"account_number": to_acc.account_number, "from_account": from_acc.account_number,
-			"amount": txt, "currency": to_acc.currency, "balance_after": str(bal_after)
-		}}
-	})
+	await send_notification(
+		notification_type="transaction_incoming",
+		to=contact.email,
+		variables={
+			"account_number": to_acc.account_number, 
+			"from_account": from_acc.account_number,
+			"amount": txt, 
+			"currency": to_acc.currency, 
+			"balance_after": str(bal_after)
+		}
+	)

@@ -6,13 +6,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import (
-	EMAIL_ROUTING_KEY,
+from shared.rabbitmq import (
 	LOG_ACCOUNT_KEY,
-	NOTIFICATIONS_EXCHANGE,
+	send_log,
+	send_notification,
 )
-from shared.utils.log_event import log_event
 
 from ..repository import AccountRepository
 from ..exceptions import (
@@ -77,40 +75,30 @@ async def freeze_account(
 
 	await repo.refresh(account)
 
-	# Уведомление и логирование (Best effort)
+	# Уведомление на Email (best effort)
 	contact = await repo.get_owner_contact(user_id)
 	if contact:
 		try:
-			await publish(
-				exchange_name=NOTIFICATIONS_EXCHANGE,
-				routing_key=EMAIL_ROUTING_KEY,
-				body={
-					"type": "account_frozen",
-					"payload": {
-						"to": contact.email,
-						"variables": {
-							"account_number": account.account_number,
-							"frozen_by": frozen_by,
-							"reason": reason,
-						},
-					},
+			await send_notification(
+				notification_type="account_frozen",
+				to=contact.email,
+				variables={
+					"account_number": account.account_number,
+					"frozen_by": frozen_by,
+					"reason": reason,
 				},
 			)
 		except Exception:
 			pass
 
-	await log_event(
+	await send_log(
 		routing_key=LOG_ACCOUNT_KEY,
-		event_type="account",
-		payload={
-			"user_id": str(user_id),
-			"action": "freeze_account",
-			"service": "account_service",
-			"entity_id": str(account.id),
-			"entity_type": "bank_account",
-			"status": "success",
-			"details": f"Счёт {account.account_number} заморожен ({frozen_by}: {reason})",
-		}
+		user_id=user_id,
+		action="freeze_account",
+		service="account_service",
+		details=f"Счёт {account.account_number} заморожен ({frozen_by}: {reason})",
+		entity_id=str(account.id),
+		entity_type="bank_account",
 	)
 
 	return account
@@ -161,38 +149,28 @@ async def unfreeze_account(
 
 	await repo.refresh(account)
 
-	# Уведомление и логирование (Best effort)
+	# Уведомление на Email (best effort)
 	contact = await repo.get_owner_contact(user_id)
 	if contact:
 		try:
-			await publish(
-				exchange_name=NOTIFICATIONS_EXCHANGE,
-				routing_key=EMAIL_ROUTING_KEY,
-				body={
-					"type": "account_unfrozen",
-					"payload": {
-						"to": contact.email,
-						"variables": {
-							"account_number": account.account_number,
-						},
-					},
+			await send_notification(
+				notification_type="account_unfrozen",
+				to=contact.email,
+				variables={
+					"account_number": account.account_number,
 				},
 			)
 		except Exception:
 			pass
 
-	await log_event(
+	await send_log(
 		routing_key=LOG_ACCOUNT_KEY,
-		event_type="account",
-		payload={
-			"user_id": str(user_id),
-			"action": "unfreeze_account",
-			"service": "account_service",
-			"entity_id": str(account.id),
-			"entity_type": "bank_account",
-			"status": "success",
-			"details": f"Счёт {account.account_number} разморожен",
-		}
+		user_id=user_id,
+		action="unfreeze_account",
+		service="account_service",
+		details=f"Счёт {account.account_number} разморожен",
+		entity_id=str(account.id),
+		entity_type="bank_account",
 	)
 
 	return account

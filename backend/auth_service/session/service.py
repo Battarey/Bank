@@ -5,14 +5,12 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import (
-	EMAIL_ROUTING_KEY,
+from shared.rabbitmq import (
 	LOG_AUTH_KEY,
-	NOTIFICATIONS_EXCHANGE,
+	send_log,
+	send_notification,
 )
 from shared.redis_sessions import tokens as session_tokens
-from shared.utils.log_event import log_event
 
 from ..repository import AuthRepository
 from ..exceptions import (
@@ -85,29 +83,18 @@ async def self_block(session: AsyncSession, user_id: UUID) -> None:
 
 	# Уведомление на Email (best effort)
 	try:
-		await publish(
-			exchange_name=NOTIFICATIONS_EXCHANGE,
-			routing_key=EMAIL_ROUTING_KEY,
-			body={
-				"type": "account_self_blocked",
-				"payload": {
-					"to": contact.email,
-					"variables": {},
-				},
-			},
+		await send_notification(
+			notification_type="account_self_blocked",
+			to=contact.email,
 		)
 	except Exception:
 		pass
 
 	# Логирование события
-	await log_event(
+	await send_log(
 		routing_key=LOG_AUTH_KEY,
-		event_type="auth",
-		payload={
-			"user_id": str(user_id),
-			"action": "self_block",
-			"service": "auth_service",
-			"status": "success",
-			"details": "Аккаунт заблокирован по инициативе пользователя",
-		}
+		user_id=user_id,
+		action="self_block",
+		service="auth_service",
+		details="Аккаунт заблокирован по инициативе пользователя",
 	)

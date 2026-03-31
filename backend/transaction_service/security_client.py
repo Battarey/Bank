@@ -31,6 +31,9 @@ async def disconnect() -> None:
 		logger.info("Security client отключён.")
 
 
+from shared.schemas.security import SecurityCheckRequest
+
+
 async def check_transaction(
 	account_id: UUID,
 	tx_type: str,
@@ -47,15 +50,17 @@ async def check_transaction(
 		logger.warning("Security client не инициализирован — пропускаем проверку")
 		return True, []
 
+	payload = SecurityCheckRequest(
+		account_id=account_id,
+		tx_type=tx_type,
+		amount=amount,
+		currency=currency,
+	)
+
 	try:
 		response = await _client.post(
 			"/check",
-			json={
-				"account_id": str(account_id),
-				"tx_type": tx_type,
-				"amount": str(amount),
-				"currency": currency,
-			},
+			json=payload.model_dump(mode="json"),
 			headers={"X-Internal-Key": INTERNAL_API_KEY},
 		)
 		if response.status_code == 200:

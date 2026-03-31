@@ -8,13 +8,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import (
-	EMAIL_ROUTING_KEY,
+from shared.rabbitmq import (
 	LOG_TRANSACTION_KEY,
-	NOTIFICATIONS_EXCHANGE,
+	send_log,
+	send_notification,
 )
-from shared.utils.log_event import log_event
 
 from ..repository import TransactionRepository
 from ..exceptions import (
@@ -97,40 +95,32 @@ async def deposit(
 
 	# 4. Уведомление и логирование (Best effort)
 	contact = await repo.get_owner_contact(user_id)
+	# Уведомление на Email (best effort)
+	contact = await repo.get_owner_contact(user_id)
 	if contact:
 		try:
-			await publish(
-				exchange_name=NOTIFICATIONS_EXCHANGE,
-				routing_key=EMAIL_ROUTING_KEY,
-				body={
-					"type": "transaction_deposit",
-					"payload": {
-						"to": contact.email,
-						"variables": {
-							"account_number": account.account_number,
-							"amount": str(amount),
-							"currency": account.currency,
-							"balance_after": str(balance_after),
-						},
-					},
+			await send_notification(
+				notification_type="transaction_deposit",
+				to=contact.email,
+				variables={
+					"account_number": account.account_number,
+					"amount": str(amount),
+					"currency": account.currency,
+					"balance_after": str(balance_after),
 				},
 			)
 		except Exception:
 			pass
 
-	await log_event(
+	await send_log(
 		routing_key=LOG_TRANSACTION_KEY,
-		event_type="transaction",
-		payload={
-			"user_id": str(user_id),
-			"action": "deposit",
-			"service": "transaction_service",
-			"entity_id": str(tx.id),
-			"amount": str(amount),
-			"currency": account.currency,
-			"status": "success",
-			"details": f"Пополнение счёта {account.account_number}",
-		}
+		user_id=user_id,
+		action="deposit",
+		service="transaction_service",
+		details=f"Пополнение счёта {account.account_number}",
+		entity_id=str(tx.id),
+		amount=str(amount),
+		currency=account.currency,
 	)
 
 	return tx

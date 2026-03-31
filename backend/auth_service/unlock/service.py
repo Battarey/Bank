@@ -2,14 +2,12 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.rabbitmq.client import publish
-from shared.rabbitmq.constants import (
-	EMAIL_ROUTING_KEY,
+from shared.rabbitmq import (
 	LOG_AUTH_KEY,
-	NOTIFICATIONS_EXCHANGE,
+	send_log,
+	send_notification,
 )
 from shared.redis_sessions import rate_limit, unlock_codes
-from shared.utils.log_event import log_event
 from shared.utils.security import get_blind_index
 
 from ..repository import AuthRepository
@@ -48,27 +46,17 @@ async def request_unlock(session: AsyncSession, email: str) -> None:
 	await unlock_codes.save_unlock_code(user.id, code)
 
 	# Отправка Email-уведомления
-	await publish(
-		exchange_name=NOTIFICATIONS_EXCHANGE,
-		routing_key=EMAIL_ROUTING_KEY,
-		body={
-			"type": "unlock_code",
-			"payload": {
-				"to": contact.email,
-				"variables": {"code": code},
-			},
-		},
+	await send_notification(
+		notification_type="unlock_code",
+		to=contact.email,
+		variables={"code": code},
 	)
 
-	await log_event(
+	await send_log(
 		routing_key=LOG_AUTH_KEY,
-		event_type="auth",
-		payload={
-			"user_id": str(user.id),
-			"action": "unlock_request",
-			"service": "auth_service",
-			"status": "success",
-		}
+		user_id=user.id,
+		action="unlock_request",
+		service="auth_service",
 	)
 
 
@@ -123,26 +111,15 @@ async def confirm_unlock(session: AsyncSession, email: str, code: str) -> None:
 	await rate_limit.reset(contact.phone)
 
 	# Уведомления и лог
-	await publish(
-		exchange_name=NOTIFICATIONS_EXCHANGE,
-		routing_key=EMAIL_ROUTING_KEY,
-		body={
-			"type": "account_unlocked",
-			"payload": {
-				"to": contact.email,
-				"variables": {},
-			},
-		},
+	await send_notification(
+		notification_type="account_unlocked",
+		to=contact.email,
 	)
 
-	await log_event(
+	await send_log(
 		routing_key=LOG_AUTH_KEY,
-		event_type="auth",
-		payload={
-			"user_id": str(user.id),
-			"action": "unlock",
-			"service": "auth_service",
-			"status": "success",
-			"details": "Доступ восстановлен по Email-коду",
-		}
+		user_id=user.id,
+		action="unlock",
+		service="auth_service",
+		details="Доступ восстановлен по Email-коду",
 	)

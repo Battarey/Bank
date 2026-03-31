@@ -9,6 +9,7 @@ from .constants import (
 	LOG_TRANSACTION_KEY,
 	NOTIFICATIONS_EXCHANGE,
 )
+from .helpers import send_log, send_notification
 
 __all__ = [
 	"EMAIL_QUEUE",
@@ -22,4 +23,6 @@ __all__ = [
 	"connect",
 	"disconnect",
 	"publish",
+	"send_log",
+	"send_notification",
 ]
