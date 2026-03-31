@@ -7,8 +7,7 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.database_core.db import get_session
-from shared.schemas.security import SecurityCheckRequest, SecurityCheckResponse, ViolationItem
+from .uow import SecurityUnitOfWork, get_uow
 from . import service
 
 
@@ -24,15 +23,22 @@ router = APIRouter(prefix="/security", tags=["Security"])
 )
 async def check_transaction(
 	payload: SecurityCheckRequest,
-	session: AsyncSession = Depends(get_session),
+	uow: SecurityUnitOfWork = Depends(get_uow),
 ):
 	"""Проверяет входящую операцию на соответствие набору AML-правил безопасности.
 	
-	Возвращает `allowed: false` при выявлении хотя бы одного нарушения.
 	Используется Transaction Service и Account Service перед завершением финансовых проводок.
+	Возвращает `allowed: false` при выявлении хотя бы одного нарушения.
+
+	Args:
+		payload: Данные транзакции (счёт, тип, сумма, валюта).
+		uow: Unit of Work для управления транзакцией и событиями.
+
+	Returns:
+		SecurityCheckResponse: Результат проверки со списком нарушений.
 	"""
 	violations = await service.check_transaction(
-		session,
+		uow,
 		account_id=payload.account_id,
 		tx_type=payload.tx_type,
 		amount=payload.amount,
