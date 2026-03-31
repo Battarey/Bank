@@ -1,38 +1,53 @@
-# Utils
+# Общие утилиты (Utils)
 
-Переиспользуемые утилиты нормализации данных. Используются в `customer_service` (онбординг и обновление данных).
+Коллекция переиспользуемых функций и классов для обработки ошибок, нормализации данных и безопасности.
 
 ## Файловая архитектура
 ```
 utils/
-├── __init__.py
-├── normalize.py     # Функции нормализации ФИО, email, телефона, ИНН/СНИЛС
-└── README.md
+├── exceptions.py             # Иерархия бизнес-исключений (BaseBusinessError)
+├── exceptions_handler.py     # Глобальный Middleware для FastAPI
+├── normalize.py              # Функции очистки (нормализации) данных
+├── security.py               # Утилиты хеширования и PIN-проверки
+└── log_event.py              # Вспомогательный класс LogAction
 ```
 
-## Экспорт (`normalize.py`)
+## Система исключений (exceptions.py)
 
-| Функция            | Сигнатура                     | Описание                        |
-|--------------------|-------------------------------|---------------------------------|
-| `normalize_name`   | `(str \| None) → str \| None` | `.strip().upper()` (ФИО)        |
-| `normalize_email`  | `(str) → str`                 | `.lower()`                      |
-| `normalize_phone`  | `(str) → str`                 | Удаление пробелов               |
-| `digits_only`      | `(str) → str`                 | Только цифры (ИНН, СНИЛС)       |
+Все бизнес-ошибки сервисов наследуются от **`BaseBusinessError`**. Это гарантирует единообразные ответы API.
+-   **`status_code`**: HTTP статус ошибки (напр. 400, 404).
+-   **`title`**: Человекочитаемое сообщение об ошибке (напр. "Счёт не найден").
 
-## Кто использует
+## Обработчик (exceptions_handler.py)
 
-| Модуль                                 | Функции                                                               |
-|----------------------------------------|-----------------------------------------------------------------------|
-| `customer_service/create_account`      | `normalize_name`, `normalize_email`, `normalize_phone`, `digits_only` |
-| `customer_service/update_user_data`    | `normalize_name`, `normalize_email`, `normalize_phone`                |
+Глобальный обработчик для FastAPI.
+-   **`setup_exception_handlers(app)`**: Регистрирует обработку `BaseBusinessError` во всем приложении.
+-   Автоматически формирует JSON-ответ с кодом и сообщением.
 
-## Использование
+## Нормализация (normalize.py)
 
+| Функция            | Описание                           | Пример                         |
+|--------------------|------------------------------------|--------------------------------|
+| `normalize_name`   | Очистка и приведение ФИО к UPPER   | " иванов " → "ИВАНОВ"          |
+| `normalize_email`  | Нижний регистр                     | "User@Mail.RU" → "user@mail.ru" |
+| `normalize_phone`  | Удаление пробелов                  | "+7 999 123" → "+7999123"      |
+| `digits_only`      | Очистка от нецифровых символов     | "123-456" → "123456"           |
+
+## Безопасность (security.py)
+
+-   Утилиты хеширования PIN-кодов через `bcrypt`.
+-   Проверка PIN-попыток (Rate-limiting).
+-   Timing-safe сравнение строк (`secrets.compare_digest`).
+
+---
+
+## Использование в сервисе
 ```python
-from shared.utils.normalize import normalize_name, normalize_email, normalize_phone, digits_only
+from shared.utils import normalize, exceptions_handler
 
-name = normalize_name("  иванов  ")     # "ИВАНОВ"
-email = normalize_email("User@Mail.RU") # "user@mail.ru"
-phone = normalize_phone("+7 999 123 45 67")  # "+79991234567"
-inn = digits_only("1234-5678-9012")     # "123456789012"
+# Регистрация обработчика в main.py
+exceptions_handler.setup_exception_handlers(app)
+
+# Нормализация в схемax или сервисах
+email = normalize.normalize_email(user_input)
 ```

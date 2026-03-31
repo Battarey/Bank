@@ -1,26 +1,45 @@
-# rabbitmq
+# RabbitMQ & Message Bus
 
-Общий модуль для работы с RabbitMQ (aio-pika). Предоставляет подключение и публикацию сообщений.
+Модуль для асинхронного межсервисного взаимодействия (**EDA**) через RabbitMQ. Обеспечивает публикацию доменных событий и доставку уведомлений.
 
-## Файловая архитектура
+---
 
+## 🏗 Файловая архитектура
 ```
 shared/rabbitmq/
-├── __init__.py       # Публичный API модуля
-├── client.py         # Подключение, отключение, publish()
-├── constants.py      # Имена exchange, routing key, очередей
+├── bus.py         # Message Bus для трансляции событий из UoW
+├── helpers.py     # Вспомогательные функции публикации (send_log, send_notification)
+├── client.py      # Низкоуровневое подключение aio-pika
+├── constants.py   # Имена обменников (Exchanges) и ключей маршрутизации
 └── README.md
 ```
 
-## Константы (`constants.py`)
+## Message Bus (bus.py)
 
-| Константа                | Значение          | Описание                             |
-|--------------------------|-------------------|--------------------------------------|
-| `NOTIFICATIONS_EXCHANGE` | `notifications`   | Topic exchange для уведомлений       |
-| `EMAIL_ROUTING_KEY`      | `email.send`      | Routing key для email-сообщений      |
-| `EMAIL_QUEUE`            | `email_queue`     | Очередь email (notification_service) |
-| `LOGS_EXCHANGE`          | `logs`            | Topic exchange для бизнес-логов      |
-| `LOG_AUTH_KEY`           | `log.auth`        | Routing key: события аутентификации  |
-| `LOG_ACCOUNT_KEY`        | `log.account`     | Routing key: операции со счетами     |
-| `LOG_TRANSACTION_KEY`    | `log.transaction` | Routing key: финансовые операции     |
-| `LOG_QUEUE`              | `log_queue`       | Очередь логов (log_service)          |
+Центральный компонент для обработки **Domain Events**.
+-   **`MessageBus.handle(events)`**: Принимает список событий из `Unit of Work`.
+-   **`MessageBus._publish(event)`**: Мапит событие на соответствующий RabbitMQ Exchange.
+-   Автоматически обрабатывает `NotificationEvent` (отправка email) и `LogEvent` (аудит/аналитика).
+
+## Полезные утилиты (helpers.py)
+
+Функции для ручной регистрации событий (если не используется UoW):
+-   **`send_notification(...)`**: Отправка Email-кода верификации, пароля и т.д.
+-   **`send_log(...)`**: Запись бизнес-действия в глобальный аудит-лог.
+
+## Константы и Роутинг (constants.py)
+
+| Exchange         | Тип     | Routing Key       | Consumer                 |
+|------------------|---------|-------------------|--------------------------|
+| `notifications`  | `topic` | `email.send`      | `notification_service`   |
+| `logs`           | `topic` | `log.auth`        | `log_service`            |
+| `logs`           | `topic` | `log.account`     | `log_service`            |
+| `logs`           | `topic` | `log.transaction` | `log_service`            |
+
+## Пример использования
+
+События автоматически отправляются в `RMQ` при вызове `uow.commit()`:
+```python
+uow.add_event(NotificationEvent(to="user@mail.ru", type="welcome"))
+await uow.commit() # Событие попадет в MessageBus и улетит в RabbitMQ
+```

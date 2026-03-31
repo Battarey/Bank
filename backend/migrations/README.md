@@ -1,116 +1,55 @@
-# Migrations
+# Migrations (Alembic)
 
-Сервис миграций базы данных. Управляет схемой PostgreSQL через Alembic и предоставляет скрипт полного сброса + накатки для dev-окружения.
+Сервис управления схемой реляционной базы данных PostgreSQL. Обеспечивает эволюцию структуры таблиц, индексацию и поддержание целостности данных через механизмы миграций.
+
+---
 
 ## Файловая архитектура
 ```
 migrations/
-├── alembic/                          # Alembic-директория
-│   ├── env.py                        # Конфигурация окружения (ALEMBIC_DATABASE_URL)
-│   ├── script.py.mako                # Шаблон новой миграции
-│   └── versions/                     # Файлы миграций
-│       ├── postgre_core_init.py      # Инициализация схемы (7 таблиц)
-│       ├── add_pin_hash.py           # Добавление pin_hash в users
-│       ├── add_bank_accounts_client_id_idx.py  # Индекс bank_accounts.client_id
-│       ├── add_transactions_account_id_idx.py  # Индекс transactions.account_id
-│       └── add_freeze_columns.py     # Колонки frozen_by/frozen_at/freeze_reason в bank_accounts
-├── postgre_core/                     # Документация таблиц (md-файл = таблица)
-├── alembic.ini                       # Конфигурация Alembic
-├── reset_and_upgrade.py              # Dev-скрипт: DROP → CREATE SCHEMA → upgrade head
-├── Dockerfile                        # python:3.12-slim, CMD: alembic upgrade head
-├── requirements.txt                  # alembic, SQLAlchemy, psycopg, python-dotenv
-└── README.md
+├── alembic/
+│   ├── env.py            # Конфигурация подключения (Sync psycopg)
+│   └── versions/         # История изменений схемы (Миграции)
+├── postgre_core/         # DDL описание таблиц (Документация)
+├── reset_and_upgrade.py  # Скрипт полной пересборки БД (только для Dev)
+├── alembic.ini           # Глобальные настройки Alembic
+└── Dockerfile            # Контейнер для автозапуска миграций
 ```
 
-## Конфигурация
+## История миграций (Chain of Revisions)
 
-| Переменная              | Обязательна | Описание                                              |
-|-------------------------|-------------|-------------------------------------------------------|
-| `ALEMBIC_DATABASE_URL`  | Да          | Sync URL PostgreSQL (`postgresql+psycopg://...`)      |
-| `POSTGRES_CORE_DB`      | Да          | Имя базы данных                                       |
-| `POSTGRES_CORE_USER`    | Да          | Пользователь PostgreSQL                               |
-| `POSTGRES_CORE_PASSWORD`| Да          | Пароль PostgreSQL                                     |
+Основные этапы развития схемы данных:
+1.  **`postgre_core_init`**: Создание базовых таблиц (users, accounts, transactions и др.).
+2.  **`add_pin_hash`**: Внедрение захешированных PIN-кодов.
+3.  **`add_freeze_columns`**: Поля для управления состоянием блокировки счетов.
+4.  **`add_currency_and_metal`**: Расширение поддержки типов валют и драгметаллов.
+5.  **`add_idempotency_key`**: Поле в транзакциях для предотвращения дублирования операций.
+6.  **`add_pii_encryption`**: Механизмы шифрования персональных данных (PII) и слепых индексов для безопасного поиска.
+7.  **`Indexing Phase`**: Добавление индексов на `client_id`, `account_id`, `created_at` и составных индексов для паспортов и транзакций.
 
-> **Важно:** Alembic использует **синхронный** драйвер `psycopg`, а микросервисы — **асинхронный** `asyncpg`. Это разные URL.
+---
 
-## Docker
+## Составные части инфраструктуры
 
-В `docker-compose.yaml` сервис `migrations` запускается с командой `python reset_and_upgrade.py` и зависит от `postgres_core` (condition: `service_healthy`). После выполнения контейнер останавливается (`restart: "no"`). Все микросервисы зависят от `migrations`.
+| База Данных         | Технология   | Назначение                                  |
+|---------------------|--------------|---------------------------------------------|
+| **PostgreSQL Core** | Alembic      | Транзакционные данные (Счета, Пользователи) |
+| **Postgres History**| Meta.create  | Аудит действий ( user_actions)              |
+| **Redis Sessions**  | Redis 7      | Активные сессии (X-Session-Token)           |
+| **Redis Onboarding**| Redis Stack  | Черновики KYC (JSON)                        |
+| **ClickHouse**      | MergeTree    | Бизнес-аналитика (business_events)          |
+| **MongoDB**         | NoSQL        | Логи уведомлений и AML-событий              |
 
-```
-postgres_core (healthy) → migrations → customer_service, auth_service, ...
-```
+## Использование в Docker Compose
 
-## Хранилища данных
-
-### PostgreSQL — `postgre_core`
-
-Основная реляционная БД для учётных данных клиентов и банковских операций.
-
-### Redis Sessions
-
-Хранение сессионных токенов пользователей (TTL 30 мин). Инстанс: `redis_sessions` (Redis 7 Alpine).
-
-### Redis Onboarding
-
-Хранение JSON-черновиков шагов регистрации и onboarding-токенов (TTL 30 мин). Инстанс: `redis_onboarding` (Redis Stack).
-
-### PostgreSQL History — `postgres_history`
-
-Отдельный экземпляр PostgreSQL (порт 5433) для аудит-лога действий пользователей. Таблица `user_actions` создаётся автоматически через `HistoryBase.metadata.create_all` при запуске `log_service` (не через Alembic).
-
-Модуль: `shared/history_core`.
-
-### ClickHouse — `bank_logs`
-
-Колоночная БД для аналитики бизнес-событий. Таблица `business_events` (MergeTree, партиционирование по месяцам, TTL 2 года). DDL создаётся автоматически при вызове `init_clickhouse()` в `log_service`.
-
-Модуль: `shared/clickhouse_core`.
-
-### MongoDB
-
-Коллекция `email_log` в базе `bank_notifications_db`. Хранит журнал всех отправленных уведомлений (тип, получатель, тема, тело, статус, ошибка). TTL-индекс на `created_at` — автоматическое удаление через 90 дней. Инстанс: `mongodb` (Mongo 7).
-
-## Документация базы данных
-
-Информация о детальной схеме таблиц, связях и ER-диаграммы были перенесены в общее хранилище инфраструктуры:
-**[Схема базы данных (infra)](../../infra/README.md#схема-базы-данных)**
-
-## Миграции
-
-### Цепочка ревизий
-
-```
-(None) → postgre_core_init → add_pin_hash → add_bank_accounts_client_id_idx → add_transactions_account_id_idx → add_freeze_columns  ← HEAD
+Миграции запускаются автоматически при старте окружения:
+```yaml
+migrations:
+  image: bank-migrations
+  depends_on:
+    postgres_core:
+      condition: service_healthy
+  command: python reset_and_upgrade.py # Или alembic upgrade head
 ```
 
-| Ревизия                           | Описание                                                   |
-|-----------------------------------|-------------------------------------------------------------------------------------------------------|
-| `postgre_core_init`               | Создание 7 таблиц: users, personal_data, passport, identifiers, contacts, bank_accounts, transactions |
-| `add_pin_hash`                    | Добавление колонки `pin_hash` (Text, nullable) в `users`                                              |
-| `add_bank_accounts_client_id_idx` | Индекс `ix_bank_accounts_client_id` на `bank_accounts.client_id`                                      |
-| `add_transactions_account_id_idx` | Индекс `ix_transactions_account_id` на `transactions.account_id`                                      |
-| `add_freeze_columns`              | Добавление `frozen_by`, `frozen_at`, `freeze_reason` в `bank_accounts`                                |
-
-### CHECK-ограничения
-
-| Таблица         | Constraint                          | Допустимые значения                          |
-|-----------------|-------------------------------------|----------------------------------------------|
-| `users`         | `users_status_check`                | `pending`, `active`, `blocked`, `deleted`    |
-| `personal_data` | `ck_personal_data_gender`           | `M`, `F`                                     |
-| `bank_accounts` | `bank_accounts_type_check`          | `checking`, `savings`, `credit`, `deposit`   |
-| `bank_accounts` | `bank_accounts_currency_check`      | `RUB`, `USD`, `EUR`                          |
-| `bank_accounts` | `bank_accounts_status_check`        | `open`, `closed`, `frozen`                   |
-| `transactions`  | `transactions_type_check`           | `deposit`, `withdrawal`, `transfer`          |
-| `transactions`  | `transactions_direction_check`      | `incoming`, `outgoing`                       |
-| `transactions`  | `transactions_status_check`         | `pending`, `posted`, `failed`                |
-
-### `reset_and_upgrade.py`
-
-Dev-скрипт для полного сброса базы:
-
-1. Подключается через **синхронный** `psycopg` к PostgreSQL.
-2. `DROP SCHEMA public CASCADE` → `CREATE SCHEMA public`.
-3. Запускает `alembic upgrade head`.
-
-> **Внимание:** уничтожает все данные. Используется только в dev-окружении.
+> Внимание: Скрипт `reset_and_upgrade.py` полностью удаляет схему `public` перед накатыванием миграций. Никогда не используйте его в Production окружении.

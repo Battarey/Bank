@@ -1,59 +1,58 @@
-# Сервис логирования
+# Log Service (Auditor & Analyzer)
 
-## Описание
+Асинхронный воркер (RabbitMQ Consumer), отвечающий за сбор, хранение и анализ всех бизнес-событий платформы. Реализует паттерн **Dual-Write** в реляционное (аудит) и колоночное (аналитика) хранилища.
 
-RabbitMQ consumer (не HTTP-сервис), аналогично `notification_service`.
-Слушает exchange `logs` (topic, binding `log.#`) и записывает каждое событие параллельно в два хранилища:
-
-1. **PostgreSQL (postgres_history)** — таблица `user_actions`, полный аудит действий пользователей.
-2. **ClickHouse** — таблица `business_events`, аналитика бизнес-событий (MergeTree, TTL 2 года, партиционирование по месяцам).
-
-## Типы событий (Event Map)
-
-Сервис обрабатывает события от всех бизнес-сервисов (auth, account, transaction, customer).
-
-Подробная карта маршрутизации:
-- **[Карта событий RabbitMQ](../../infra/docs/events.md)**
-
-## Формат сообщения
-
-```json
-{
-  "type": "transaction",
-  "payload": {
-    "user_id": "uuid",
-    "action": "deposit",
-    "service": "transaction_service",
-    "entity_id": "uuid",
-    "entity_type": "transaction",
-    "amount": "1000.00",
-    "currency": "RUB",
-    "status": "success",
-    "details": "Пополнение счёта 40817810...",
-    "ip_address": null
-  }
-}
+## Файловая архитектура
+```
+log_service/
+├── consumers/            # Подписка на RMQ
+├── service.py            # Маршрутизация логов
+├── repository.py         # Хранилища Postgres и ClickHouse
+├── main.py               # Точка входа (воркер)
+└── README.md
 ```
 
-## Shared-модули
+## Архитектура и Структура
+Сервис построен как высокопроизводительный потребитель очереди:
+-   **`consumers/`**: Управление жизненным циклом RabbitMQ-соединения и подпиской на Exchange `logs`.
+-   **`service/`**: Бизнес-логика маршрутизации логов.
+-   **`repository/`**:
+    -   **PostgresHistoryRepository**: Запись в базу `postgres_history` (аудит-лог действий).
+    -   **ClickHouseRepository**: Запись в ClickHouse (аналитические метрики).
+-   **`shared/history_core` & `shared/clickhouse_core`**: Общие клиенты данных.
 
-- `shared/history_core` — SQLAlchemy async engine + модель `UserAction`
-- `shared/clickhouse_core` — clickhouse-connect async client + DDL `business_events`
+## Обработка Событий
 
-## Зависимости
+Сервис не имеет HTTP-интерфейса. Он слушает Exchange `logs` (Topic) и обрабатывает сообщения со следующими Routing Keys:
+-   `log.auth`: Входы, смены PIN, блокировки.
+-   `log.account`: Открытие, закрытие, заморозка счетов.
+-   `log.transaction`: Финансовые операции (с полными деталями суммы и валюты).
 
-- `aio-pika` — подключение к RabbitMQ
-- `sqlalchemy` + `asyncpg` — запись в PostgreSQL
-- `clickhouse-connect` — запись в ClickHouse
+---
 
-## Переменные окружения
+## Хранение Данных
 
-| Переменная           | Значение по умолчанию                                                                |
-|----------------------|--------------------------------------------------------------------------------------|
-| `RABBITMQ_URL`       | `amqp://guest:guest@rabbitmq:5672/`                                                  |
-| `HISTORY_DATABASE_URL` | `postgresql+asyncpg://bank_history_user:...@postgres_history:5432/bank_history_db` |
-| `CLICKHOUSE_HOST`    | `clickhouse`                                                                         |
-| `CLICKHOUSE_PORT`    | `8123`                                                                               |
-| `CLICKHOUSE_USER`    | `default`                                                                            | 
-| `CLICKHOUSE_PASSWORD`| (из .env)                                                                            |
-| `CLICKHOUSE_DB`      | `bank_logs`                                                                          |
+### 1. PostgreSQL History (Audit Log)
+-   **База**: `postgres_history`, Таблица: `user_actions`.
+-   **Назначение**: Точный след действий пользователя. Используется службой поддержки и для безопасности.
+-   **Свойства**: ACID-консистентность, индексация по `user_id` и `created_at`.
+
+### 2. ClickHouse (Business Intelligence)
+-   **Таблица**: `business_events` (MergeTree).
+-   **Назначение**: Высокоскоростная аналитика, агрегация доходов, анализ поведения пользователей.
+-   **Свойства**: Колоночное хранение, сжатие данных, партиционирование по месяцам, TTL 2 года.
+
+---
+
+## Особенности реализации
+-   **Параллельная запись**: Событие записывается в оба хранилища одновременно через `asyncio.gather`.
+-   **Отказоустойчивость**: Ошибка записи в одно хранилище не блокирует запись в другое. Ошибки подробно логируются.
+-   **Масштабируемость**: Возможность запуска нескольких экземпляров сервиса для обработки пиковых нагрузок.
+
+---
+
+## Технологии
+-   **Python 3.12**: Асинхронная среда выполнения.
+-   **RabbitMQ**: Входящий поток событий.
+-   **SQLAlchemy (PostgreSQL)**: Стек аудита.
+-   **Clickhouse-connect**: Стек аналитики.
