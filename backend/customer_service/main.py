@@ -3,6 +3,13 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
+from shared.config import BaseAppSettings
+from shared.bootstrap import bootstrap, get_container
+
+# Инициализация инфраструктуры
+bootstrap(BaseAppSettings)
+container = get_container()
+
 from shared.rabbitmq import connect as rmq_connect, disconnect as rmq_disconnect
 from shared.redis_onboarding import client as redis_onboarding_client
 from shared.internal_auth import verify_internal_key
@@ -19,6 +26,7 @@ async def lifespan(app: FastAPI):
 	yield
 	await rmq_disconnect()
 	await redis_onboarding_client.close_client()
+	await container.dispose()
 
 
 app = FastAPI(

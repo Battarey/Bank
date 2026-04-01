@@ -5,14 +5,14 @@ from typing import Final
 from redis.asyncio import Redis
 
 
-REDIS_ONBOARDING_URL: Final[str] = os.getenv("REDIS_ONBOARDING_URL", "")
+def _resolve_redis_url() -> str:
+	"""Определяет URL для Redis онбординга из окружения или Bootstrap-контейнера."""
+	try:
+		from shared.bootstrap import get_container
+		return get_container().db_settings.REDIS_ONBOARDING_URL or ""
+	except (RuntimeError, ImportError):
+		return os.getenv("REDIS_ONBOARDING_URL", "")
 
-if not REDIS_ONBOARDING_URL:
-	import warnings
-	warnings.warn(
-		"REDIS_ONBOARDING_URL is not set. Redis onboarding client will fail at runtime.",
-		stacklevel=2,
-	)
 
 _client: Redis | None = None
 
@@ -22,7 +22,8 @@ def get_client() -> Redis:
 
 	global _client
 	if _client is None:
-		_client = Redis.from_url(REDIS_ONBOARDING_URL, encoding="utf-8", decode_responses=True)
+		url = _resolve_redis_url()
+		_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
 	return _client
 
 
@@ -36,4 +37,4 @@ async def close_client() -> None:
 	_client = None
 
 
-__all__ = ["get_client", "close_client", "REDIS_ONBOARDING_URL"]
+__all__ = ["get_client", "close_client"]
