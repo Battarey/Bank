@@ -19,12 +19,24 @@ class BootstrapContainer(Generic[TSettings]):
 	def __init__(self, settings: TSettings):
 		self.settings = settings
 		
-		# Настройки БД и RabbitMQ
-		self.db_settings = DatabaseSettings()
-		self.rmq_settings = RabbitMQSettings()
-		
+		self._db_settings: DatabaseSettings | None = None
+		self._rmq_settings: RabbitMQSettings | None = None
 		self._engine: AsyncEngine | None = None
 		self._session_factory: async_sessionmaker[AsyncSession] | None = None
+
+	@property
+	def db_settings(self) -> DatabaseSettings:
+		"""Ленивая инициализация настроек БД."""
+		if self._db_settings is None:
+			self._db_settings = DatabaseSettings()
+		return self._db_settings
+
+	@property
+	def rmq_settings(self) -> RabbitMQSettings:
+		"""Ленивая инициализация настроек RabbitMQ."""
+		if self._rmq_settings is None:
+			self._rmq_settings = RabbitMQSettings()
+		return self._rmq_settings
 
 	@property
 	def engine(self) -> AsyncEngine:

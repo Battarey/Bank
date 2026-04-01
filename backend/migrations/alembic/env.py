@@ -7,27 +7,31 @@ from alembic import context
 from dotenv import load_dotenv
 
 # Interpret the config file for Python logging.
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+from shared.config import BaseAppSettings
+from shared.bootstrap import bootstrap, get_container
+
+# Инициализируем настройки для миграций
+bootstrap(BaseAppSettings)
+container = get_container()
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 import sys
+BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(os.path.abspath(os.path.join(BASE_DIR, '..')))
 from shared import models
 
-# Placeholder metadata. Update when SQLAlchemy models appear.
+# Метаданные моделей
 target_metadata = models.base.Base.metadata
 
 
 def _get_database_url() -> str:
-    env_url = os.getenv("ALEMBIC_DATABASE_URL")
-    if env_url:
-        print(f"[alembic] Using ALEMBIC_DATABASE_URL: {env_url}", flush=True)
-        return env_url
-    raise RuntimeError("ALEMBIC_DATABASE_URL is not set; unable to run migrations.")
+    """Получает URL базы данных из централизованного конфига."""
+    url = container.db_settings.DATABASE_URL
+    print(f"[alembic] Using DATABASE_URL from config: {url}", flush=True)
+    return url
 
 
 def run_migrations_offline() -> None:

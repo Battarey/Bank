@@ -1,13 +1,22 @@
 import os
 import subprocess
-from psycopg import connect
+import sys
+from pathlib import Path
 from sqlalchemy.engine.url import make_url
+from psycopg import connect
 
+# Добавляем путь к корню backend, чтобы импортировать shared
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.append(os.path.abspath(os.path.join(BASE_DIR, '..')))
+
+from shared.config import BaseAppSettings
+from shared.bootstrap import bootstrap, get_container
 
 def _require_database_url() -> str:
-    url = os.getenv("ALEMBIC_DATABASE_URL")
-    if not url:
-        raise RuntimeError("ALEMBIC_DATABASE_URL is not set; cannot reset database.")
+    """Инициализирует настройки и возвращает URL базы данных."""
+    bootstrap(BaseAppSettings)
+    url = get_container().db_settings.DATABASE_URL
+    print(f"[migrations] Using DATABASE_URL from config: {url}", flush=True)
     return url
 
 
