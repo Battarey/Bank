@@ -7,7 +7,7 @@ import os
 import signal
 import aio_pika
 
-from .config import settings
+from shared.bootstrap import get_container
 from .repository import NotificationRepository
 from .schemas import NotificationTask
 from .service import NotificationService
@@ -50,16 +50,17 @@ async def run_consumers() -> None:
 	затем устанавливает соединение с очередью и начинает прослушивание.
 	"""
 	# 1. Инициализация слоев
+	settings = get_container().settings
 	await init_mongo(settings.MONGO_URL)
 	repository = NotificationRepository()
 	service = NotificationService(repository)
 
 	# 2. Подключение к RabbitMQ
-	logger.info("Подключение к RabbitMQ: %s", settings.RABBIT_URL)
+	logger.info("Подключение к RabbitMQ: %s", settings.RABBITMQ_URL)
 	connection = None
 	for attempt in range(1, MAX_RETRIES + 1):
 		try:
-			connection = await aio_pika.connect_robust(settings.RABBIT_URL)
+			connection = await aio_pika.connect_robust(settings.RABBITMQ_URL)
 			break
 		except Exception as exc:
 			logger.warning("Попытка %d/%d не удалась: %s", attempt, MAX_RETRIES, exc)

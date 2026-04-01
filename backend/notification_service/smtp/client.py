@@ -7,7 +7,7 @@ from typing import Final
 
 import aiosmtplib
 
-from ..config import settings
+from shared.bootstrap import get_container
 
 
 async def send_email(to: str, subject: str, body: str) -> None:
@@ -22,6 +22,7 @@ async def send_email(to: str, subject: str, body: str) -> None:
 		RuntimeError: Если SMTP не сконфигурирован.
 	"""
 
+	settings = get_container().settings
 	if not settings.SMTP_HOST or not settings.SMTP_USER:
 		raise RuntimeError("SMTP не сконфигурирован: задайте SMTP_HOST, SMTP_USER, SMTP_PASSWORD.")
 

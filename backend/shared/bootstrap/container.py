@@ -1,8 +1,9 @@
 """Фабрика для создания инфраструктурного контейнера на основе APP_ENV."""
 
-from typing import Type, TypeVar, Generic, Any
+from typing import Type, TypeVar, Generic, Any, TYPE_CHECKING
+if TYPE_CHECKING:
+	from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, AsyncEngine
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine
 from ..config.base import BaseAppSettings
 from ..config.database import DatabaseSettings
 from ..config.rabbitmq import RabbitMQSettings
@@ -21,8 +22,8 @@ class BootstrapContainer(Generic[TSettings]):
 		
 		self._db_settings: DatabaseSettings | None = None
 		self._rmq_settings: RabbitMQSettings | None = None
-		self._engine: AsyncEngine | None = None
-		self._session_factory: async_sessionmaker[AsyncSession] | None = None
+		self._engine: 'AsyncEngine | None' = None
+		self._session_factory: 'async_sessionmaker[AsyncSession] | None' = None
 
 	@property
 	def db_settings(self) -> DatabaseSettings:
@@ -39,16 +40,17 @@ class BootstrapContainer(Generic[TSettings]):
 		return self._rmq_settings
 
 	@property
-	def engine(self) -> AsyncEngine:
+	def engine(self) -> 'AsyncEngine':
 		"""Ленивая инициализация движка БД."""
 		if self._engine is None:
 			self._engine = self._create_engine()
 		return self._engine
 
 	@property
-	def session_factory(self) -> async_sessionmaker[AsyncSession]:
+	def session_factory(self) -> 'async_sessionmaker[AsyncSession]':
 		"""Ленивая инициализация фабрики сессий."""
 		if self._session_factory is None:
+			from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 			self._session_factory = async_sessionmaker(
 				bind=self.engine,
 				autoflush=False,
@@ -57,8 +59,9 @@ class BootstrapContainer(Generic[TSettings]):
 			)
 		return self._session_factory
 
-	def _create_engine(self) -> AsyncEngine:
+	def _create_engine(self) -> 'AsyncEngine':
 		"""Создает движок SQLAlchemy с учетом пула соединений."""
+		from sqlalchemy.ext.asyncio import create_async_engine
 		return create_async_engine(
 			self.db_settings.DATABASE_URL,
 			pool_size=self.db_settings.DB_POOL_SIZE,

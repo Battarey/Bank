@@ -1,39 +1,30 @@
 """Конфигурация Notification Service через Pydantic Settings."""
 
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from shared.config import BaseAppSettings
 
 
-class Settings(BaseSettings):
-	"""Настройки приложения, загружаемые из .env."""
-
-	model_config = SettingsConfigDict(
-		env_file=".env", 
-		env_file_encoding="utf-8", 
-		extra="ignore"
-	)
+class NotificationSettings(BaseAppSettings):
+	"""Настройки для отправки уведомлений (RabbitMQ + SMTP + MongoDB)."""
 
 	# RabbitMQ
-	RABBIT_URL: str = Field(alias="RABBITMQ_URL")
+	RABBITMQ_URL: str = Field(..., alias="RABBITMQ_URL")
 	NOTIFICATIONS_EXCHANGE: str = Field("notifications", alias="NOTIFICATIONS_EXCHANGE")
 	EMAIL_QUEUE: str = Field("email_queue", alias="EMAIL_QUEUE")
 	EMAIL_BINDING_KEY: str = Field("email.#", alias="EMAIL_BINDING_KEY")
 
-	# MongoDB
-	MONGO_URL: str
+	# MongoDB (Хранение истории)
+	MONGO_URL: str = Field(..., alias="MONGO_URL")
 
-	# SMTP
-	SMTP_HOST: str
-	SMTP_PORT: int = 465
-	SMTP_USER: str
-	SMTP_PASSWORD: str
-	SMTP_FROM: str | None = None
-	SMTP_USE_TLS: bool = True
+	# SMTP (Email)
+	SMTP_HOST: str = Field(..., alias="SMTP_HOST")
+	SMTP_PORT: int = Field(465, alias="SMTP_PORT")
+	SMTP_USER: str = Field(..., alias="SMTP_USER")
+	SMTP_PASSWORD: str = Field(..., alias="SMTP_PASSWORD")
+	SMTP_FROM: str | None = Field(None, alias="SMTP_FROM")
+	SMTP_USE_TLS: bool = Field(True, alias="SMTP_USE_TLS")
 
 	@property
 	def smtp_from_addr(self) -> str:
 		"""Возвращает адрес отправителя (SMTP_FROM или SMTP_USER)."""
 		return self.SMTP_FROM or self.SMTP_USER
-
-
-settings = Settings()

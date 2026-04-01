@@ -1,3 +1,4 @@
-from . import models, schemas
+"""Shared library for Bank monorepo."""
 
-__all__ = ["models", "schemas"]
+# Мы не импортируем здесь models и schemas автоматически, 
+# чтобы не тянуть тяжелые зависимости (SQLAlchemy) в сервисы без БД.
