@@ -10,18 +10,14 @@ from decimal import Decimal
 from typing import Any
 
 import httpx
+from shared.bootstrap import get_container
+from .config import MetalSettings
 
-logger = logging.getLogger("metal_service")
+def _get_settings() -> MetalSettings:
+	"""Получает специфические настройки для сервиса металлов."""
+	return get_container().settings
 
-METALS_DEV_API_KEY: str = os.getenv("METALS_DEV_API_KEY", "")
-METALS_DEV_BASE_URL: str = os.getenv(
-	"METALS_DEV_BASE_URL",
-	"https://api.metals.dev/v1",
-)
 
-CACHE_TTL: int = int(os.getenv("METAL_RATE_CACHE_TTL", "30"))
-
-# Маппинг: metals.dev name → ISO 4217 code
 _NAME_TO_CODE = {
 	"gold": "XAU",
 	"silver": "XAG",
@@ -46,7 +42,6 @@ _cache: dict[str, tuple[dict[str, Decimal], datetime, float]] = {}
 async def connect() -> None:
 	global _client
 	_client = httpx.AsyncClient(timeout=10.0)
-	logger.info("Metals.Dev client подключён: %s", METALS_DEV_BASE_URL)
 
 
 async def disconnect() -> None:
@@ -62,10 +57,11 @@ async def _fetch_prices(currency: str) -> tuple[dict[str, Decimal], datetime]:
 	if _client is None:
 		raise RuntimeError("Metals.Dev client не инициализирован. Вызовите connect().")
 
+	settings = _get_settings()
 	response = await _client.get(
-		f"{METALS_DEV_BASE_URL}/latest",
+		f"{settings.METALS_DEV_BASE_URL}/latest",
 		params={
-			"api_key": METALS_DEV_API_KEY,
+			"api_key": settings.METALS_DEV_API_KEY,
 			"currency": currency,
 			"unit": "g",
 		},
@@ -107,7 +103,7 @@ async def get_metal_prices(
 	cached = _cache.get(base_currency)
 	if cached is not None:
 		prices, last_updated, fetched_at = cached
-		if now - fetched_at < CACHE_TTL:
+		if now - fetched_at < _get_settings().METAL_RATE_CACHE_TTL:
 			return prices, last_updated
 
 	prices, last_updated = await _fetch_prices(base_currency)

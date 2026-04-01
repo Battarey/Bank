@@ -19,18 +19,31 @@ class BootstrapContainer(Generic[TSettings]):
 	def __init__(self, settings: TSettings):
 		self.settings = settings
 		
-		# Настройки БД (если есть)
+		# Настройки БД и RabbitMQ
 		self.db_settings = DatabaseSettings()
 		self.rmq_settings = RabbitMQSettings()
 		
-		# Инициализация SQLAlchemy Engine
-		self.engine: AsyncEngine = self._create_engine()
-		self.session_factory = async_sessionmaker(
-			bind=self.engine,
-			autoflush=False,
-			expire_on_commit=False,
-			class_=AsyncSession,
-		)
+		self._engine: AsyncEngine | None = None
+		self._session_factory: async_sessionmaker[AsyncSession] | None = None
+
+	@property
+	def engine(self) -> AsyncEngine:
+		"""Ленивая инициализация движка БД."""
+		if self._engine is None:
+			self._engine = self._create_engine()
+		return self._engine
+
+	@property
+	def session_factory(self) -> async_sessionmaker[AsyncSession]:
+		"""Ленивая инициализация фабрики сессий."""
+		if self._session_factory is None:
+			self._session_factory = async_sessionmaker(
+				bind=self.engine,
+				autoflush=False,
+				expire_on_commit=False,
+				class_=AsyncSession,
+			)
+		return self._session_factory
 
 	def _create_engine(self) -> AsyncEngine:
 		"""Создает движок SQLAlchemy с учетом пула соединений."""
@@ -44,8 +57,9 @@ class BootstrapContainer(Generic[TSettings]):
 		)
 
 	async def dispose(self) -> None:
-		"""Закрывает все соединения при остановке приложения."""
-		await self.engine.dispose()
+		"""Закрывает все соединения при остановке приложения (если они были открыты)."""
+		if self._engine is not None:
+			await self._engine.dispose()
 
 
 _container: BootstrapContainer | None = None

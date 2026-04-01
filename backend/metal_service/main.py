@@ -3,6 +3,13 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
+from shared.bootstrap import bootstrap, get_container
+from .config import MetalSettings
+
+# Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
+bootstrap(MetalSettings)
+container = get_container()
+
 from shared.internal_auth import verify_internal_key
 from shared.utils.exceptions_handler import setup_exception_handlers
 
