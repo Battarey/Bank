@@ -1,6 +1,5 @@
-"""Настройки подключения к базам данных."""
-
-from pydantic import Field
+from typing import Optional
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,7 +28,8 @@ class RedisSettings(BaseSettings):
 		extra="ignore",
 	)
 
-	REDIS_URL: str = Field(..., alias="REDIS_URL")
+	REDIS_SESSIONS_URL: Optional[str] = Field(None, alias="REDIS_SESSIONS_URL")
+	REDIS_ONBOARDING_URL: Optional[str] = Field(None, alias="REDIS_ONBOARDING_URL")
 	SESSION_TTL: int = Field(1800, alias="REDIS_SESSION_TTL")
 
 

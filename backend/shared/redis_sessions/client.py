@@ -4,14 +4,15 @@ import os
 from typing import Final
 from redis.asyncio import Redis
 
-REDIS_SESSIONS_URL: Final[str] = os.getenv("REDIS_SESSIONS_URL", "")
-
-if not REDIS_SESSIONS_URL:
-	import warnings
-	warnings.warn(
-		"REDIS_SESSIONS_URL is not set. Redis sessions client will fail at runtime.",
-		stacklevel=2,
-	)
+def _resolve_redis_url() -> str:
+	"""Определяет URL для сессионного Redis из окружения или Bootstrap-контейнера."""
+	try:
+		from shared.bootstrap import get_container
+		# Пытаемся взять из типизированных настроек
+		return get_container().db_settings.REDIS_SESSIONS_URL or ""
+	except (RuntimeError, ImportError):
+		# Fallback для совместимости
+		return os.getenv("REDIS_SESSIONS_URL")
 
 _client: Redis | None = None
 
@@ -21,7 +22,8 @@ def get_client() -> Redis:
 
 	global _client
 	if _client is None:
-		_client = Redis.from_url(REDIS_SESSIONS_URL, encoding="utf-8", decode_responses=True)
+		url = _resolve_redis_url()
+		_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
 	return _client
 
 
