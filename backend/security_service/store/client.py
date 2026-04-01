@@ -12,12 +12,15 @@ from datetime import datetime, timezone
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from shared.bootstrap import get_container
+from ..config import SecuritySettings
 
 logger = logging.getLogger("security_service")
 
-MONGO_URL: str = os.getenv("MONGO_URL", "mongodb://mongodb:27017/bank_security_db")
-COLLECTION_NAME = "security_events"
-TTL_DAYS = 365
+def _get_settings() -> SecuritySettings:
+	"""Получает специфические настройки для сервиса безопасности."""
+	return get_container().settings
+
 
 _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
@@ -28,13 +31,14 @@ async def init_mongo() -> None:
 
 	global _client, _db  # noqa: PLW0603
 
-	_client = AsyncIOMotorClient(MONGO_URL)
+	settings = _get_settings()
+	_client = AsyncIOMotorClient(settings.MONGO_URL)
 	_db = _client.get_default_database()
 
-	collection = _db[COLLECTION_NAME]
+	collection = _db[settings.SECURITY_COLLECTION]
 	await collection.create_index(
 		"created_at",
-		expireAfterSeconds=TTL_DAYS * 86_400,
+		expireAfterSeconds=settings.SECURITY_TTL_DAYS * 86_400,
 	)
 
 	logger.info("MongoDB подключена: %s", _db.name)
@@ -80,6 +84,7 @@ async def save_event(
 	"""
 
 	db = _get_db()
+	settings = _get_settings()
 	doc = {
 		"account_id": account_id,
 		"rule": rule,
@@ -89,5 +94,5 @@ async def save_event(
 		"actual": actual,
 		"created_at": datetime.now(timezone.utc),
 	}
-	await db[COLLECTION_NAME].insert_one(doc)
+	await db[settings.SECURITY_COLLECTION].insert_one(doc)
 	logger.info("Security event: rule=%s, account=%s, action=%s", rule, account_id, action)
