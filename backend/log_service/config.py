@@ -1,33 +1,25 @@
-"""Конфигурация Log Service через Pydantic Settings."""
+"""Настройки Log Service."""
 
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from shared.config import BaseAppSettings
 
 
-class Settings(BaseSettings):
-	"""Настройки приложения, загружаемые из .env."""
-
-	model_config = SettingsConfigDict(
-		env_file=".env", 
-		env_file_encoding="utf-8", 
-		extra="ignore"
-	)
+class LogSettings(BaseAppSettings):
+	"""Настройки для сбора и хранения логов (Postgres + ClickHouse)."""
 
 	# RabbitMQ
-	RABBIT_URL: str = Field(alias="RABBITMQ_URL")
+	RABBITMQ_URL: str = Field(..., alias="RABBITMQ_URL")
 	LOGS_EXCHANGE: str = Field("logs", alias="LOGS_EXCHANGE")
 	LOG_QUEUE: str = Field("log_queue", alias="LOG_QUEUE")
 	LOG_BINDING_KEY: str = Field("log.#", alias="LOG_BINDING_KEY")
 
-	# PostgreSQL History
-	HISTORY_DATABASE_URL: str
+	# PostgreSQL History DB
+	HISTORY_DATABASE_URL: str = Field(..., alias="HISTORY_DATABASE_URL")
 
-	# ClickHouse
-	CLICKHOUSE_HOST: str
-	CLICKHOUSE_PORT: int = 8123
-	CLICKHOUSE_USER: str
-	CLICKHOUSE_PASSWORD: str
-	CLICKHOUSE_DB: str
-
-
-settings = Settings()
+	# ClickHouse (Аналитика) — берем из HistorySettings или напрямую
+	CLICKHOUSE_URL: str = Field(..., alias="CLICKHOUSE_URL")
+	CLICKHOUSE_HOST: str = Field(..., alias="CLICKHOUSE_HOST")
+	CLICKHOUSE_PORT: int = Field(8123, alias="CLICKHOUSE_PORT")
+	CLICKHOUSE_USER: str = Field(..., alias="CLICKHOUSE_USER")
+	CLICKHOUSE_PASSWORD: str = Field(..., alias="CLICKHOUSE_PASSWORD")
+	CLICKHOUSE_DB: str = Field("bank_logs", alias="CLICKHOUSE_DB")

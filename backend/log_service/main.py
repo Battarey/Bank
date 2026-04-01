@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from shared.bootstrap import bootstrap
+from .config import LogSettings
 from .consumers import run_consumers
 
 logging.basicConfig(
@@ -11,6 +13,9 @@ logger = logging.getLogger("log_service")
 
 def main() -> None:
 	"""Entry point."""
+	# Инициализация инфраструктуры на базе типизированных настроек
+	bootstrap(LogSettings)
+	
 	try:
 		asyncio.run(run_consumers())
 	except KeyboardInterrupt:
