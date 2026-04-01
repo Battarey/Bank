@@ -3,7 +3,13 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
-from shared.database_core.db import engine
+from shared.bootstrap import bootstrap, get_container
+from .config import TransactionSettings
+
+# Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
+bootstrap(TransactionSettings)
+container = get_container()
+
 from shared.internal_auth import verify_internal_key
 from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
@@ -23,7 +29,7 @@ async def lifespan(app: FastAPI):
 	await currency_client.disconnect()
 	await security_client.disconnect()
 	await rmq_disconnect()
-	await engine.dispose()
+	await container.dispose()
 
 
 app = FastAPI(
