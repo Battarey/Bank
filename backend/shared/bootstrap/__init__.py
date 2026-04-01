@@ -1,5 +1,5 @@
 """Пакет Bootstrapping для инициализации инфраструктуры сервиса."""
 
-from .container import BootstrapContainer, bootstrap
+from .container import BootstrapContainer, bootstrap, get_container
 
-__all__ = ["BootstrapContainer", "bootstrap"]
+__all__ = ["BootstrapContainer", "bootstrap", "get_container"]

@@ -1,6 +1,7 @@
 """Базовые настройки для всех сервисов системы."""
 
 from typing import Literal
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

@@ -4,17 +4,13 @@ from __future__ import annotations
 from typing import Any, Type, AsyncGenerator
 
 from shared.database_core.uow import SqlAlchemyUnitOfWork
-from shared.database_core.db import async_sessionmaker, engine
-from sqlalchemy.ext.asyncio import AsyncSession
+from shared.bootstrap import get_container
 from .repository import AccountRepository
 from .queries.repository import AccountQueryRepository
 
-# Создаем локальный sessionmaker для сервиса
-SessionLocal = async_sessionmaker(
-	bind=engine,
-	class_=AsyncSession,
-	expire_on_commit=False,
-)
+# Получаем инфраструктурный контейнер (инициализированный в main.py)
+container = get_container()
+SessionLocal = container.session_factory
 
 
 class AccountUnitOfWork(SqlAlchemyUnitOfWork):
