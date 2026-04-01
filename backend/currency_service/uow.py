@@ -2,8 +2,12 @@ from __future__ import annotations
 from typing import Any, Type, AsyncGenerator
 
 from shared.database_core.uow import SqlAlchemyUnitOfWork
-from shared.database_core.db import SessionLocal
+from shared.bootstrap import get_container
 from .repository import CurrencyRepository
+
+# Получаем инфраструктурный контейнер
+container = get_container()
+SessionLocal = container.session_factory
 
 
 class CurrencyUnitOfWork(SqlAlchemyUnitOfWork):

@@ -11,19 +11,13 @@ from typing import Any
 
 import httpx
 
-logger = logging.getLogger("currency_service")
+from shared.bootstrap import get_container
+from .config import CurrencySettings
 
-EXCHANGE_RATE_API_KEY: str = os.getenv("EXCHANGE_RATE_API_KEY", "")
-EXCHANGE_RATE_BASE_URL: str = os.getenv(
-	"EXCHANGE_RATE_BASE_URL",
-	"https://v6.exchangerate-api.com/v6",
-)
+def _get_settings() -> CurrencySettings:
+	"""Получает специфические настройки для сервиса валют."""
+	return get_container().settings
 
-# Максимальный возраст кэша (секунды) — для просмотра курсов
-CACHE_TTL: int = int(os.getenv("EXCHANGE_RATE_CACHE_TTL", "30"))
-
-# Максимальный возраст данных для торговых операций (секунды)
-TRADE_FRESHNESS_TTL: int = int(os.getenv("EXCHANGE_RATE_TRADE_TTL", "60"))
 
 _client: httpx.AsyncClient | None = None
 
@@ -35,7 +29,6 @@ async def connect() -> None:
 	"""Создаёт httpx-клиент."""
 	global _client
 	_client = httpx.AsyncClient(timeout=10.0)
-	logger.info("ExchangeRate client подключён: %s", EXCHANGE_RATE_BASE_URL)
 
 
 async def disconnect() -> None:
@@ -52,7 +45,8 @@ async def _fetch_rates(base: str) -> dict[str, Any]:
 	if _client is None:
 		raise RuntimeError("ExchangeRate client не инициализирован. Вызовите connect().")
 
-	url = f"{EXCHANGE_RATE_BASE_URL}/{EXCHANGE_RATE_API_KEY}/latest/{base}"
+	settings = _get_settings()
+	url = f"{settings.EXCHANGE_RATE_BASE_URL}/{settings.EXCHANGE_RATE_API_KEY}/latest/{base}"
 	response = await _client.get(url)
 	response.raise_for_status()
 	data = response.json()
@@ -77,7 +71,7 @@ async def get_rates(base: str) -> tuple[dict[str, Decimal], datetime]:
 	cached = _cache.get(base)
 	if cached is not None:
 		data, fetched_at = cached
-		if now - fetched_at < CACHE_TTL:
+		if now - fetched_at < _get_settings().CACHE_TTL:
 			return _parse_rates(data)
 
 	# Кэш устарел или отсутствует — запрашиваем API
@@ -102,7 +96,7 @@ async def get_fresh_rate(base: str, target: str) -> tuple[Decimal, datetime]:
 	cached = _cache.get(base)
 	if cached is not None:
 		data, fetched_at = cached
-		if now - fetched_at < TRADE_FRESHNESS_TTL:
+		if now - fetched_at < _get_settings().TRADE_FRESHNESS_TTL:
 			rates, updated = _parse_rates(data)
 			rate = rates.get(target)
 			if rate is not None:
