@@ -88,6 +88,7 @@ def bootstrap(settings_class: Type[TSettings]) -> BootstrapContainer[TSettings]:
 	global _container
 	if _container is None:
 		settings = settings_class()
+		print(f"[bootstrap] Initializing infrastructure in {settings.APP_ENV.upper()} mode")
 		_container = BootstrapContainer(settings)
 	return _container
 
