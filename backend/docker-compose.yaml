@@ -6,6 +6,8 @@ services:
     build:
       context: ./gateway_service
       dockerfile: Dockerfile
+    environment:
+      - APP_ENV=${APP_ENV:-local}
     env_file: ./gateway_service/.env
     restart: unless-stopped
     depends_on:
@@ -31,7 +33,22 @@ services:
     build:
       context: .
       dockerfile: ./auth_service/Dockerfile
+    volumes:
+      - ./auth_service:/app/auth_service
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
     env_file: ./auth_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               python migrations/reset_and_upgrade.py &&
+               pytest auth_service/tests -v;
+             else
+               uvicorn auth_service.main:app --host 0.0.0.0 --port 8000;
+             fi"
     restart: unless-stopped
     depends_on:
       migrations:
@@ -48,9 +65,24 @@ services:
     build:
       context: .
       dockerfile: ./customer_service/Dockerfile
+    volumes:
+      - ./customer_service:/app/customer_service
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
     env_file:
       - ./customer_service/.env
       - .env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               python migrations/reset_and_upgrade.py &&
+               pytest customer_service/tests -v;
+             else
+               python -m customer_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       migrations:
@@ -67,7 +99,22 @@ services:
     build:
       context: .
       dockerfile: ./account_service/Dockerfile
+    volumes:
+      - ./account_service:/app/account_service
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
     env_file: ./account_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               python migrations/reset_and_upgrade.py &&
+               pytest account_service/tests -v;
+             else
+               python -m account_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       migrations:
@@ -82,7 +129,22 @@ services:
     build:
       context: .
       dockerfile: ./currency_service/Dockerfile
+    volumes:
+      - ./currency_service:/app/currency_service
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
     env_file: ./currency_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               python migrations/reset_and_upgrade.py &&
+               pytest currency_service/tests -v;
+             else
+               python -m currency_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       migrations:
@@ -97,7 +159,19 @@ services:
     build:
       context: .
       dockerfile: ./log_service/Dockerfile
+    volumes:
+      - ./log_service:/app/log_service
+      - ./shared:/app/shared
+    environment:
+      - APP_ENV=${APP_ENV:-local}
     env_file: ./log_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               pytest log_service/tests -v;
+             else
+               python -m log_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       rabbitmq:
@@ -114,7 +188,20 @@ services:
     build:
       context: .
       dockerfile: ./metal_service/Dockerfile
+    volumes:
+      - ./metal_service:/app/metal_service
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    environment:
+      - APP_ENV=${APP_ENV:-local}
     env_file: ./metal_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               pytest metal_service/tests -v;
+             else
+               python -m metal_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       migrations:
@@ -127,7 +214,19 @@ services:
     build:
       context: .
       dockerfile: ./notification_service/Dockerfile
+    volumes:
+      - ./notification_service:/app/notification_service
+      - ./shared:/app/shared
+    environment:
+      - APP_ENV=${APP_ENV:-local}
     env_file: ./notification_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               pytest notification_service/tests -v;
+             else
+               python -m notification_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       rabbitmq:
@@ -143,7 +242,22 @@ services:
     build:
       context: .
       dockerfile: ./transaction_service/Dockerfile
+    volumes:
+      - ./transaction_service:/app/transaction_service
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
     env_file: ./transaction_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               python migrations/reset_and_upgrade.py &&
+               pytest transaction_service/tests -v;
+             else
+               python -m transaction_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       migrations:
@@ -160,7 +274,22 @@ services:
     build:
       context: .
       dockerfile: ./security_service/Dockerfile
+    volumes:
+      - ./security_service:/app/security_service
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
     env_file: ./security_service/.env
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
+               pip install --no-cache-dir -r shared/requirements-test.txt &&
+               python migrations/reset_and_upgrade.py &&
+               pytest security_service/tests -v;
+             else
+               python -m security_service.main;
+             fi"
     restart: unless-stopped
     depends_on:
       migrations:
@@ -200,7 +329,7 @@ services:
       POSTGRES_USER: ${POSTGRES_CORE_USER}
       POSTGRES_PASSWORD: ${POSTGRES_CORE_PASSWORD}
     env_file:
-      - ./.env
+      - ./backend/.env
     volumes:
       - pg_core_data:/var/lib/postgresql/data
     ports:
@@ -208,6 +337,23 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CORE_USER} -d ${POSTGRES_CORE_DB}"]
       interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data
+
+  postgres_test:
+    profiles: ["test"]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${TEST_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${TEST_POSTGRES_DB}
+    ports:
+      - "${TEST_POSTGRES_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER} -d ${TEST_POSTGRES_DB}"]
+      interval: 5s
       timeout: 5s
       retries: 5
     networks:
@@ -221,7 +367,7 @@ services:
       POSTGRES_USER: ${POSTGRES_HISTORY_USER}
       POSTGRES_PASSWORD: ${POSTGRES_HISTORY_PASSWORD}
     env_file:
-      - ./.env
+      - ./backend/.env
     volumes:
       - pg_history_data:/var/lib/postgresql/data
     ports:
@@ -238,7 +384,7 @@ services:
     image: rabbitmq:3.13-management
     restart: unless-stopped
     env_file:
-      - ./.env
+      - ./backend/.env
     ports:
       - "${RABBITMQ_HOST_PORT}:${RABBITMQ_CONTAINER_PORT}"
       - "${RABBITMQ_WEB_HOST_PORT}:${RABBITMQ_WEB_CONTAINER_PORT}"
@@ -255,7 +401,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     env_file:
-      - ./.env
+      - ./backend/.env
     ports:
       - "${REDIS_SESSIONS_HOST_PORT}:${REDIS_SESSIONS_CONTAINER_PORT}"
     volumes:
@@ -272,7 +418,7 @@ services:
     image: redis/redis-stack-server:latest
     restart: unless-stopped
     env_file:
-      - ./.env
+      - ./backend/.env
     ports:
       - "${REDIS_ONBOARDING_HOST_PORT}:${REDIS_ONBOARDING_CONTAINER_PORT}"
     volumes:
@@ -285,11 +431,17 @@ services:
     networks:
       - data
 
+  redis_test:
+    profiles: ["test"]
+    image: redis:7-alpine
+    networks:
+      - data
+
   mongodb:
     image: mongo:7
     restart: unless-stopped
     env_file:
-      - ./.env
+      - ./backend/.env
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB}
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
@@ -314,7 +466,7 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     env_file:
-      - ./.env
+      - ./backend/.env
     volumes:
       - ch_data:/var/lib/clickhouse
     ports:
