@@ -1,6 +1,8 @@
 import os
 import subprocess
 import sys
+import socket
+import time
 from pathlib import Path
 from sqlalchemy.engine.url import make_url
 from psycopg import connect
@@ -11,6 +13,21 @@ sys.path.append(os.path.abspath(os.path.join(BASE_DIR, '..')))
 
 from shared.config import BaseAppSettings
 from shared.bootstrap import bootstrap, get_container
+
+def wait_for_host(host: str, port: int, timeout: int = 30) -> None:
+    """Ожидает доступности хоста по TCP."""
+    print(f"[migrations] Waiting for {host}:{port}...", flush=True)
+    start_time = time.time()
+    while True:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                print(f"[migrations] {host}:{port} is available!", flush=True)
+                return
+        except (socket.timeout, ConnectionRefusedError, socket.gaierror):
+            if time.time() - start_time > timeout:
+                print(f"[migrations] Timeout waiting for {host}:{port}", flush=True)
+                raise TimeoutError(f"Could not connect to {host}:{port}")
+            time.sleep(1)
 
 def _require_database_url() -> str:
     """Инициализирует настройки и возвращает URL базы данных."""
@@ -46,6 +63,12 @@ def run_migrations() -> None:
 
 def main() -> None:
     url = _require_database_url()
+    parsed = make_url(url)
+    
+    # Ждем доступности хоста перед началом работы
+    if parsed.host:
+        wait_for_host(parsed.host, parsed.port or 5432)
+        
     reset_schema(url)
     run_migrations()
     print("[migrations] Database reset complete.", flush=True)

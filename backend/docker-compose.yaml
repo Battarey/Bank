@@ -6,6 +6,7 @@ services:
     build:
       context: ./gateway_service
       dockerfile: Dockerfile
+    container_name: gateway_service
     environment:
       - APP_ENV=${APP_ENV:-local}
     env_file: ./gateway_service/.env
@@ -33,6 +34,7 @@ services:
     build:
       context: .
       dockerfile: ./auth_service/Dockerfile
+    container_name: auth_service
     volumes:
       - ./auth_service:/app/auth_service
       - ./shared:/app/shared
@@ -65,6 +67,7 @@ services:
     build:
       context: .
       dockerfile: ./customer_service/Dockerfile
+    container_name: customer_service
     volumes:
       - ./customer_service:/app/customer_service
       - ./shared:/app/shared
@@ -74,14 +77,14 @@ services:
       - TEST_DATABASE_URL=${TEST_DATABASE_URL}
     env_file:
       - ./customer_service/.env
-      - .env
+      - ./.env
     command: >
       sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
                pip install --no-cache-dir -r shared/requirements-test.txt &&
                python migrations/reset_and_upgrade.py &&
                pytest customer_service/tests -v;
              else
-               python -m customer_service.main;
+               uvicorn customer_service.main:app --host 0.0.0.0 --port 8000;
              fi"
     restart: unless-stopped
     depends_on:
@@ -99,6 +102,7 @@ services:
     build:
       context: .
       dockerfile: ./account_service/Dockerfile
+    container_name: account_service
     volumes:
       - ./account_service:/app/account_service
       - ./shared:/app/shared
@@ -113,7 +117,7 @@ services:
                python migrations/reset_and_upgrade.py &&
                pytest account_service/tests -v;
              else
-               python -m account_service.main;
+               uvicorn account_service.main:app --host 0.0.0.0 --port 8000;
              fi"
     restart: unless-stopped
     depends_on:
@@ -129,6 +133,7 @@ services:
     build:
       context: .
       dockerfile: ./currency_service/Dockerfile
+    container_name: currency_service
     volumes:
       - ./currency_service:/app/currency_service
       - ./shared:/app/shared
@@ -143,7 +148,7 @@ services:
                python migrations/reset_and_upgrade.py &&
                pytest currency_service/tests -v;
              else
-               python -m currency_service.main;
+               uvicorn currency_service.main:app --host 0.0.0.0 --port 8000;
              fi"
     restart: unless-stopped
     depends_on:
@@ -159,6 +164,7 @@ services:
     build:
       context: .
       dockerfile: ./log_service/Dockerfile
+    container_name: log_service
     volumes:
       - ./log_service:/app/log_service
       - ./shared:/app/shared
@@ -188,6 +194,7 @@ services:
     build:
       context: .
       dockerfile: ./metal_service/Dockerfile
+    container_name: metal_service
     volumes:
       - ./metal_service:/app/metal_service
       - ./shared:/app/shared
@@ -200,7 +207,7 @@ services:
                pip install --no-cache-dir -r shared/requirements-test.txt &&
                pytest metal_service/tests -v;
              else
-               python -m metal_service.main;
+               uvicorn metal_service.main:app --host 0.0.0.0 --port 8000;
              fi"
     restart: unless-stopped
     depends_on:
@@ -214,6 +221,7 @@ services:
     build:
       context: .
       dockerfile: ./notification_service/Dockerfile
+    container_name: notification_service
     volumes:
       - ./notification_service:/app/notification_service
       - ./shared:/app/shared
@@ -234,7 +242,6 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - frontend
       - backend
       - data
 
@@ -242,6 +249,7 @@ services:
     build:
       context: .
       dockerfile: ./transaction_service/Dockerfile
+    container_name: transaction_service
     volumes:
       - ./transaction_service:/app/transaction_service
       - ./shared:/app/shared
@@ -256,7 +264,7 @@ services:
                python migrations/reset_and_upgrade.py &&
                pytest transaction_service/tests -v;
              else
-               python -m transaction_service.main;
+               uvicorn transaction_service.main:app --host 0.0.0.0 --port 8000;
              fi"
     restart: unless-stopped
     depends_on:
@@ -274,6 +282,7 @@ services:
     build:
       context: .
       dockerfile: ./security_service/Dockerfile
+    container_name: security_service
     volumes:
       - ./security_service:/app/security_service
       - ./shared:/app/shared
@@ -288,7 +297,7 @@ services:
                python migrations/reset_and_upgrade.py &&
                pytest security_service/tests -v;
              else
-               python -m security_service.main;
+               uvicorn security_service.main:app --host 0.0.0.0 --port 8000;
              fi"
     restart: unless-stopped
     depends_on:
@@ -309,6 +318,7 @@ services:
     build:
       context: .
       dockerfile: ./migrations/Dockerfile
+    container_name: migrations
     env_file: ./migrations/.env
     command: ["python", "reset_and_upgrade.py"]
     depends_on:
@@ -323,13 +333,15 @@ services:
 
   postgres_core:
     image: postgres:17
+    container_name: postgres_core
+    hostname: postgres_core
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_CORE_DB}
       POSTGRES_USER: ${POSTGRES_CORE_USER}
       POSTGRES_PASSWORD: ${POSTGRES_CORE_PASSWORD}
     env_file:
-      - ./backend/.env
+      - ./.env
     volumes:
       - pg_core_data:/var/lib/postgresql/data
     ports:
@@ -340,11 +352,15 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - postgres_core
 
   postgres_test:
     profiles: ["test"]
     image: postgres:17-alpine
+    container_name: postgres_test
+    hostname: postgres_test
     environment:
       POSTGRES_USER: ${TEST_POSTGRES_USER}
       POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD}
@@ -357,17 +373,21 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - postgres_test
 
   postgres_history:
     image: postgres:17
+    container_name: postgres_history
+    hostname: postgres_history
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_HISTORY_DB}
       POSTGRES_USER: ${POSTGRES_HISTORY_USER}
       POSTGRES_PASSWORD: ${POSTGRES_HISTORY_PASSWORD}
     env_file:
-      - ./backend/.env
+      - ./.env
     volumes:
       - pg_history_data:/var/lib/postgresql/data
     ports:
@@ -378,13 +398,17 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - postgres_history
 
   rabbitmq:
     image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    hostname: rabbitmq
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./.env
     ports:
       - "${RABBITMQ_HOST_PORT}:${RABBITMQ_CONTAINER_PORT}"
       - "${RABBITMQ_WEB_HOST_PORT}:${RABBITMQ_WEB_CONTAINER_PORT}"
@@ -394,14 +418,18 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - rabbitmq
 
   redis_sessions:
     image: redis:7-alpine
+    container_name: redis_sessions
+    hostname: redis_sessions
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     env_file:
-      - ./backend/.env
+      - ./.env
     ports:
       - "${REDIS_SESSIONS_HOST_PORT}:${REDIS_SESSIONS_CONTAINER_PORT}"
     volumes:
@@ -412,13 +440,17 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - redis_sessions
 
   redis_onboarding:
     image: redis/redis-stack-server:latest
+    container_name: redis_onboarding
+    hostname: redis_onboarding
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./.env
     ports:
       - "${REDIS_ONBOARDING_HOST_PORT}:${REDIS_ONBOARDING_CONTAINER_PORT}"
     volumes:
@@ -429,19 +461,24 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - redis_onboarding
 
   redis_test:
     profiles: ["test"]
     image: redis:7-alpine
+    container_name: redis_test
     networks:
       - data
 
   mongodb:
     image: mongo:7
+    container_name: mongodb
+    hostname: mongodb
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./.env
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB}
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
@@ -456,17 +493,21 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - mongodb
 
   clickhouse:
     image: clickhouse/clickhouse-server:24
+    container_name: clickhouse
+    hostname: clickhouse
     restart: unless-stopped
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     env_file:
-      - ./backend/.env
+      - ./.env
     volumes:
       - ch_data:/var/lib/clickhouse
     ports:
@@ -478,10 +519,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - data
+      data:
+        aliases:
+          - clickhouse
 
   pgadmin:
     image: dpage/pgadmin4:latest
+    container_name: pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
@@ -500,6 +544,7 @@ services:
 
   mongo_express:
     image: mongo-express:latest
+    container_name: mongo_express
     restart: unless-stopped
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USER}
