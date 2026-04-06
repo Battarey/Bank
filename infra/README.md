@@ -134,9 +134,10 @@ erDiagram
 
 ## Запуск и инструменты
 
-Для запуска всего проекта необходимо находиться в папке `backend/` (или использовать флаг `-f`):
+Для запуска всего Monorepo необходимо находиться в корневой папке бэкенда (`backend/`):
 
 ```bash
+# 1. Сборка и запуск в фоновом режиме (dev)
 cd backend
 docker compose up --build -d
 ```
@@ -146,3 +147,24 @@ docker compose up --build -d
 - **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **pgAdmin**: [http://localhost:5050](http://localhost:5050)
 - **Mongo Express**: [http://localhost:8081](http://localhost:8081)
+- **RabbitMQ Management**: [http://localhost:15672](http://localhost:15672)
+
+---
+
+## Тестирование
+
+Система поддерживает универсальный метод запуска тестов для любого Python-сервиса через Docker Compose без необходимости настройки локального окружения.
+
+```bash
+# Запуск тестов для конкретного сервиса
+docker compose run --rm -e APP_ENV=test <имя_сервиса>
+```
+
+**Пример (Account Service):**
+`docker compose run --rm -e APP_ENV=test account_service`
+
+**Механика работы в режиме APP_ENV=test:**
+1. **Зависимости**: Контейнер автоматически доустанавливает библиотеки из `shared/requirements-test.txt`.
+2. **База Данных**: `Bootstrap` переключает `DATABASE_URL` на тестовую БД (в экономном режиме это `bank_core_db`).
+3. **Миграции**: Скрипт `migrations/reset_and_upgrade.py` полностью сбрасывает схему и накатывает миграции Alembic.
+4. **Результат**: Тесты запускаются через `pytest` и выводят результат прямо в терминал.
