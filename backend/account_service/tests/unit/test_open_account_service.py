@@ -1,15 +1,10 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import uuid4
 from decimal import Decimal
-
-from sqlalchemy.exc import IntegrityError
+from datetime import datetime, UTC
+from unittest.mock import AsyncMock, MagicMock
 
 from account_service.open_account.service import (
-    _generate_account_number,
-    _is_number_unique,
-    _generate_unique_number,
-    _notify_account_opened,
     open_account,
     list_accounts,
     get_account,
@@ -17,183 +12,105 @@ from account_service.open_account.service import (
 )
 from account_service.exceptions import (
     AccountConflict,
-    AccountError,
     AccountLimitReached,
     AccountNotFound,
     AccountOwnerNotFound,
 )
 from shared import models, schemas
+from shared.events.base import NotificationEvent, LogEvent
 
-def test_generate_account_number():
-    num = _generate_account_number("checking", "RUB")
-    assert num.startswith("40817810")
-    assert len(num) == 20
+# --- Тесты open_account ---
 
 @pytest.mark.asyncio
-async def test_is_number_unique_true(mock_session):
-    mock_result = MagicMock()
-    mock_result.first.return_value = None
-    mock_session.execute.return_value = mock_result
-    assert await _is_number_unique(mock_session, "123") is True
-
-@pytest.mark.asyncio
-async def test_is_number_unique_false(mock_session):
-    mock_result = MagicMock()
-    mock_result.first.return_value = ("some_id",)
-    mock_session.execute.return_value = mock_result
-    assert await _is_number_unique(mock_session, "123") is False
-
-@pytest.mark.asyncio
-@patch("account_service.open_account.service._is_number_unique")
-async def test_generate_unique_number_success(mock_unique, mock_session):
-    mock_unique.side_effect = [False, False, True]
-    num = await _generate_unique_number(mock_session, "savings", "USD")
-    assert num.startswith("42301840")
-    assert mock_unique.call_count == 3
-
-@pytest.mark.asyncio
-@patch("account_service.open_account.service._is_number_unique")
-async def test_generate_unique_number_fails(mock_unique, mock_session):
-    mock_unique.return_value = False
-    with pytest.raises(AccountError, match="Не удалось сгенерировать"):
-        await _generate_unique_number(mock_session, "credit", "EUR")
-    assert mock_unique.call_count == 10
-
-@pytest.mark.asyncio
-@patch("account_service.open_account.service.publish")
-async def test_notify_account_opened_no_contact(mock_publish, mock_session):
-    mock_session.get.return_value = None
-    await _notify_account_opened(mock_session, uuid4(), models.BankAccount())
-    mock_publish.assert_not_awaited()
-
-@pytest.mark.asyncio
-@patch("account_service.open_account.service.publish")
-async def test_notify_account_opened_success(mock_publish, mock_session):
-    contact = models.Contact(email="a@a.com")
-    mock_session.get.return_value = contact
-    acc = models.BankAccount(type="checking", currency="RUB", account_number="123")
-    await _notify_account_opened(mock_session, uuid4(), acc)
-    mock_publish.assert_awaited_once()
-
-@pytest.mark.asyncio
-async def test_open_account_user_not_found(mock_session):
-    mock_session.get.return_value = None
+async def test_open_account_user_not_active(uow):
+    """Проверка ошибки, если пользователь не найден или не активен."""
+    uow.accounts.get_active_owner.side_effect = AccountOwnerNotFound("Not active")
+    
     with pytest.raises(AccountOwnerNotFound):
-        await open_account(mock_session, uuid4(), schemas.OpenAccountRequest(type="checking", currency="RUB"))
+        await open_account(uow, uuid4(), schemas.OpenAccountRequest(type="checking", currency="RUB"))
 
 @pytest.mark.asyncio
-async def test_open_account_user_not_active(mock_session):
-    mock_session.get.return_value = models.User(status="frozen")
-    with pytest.raises(AccountOwnerNotFound):
-        await open_account(mock_session, uuid4(), schemas.OpenAccountRequest(type="checking", currency="RUB"))
-
-@pytest.mark.asyncio
-async def test_open_account_limit_reached(mock_session):
-    user = models.User(status="active")
-    mock_session.get.return_value = user
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [models.BankAccount()] * MAX_ACCOUNTS_PER_TYPE_CURRENCY
-    mock_session.execute.return_value = mock_result
+async def test_open_account_limit_reached(uow):
+    """Проверка лимита на количество открытых счетов одного типа."""
+    uow.accounts.count_open_by_type.return_value = MAX_ACCOUNTS_PER_TYPE_CURRENCY
     
     with pytest.raises(AccountLimitReached):
-        await open_account(mock_session, uuid4(), schemas.OpenAccountRequest(type="checking", currency="RUB"))
+        await open_account(uow, uuid4(), schemas.OpenAccountRequest(type="checking", currency="RUB"))
 
 @pytest.mark.asyncio
-@patch("account_service.open_account.service.publish")
-@patch("account_service.open_account.service._generate_unique_number")
-@patch("account_service.open_account.service._notify_account_opened")
-async def test_open_account_success(mock_notify, mock_gen, mock_publish, mock_session):
-    user = models.User(status="active")
-    def get_se(m, pk):
-        if m == models.User: return user
-        return None
-    mock_session.get.side_effect = get_se
-    
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-    mock_gen.return_value = "12345"
+async def test_open_account_success(uow):
+    """Успешное открытие счета с генерацией номера и событиями."""
+    user_id = uuid4()
+    uow.accounts.count_open_by_type.return_value = 0
+    uow.accounts.get_by_number.return_value = None # Эмуляция уникальности номера
+    uow.accounts.get_owner_contact.return_value = models.Contact(email="o@o.com")
     
     payload = schemas.OpenAccountRequest(type="checking", currency="RUB")
-    acc = await open_account(mock_session, uuid4(), payload)
+    acc = await open_account(uow, user_id, payload)
     
+    assert acc.client_id == user_id
+    assert acc.status == "open"
     assert acc.type == "checking"
-    assert acc.currency == "RUB"
-    assert acc.account_number == "12345"
-    assert acc.balance == Decimal("0.00")
+    assert uow.committed is True
     
-    mock_session.add.assert_called_once_with(acc)
-    mock_session.commit.assert_awaited_once()
-    mock_session.refresh.assert_awaited_once_with(acc)
-    mock_notify.assert_awaited_once()
-    mock_publish.assert_awaited_once()
+    # Проверка регистрации событий
+    assert any(isinstance(e, NotificationEvent) and e.type == "account_opened" for e in uow.events)
+    assert any(isinstance(e, LogEvent) and e.action == "open_account" for e in uow.events)
+    
+    uow.accounts.add.assert_called_once()
+    uow.accounts.refresh.assert_awaited_once_with(acc)
+
+# --- Тесты list_accounts / get_account (CQRS Layer) ---
 
 @pytest.mark.asyncio
-@patch("account_service.open_account.service.publish")
-@patch("account_service.open_account.service._generate_unique_number")
-@patch("account_service.open_account.service._notify_account_opened")
-async def test_open_account_integrity_error(mock_notify, mock_gen, mock_publish, mock_session):
-    user = models.User(status="active")
-    mock_session.get.side_effect = [user, None]
-    
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-    mock_gen.return_value = "12345"
-    
-    mock_session.commit.side_effect = IntegrityError("a", "b", "c")
-    
-    with pytest.raises(AccountConflict):
-        await open_account(mock_session, uuid4(), schemas.OpenAccountRequest(type="checking", currency="RUB"))
-    
-    mock_session.rollback.assert_awaited_once()
-
-@pytest.mark.asyncio
-@patch("account_service.open_account.service.publish")
-@patch("account_service.open_account.service._generate_unique_number")
-@patch("account_service.open_account.service._notify_account_opened")
-async def test_open_account_publish_error(mock_notify, mock_gen, mock_publish, mock_session):
-    user = models.User(status="active")
-    mock_session.get.side_effect = [user, None]
-    
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-    mock_gen.return_value = "12345"
-    
-    mock_publish.side_effect = Exception("failed to log")
-    
-    # Should not raise exception
-    acc = await open_account(mock_session, uuid4(), schemas.OpenAccountRequest(type="checking", currency="RUB"))
-    assert acc.account_number == "12345"
-
-@pytest.mark.asyncio
-async def test_list_accounts(mock_session):
-    acc1 = models.BankAccount(id=uuid4())
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [acc1]
-    mock_session.execute.return_value = mock_result
-    
-    res = await list_accounts(mock_session, uuid4())
-    assert len(res) == 1
-    assert res[0] == acc1
-
-@pytest.mark.asyncio
-async def test_get_account_not_found(mock_session):
-    mock_session.get.return_value = None
-    with pytest.raises(AccountNotFound):
-        await get_account(mock_session, uuid4(), uuid4())
-
-@pytest.mark.asyncio
-async def test_get_account_wrong_owner(mock_session):
-    mock_session.get.return_value = models.BankAccount(client_id=uuid4())
-    with pytest.raises(AccountNotFound):
-        await get_account(mock_session, uuid4(), uuid4())
-
-@pytest.mark.asyncio
-async def test_get_account_success(mock_session):
+async def test_list_accounts(uow):
+    """Получение списка счетов через Query Layer."""
     user_id = uuid4()
-    acc = models.BankAccount(client_id=user_id)
-    mock_session.get.return_value = acc
-    res = await get_account(mock_session, user_id, uuid4())
-    assert res == acc
+    mock_data = (
+        [schemas.AccountResponse(
+            id=uuid4(), 
+            client_id=user_id,
+            account_number="1", 
+            type="checking", 
+            currency="RUB", 
+            balance=Decimal("0.00"), 
+            status="open", 
+            opened_at=datetime.now(UTC)
+        )], 
+        1
+    )
+    uow.account_queries.list_by_user_with_total.return_value = mock_data
+    
+    accounts, total = await list_accounts(uow, user_id)
+    assert total == 1
+    assert len(accounts) == 1
+    assert accounts[0].account_number == "1"
+
+@pytest.mark.asyncio
+async def test_get_account_success(uow):
+    """Получение деталей счета через Query Layer."""
+    user_id = uuid4()
+    acc_id = uuid4()
+    mock_acc = schemas.AccountResponse(
+        id=acc_id, 
+        client_id=user_id,
+        account_number="123", 
+        type="savings", 
+        currency="USD", 
+        balance=Decimal("10.00"), 
+        status="frozen", 
+        opened_at=datetime.now(UTC)
+    )
+    uow.account_queries.get_by_id_raw.return_value = mock_acc
+    
+    res = await get_account(uow, user_id, acc_id)
+    assert res.id == acc_id
+    assert res.currency == "USD"
+
+@pytest.mark.asyncio
+async def test_get_account_not_found(uow):
+    """Ошибка, если Query Layer не нашел счет."""
+    uow.account_queries.get_by_id_raw.return_value = None
+    
+    with pytest.raises(AccountNotFound):
+        await get_account(uow, uuid4(), uuid4())

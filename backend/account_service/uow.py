@@ -8,16 +8,13 @@ from shared.bootstrap import get_container
 from .repository import AccountRepository
 from .queries.repository import AccountQueryRepository
 
-# Получаем инфраструктурный контейнер (инициализированный в main.py)
-container = get_container()
-SessionLocal = container.session_factory
-
-
 class AccountUnitOfWork(SqlAlchemyUnitOfWork):
 	"""UoW для Account Service, предоставляющий доступ к репозиторию счетов."""
 
 	def __init__(self):
-		super().__init__(SessionLocal)
+		container = get_container()
+		session_factory = container.session_factory
+		super().__init__(session_factory)
 		self.accounts: AccountRepository | None = None
 		self.account_queries: AccountQueryRepository | None = None
 

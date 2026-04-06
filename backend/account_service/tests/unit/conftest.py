@@ -1,15 +1,36 @@
-import os
 import pytest
 from unittest.mock import AsyncMock
 
-if not os.getenv("RABBITMQ_HOST"):
-	os.environ["RABBITMQ_HOST"] = "localhost"
-if not os.getenv("DATABASE_URL"):
-	os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/test"
-if not os.getenv("SECRET_KEY"):
-	os.environ["SECRET_KEY"] = "test-secret"
-if not os.getenv("INTERNAL_API_KEY"):
-	os.environ["INTERNAL_API_KEY"] = "test-internal-key"
+class FakeAccountUnitOfWork:
+    """Универсальная имитация Unit of Work для всех тестов Account Service."""
+    def __init__(self):
+        self.accounts = AsyncMock()
+        self.account_queries = AsyncMock()
+        self.committed = False
+        self.rolled_back = False
+        self.events = []
+
+    def add_event(self, event):
+        self.events.append(event)
+
+    async def commit(self):
+        self.committed = True
+
+    async def rollback(self):
+        self.rolled_back = True
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+        return False
+
+@pytest.fixture
+def uow():
+    """Фикстура для Unit of Work (Fake для сервисов, Mock для роутеров)."""
+    return FakeAccountUnitOfWork()
 
 @pytest.fixture
 def mock_session():
