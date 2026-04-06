@@ -5,7 +5,9 @@ from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
+from shared import models
 from shared.events.base import LogEvent, NotificationEvent
+from .. import exchange_client
 from ..uow import CurrencyUnitOfWork
 from ..exceptions import (
 	AccountNotOpen,

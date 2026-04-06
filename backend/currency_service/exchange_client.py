@@ -14,9 +14,16 @@ import httpx
 from shared.bootstrap import get_container
 from .config import CurrencySettings
 
-def _get_settings() -> CurrencySettings:
+logger = logging.getLogger(__name__)
+
+def _get_settings() -> Any:
 	"""Получает специфические настройки для сервиса валют."""
-	return get_container().settings
+	try:
+		return get_container().settings
+	except Exception:
+		# fallback для тестов, если контейнер не инициализирован
+		from .config import CurrencySettings
+		return CurrencySettings()
 
 
 _client: httpx.AsyncClient | None = None
