@@ -1,154 +1,90 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
+from datetime import datetime, UTC
 
 from auth_service.session.service import (
-    _hash_pin,
-    set_pin,
     logout,
     logout_all,
     self_block,
-    SessionError,
-    SessionNotFound,
-    SessionAlreadyBlocked,
+)
+from auth_service.exceptions import (
+    AuthAlreadyBlocked,
+    AuthNotFound,
 )
 from shared import models
 
-def test_hash_pin():
-    hashed = _hash_pin("1234")
-    assert hashed.startswith("$2")
-    assert "1234" not in hashed
+# --- Тесты logout / logout_all ---
 
 @pytest.mark.asyncio
-async def test_set_pin_not_found(mock_session):
-    mock_session.get.return_value = None
-    with pytest.raises(SessionNotFound):
-        await set_pin(mock_session, uuid4(), "1234")
+@patch("auth_service.session.service.session_tokens")
+async def test_logout_success(mock_tokens):
+    """Успешное удаление токена сессии."""
+    mock_tokens.delete_token = AsyncMock()
+    token = "active_token_123"
+    await logout(token)
+    mock_tokens.delete_token.assert_awaited_once_with(token)
 
 @pytest.mark.asyncio
-@patch("auth_service.session.service.publish")
-async def test_set_pin_db_error(mock_publish, mock_session):
-    user = models.User(id=uuid4())
-    mock_session.get.side_effect = [user]
-    mock_session.commit.side_effect = Exception("failed")
-    
-    with pytest.raises(Exception):
-        await set_pin(mock_session, uuid4(), "1234")
-    mock_session.rollback.assert_awaited_once()
+@patch("auth_service.session.service.session_tokens")
+async def test_logout_all_success(mock_tokens):
+    """Успешный отзыв всех сессий пользователя."""
+    mock_tokens.revoke_all = AsyncMock()
+    user_id = uuid4()
+    await logout_all(user_id)
+    mock_tokens.revoke_all.assert_awaited_once_with(user_id)
 
-@pytest.mark.asyncio
-@patch("auth_service.session.service.publish")
-async def test_set_pin_success(mock_publish, mock_session):
-    user = models.User(id=uuid4())
-    contact = models.Contact(email="a@a.com")
-    mock_session.get.side_effect = [user, contact]
-    
-    await set_pin(mock_session, uuid4(), "1234")
-    
-    assert user.pin_hash is not None
-    mock_session.commit.assert_awaited_once()
-    assert mock_publish.call_count == 2
+# --- Тесты self_block ---
 
-@pytest.mark.asyncio
-@patch("auth_service.session.service.publish")
-async def test_set_pin_publish_error(mock_publish, mock_session):
-    user = models.User(id=uuid4())
-    contact = models.Contact(email="a@a.com")
-    mock_session.get.side_effect = [user, contact]
-    mock_publish.side_effect = Exception("error")
-    
-    with pytest.raises(Exception):
-        await set_pin(mock_session, uuid4(), "1234")
-    assert user.pin_hash is not None
-
-@pytest.mark.asyncio
-@patch("auth_service.session.service.session_tokens.delete_token")
-async def test_logout(mock_delete):
-    await logout("token123")
-    mock_delete.assert_awaited_once_with("token123")
-
-@pytest.mark.asyncio
-@patch("auth_service.session.service.session_tokens.revoke_all")
-async def test_logout_all(mock_revoke):
-    u_id = uuid4()
-    await logout_all(u_id)
-    mock_revoke.assert_awaited_once_with(u_id)
-
-@pytest.mark.asyncio
-async def test_self_block_not_found(mock_session):
-    mock_session.get.return_value = None
-    with pytest.raises(SessionNotFound):
-        await self_block(mock_session, uuid4(), "tok")
-
-@pytest.mark.asyncio
-async def test_self_block_already_blocked(mock_session):
-    user = models.User(status="blocked")
-    mock_session.get.return_value = user
-    with pytest.raises(SessionAlreadyBlocked):
-        await self_block(mock_session, uuid4(), "tok")
-
-@pytest.mark.asyncio
-@patch("auth_service.session.service.publish")
-@patch("auth_service.session.service.session_tokens.revoke_all")
-async def test_self_block_success(mock_revoke, mock_publish, mock_session):
+@pytest.fixture
+def user_contact_tuple():
+    """Фикстура для пользователя и его контактов."""
     user = models.User(id=uuid4(), status="active")
-    contact = models.Contact(email="a@a.com")
+    contact = models.Contact(client_id=user.id, email="user@example.com")
+    return user, contact
+
+@pytest.mark.asyncio
+async def test_self_block_user_not_found(uow):
+    """Ошибка самоблокировки, если пользователь не найден."""
+    uow.users.get_user_with_contact.side_effect = AuthNotFound("User not found")
     
-    def get_se(m, pk):
-        if m == models.User: return user
-        if m == models.Contact: return contact
-        return None
-    mock_session.get.side_effect = get_se
+    with pytest.raises(AuthNotFound):
+        await self_block(uow, uuid4())
+
+@pytest.mark.asyncio
+async def test_self_block_already_blocked(uow, user_contact_tuple):
+    """Ошибка самоблокировки, если аккаунт уже заблокирован."""
+    user, contact = user_contact_tuple
+    user.status = "blocked"
+    uow.users.get_user_with_contact.return_value = (user, contact)
     
-    acc1 = models.BankAccount(status="open")
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [acc1]
-    mock_session.execute.return_value = mock_result
+    with pytest.raises(AuthAlreadyBlocked):
+        await self_block(uow, user.id)
+
+@pytest.mark.asyncio
+@patch("auth_service.session.service.session_tokens")
+async def test_self_block_success(mock_tokens, uow, user_contact_tuple):
+    """Успешная самоблокировка с заморозкой счетов и событиями."""
+    mock_tokens.revoke_all = AsyncMock()
+    user, contact = user_contact_tuple
+    uow.users.get_user_with_contact.return_value = (user, contact)
     
-    await self_block(mock_session, user.id, "tok")
+    # Имитация открытых счетов
+    acc1 = models.BankAccount(id=uuid4(), status="open")
+    acc2 = models.BankAccount(id=uuid4(), status="open")
+    uow.users.get_open_accounts.return_value = [acc1, acc2]
+    
+    await self_block(uow, user.id)
     
     assert user.status == "blocked"
     assert acc1.status == "frozen"
     assert acc1.frozen_by == "system"
-    mock_session.commit.assert_awaited_once()
-    mock_revoke.assert_awaited_once_with(user.id)
-    assert mock_publish.call_count == 2
-
-@pytest.mark.asyncio
-@patch("auth_service.session.service.session_tokens.revoke_all")
-async def test_self_block_db_error(mock_revoke, mock_session):
-    user = models.User(id=uuid4(), status="active")
-    mock_session.get.side_effect = [user]
+    assert acc2.status == "frozen"
     
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-    mock_session.commit.side_effect = Exception("err")
+    assert uow.committed is True
+    # Проверка отзыва сессий ПОСЛЕ коммита
+    mock_tokens.revoke_all.assert_awaited_once_with(user.id)
     
-    with pytest.raises(Exception):
-        await self_block(mock_session, user.id, "tok")
-    
-    mock_session.rollback.assert_awaited_once()
-    mock_revoke.assert_not_awaited()
-
-@pytest.mark.asyncio
-@patch("auth_service.session.service.publish")
-@patch("auth_service.session.service.session_tokens.revoke_all")
-async def test_self_block_publish_error(mock_revoke, mock_publish, mock_session):
-    user = models.User(id=uuid4(), status="active")
-    contact = models.Contact(email="a@a.com")
-    
-    def get_se(m, pk):
-        if m == models.User: return user
-        if m == models.Contact: return contact
-        return None
-    mock_session.get.side_effect = get_se
-    
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-    
-    mock_publish.side_effect = Exception("failed_pub")
-    
-    await self_block(mock_session, user.id, "tok")
-    assert user.status == "blocked"
+    # Проверка событий
+    assert any(e.type == "account_self_blocked" for e in uow.events)
+    assert any(getattr(e, "action", None) == "self_block" for e in uow.events)

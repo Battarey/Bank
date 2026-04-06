@@ -50,6 +50,12 @@ class AccountRepository(BaseRepository[models.BankAccount]):
 		"""Возвращает контактные данные владельца (для уведомлений)."""
 		return await self.session.get(models.Contact, user_id)
 
+	async def get_by_number(self, number: str) -> models.BankAccount | None:
+		"""Возвращает счёт по его уникальному номеру."""
+		stmt = select(models.BankAccount).where(models.BankAccount.account_number == number)
+		result = await self.session.execute(stmt)
+		return result.scalar_one_or_none()
+
 	async def is_number_unique(self, number: str) -> bool:
 		"""Проверяет уникальность номера счёта."""
 		stmt = select(models.BankAccount.id).where(models.BankAccount.account_number == number)

@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from shared.events.base import LogEvent, NotificationEvent
+from shared.redis_sessions import tokens as session_tokens
 from ..uow import AuthUnitOfWork
 from ..exceptions import (
 	AuthAlreadyBlocked,

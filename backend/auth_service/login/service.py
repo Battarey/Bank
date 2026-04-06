@@ -5,6 +5,8 @@ from datetime import datetime, UTC
 from uuid import UUID
 
 from shared.events.base import LogEvent
+from shared.utils.security import get_blind_index
+from shared.redis_sessions import rate_limit, tokens as session_tokens
 from ..uow import AuthUnitOfWork
 from ..exceptions import (
 	AuthCooldown,

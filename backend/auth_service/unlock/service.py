@@ -1,6 +1,8 @@
 """Бизнес-логика разблокировки аккаунта по Email-коду."""
 
 from shared.events.base import LogEvent, NotificationEvent
+from shared.utils.security import get_blind_index
+from shared.redis_sessions import unlock_codes, rate_limit
 from ..uow import AuthUnitOfWork
 from ..exceptions import (
 	AuthInvalidCode,

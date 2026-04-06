@@ -5,11 +5,6 @@ from shared.database_core.uow import SqlAlchemyUnitOfWork
 from shared.bootstrap import get_container
 from .repository import AuthRepository
 
-# Получаем фабрику сессий из контейнера
-container = get_container()
-SessionLocal = container.session_factory
-
-
 class AuthUnitOfWork(SqlAlchemyUnitOfWork):
 	"""Unit of Work для Auth Service.
 
@@ -21,8 +16,10 @@ class AuthUnitOfWork(SqlAlchemyUnitOfWork):
 	"""
 
 	def __init__(self):
-		"""Инициализирует UoW с фабрикой сессий по умолчанию."""
-		super().__init__(SessionLocal)
+		"""Инициализирует UoW с фабрикой сессий из контейнера."""
+		container = get_container()
+		session_factory = container.session_factory
+		super().__init__(session_factory)
 		self.users: AuthRepository | None = None
 
 	async def __aenter__(self) -> AuthUnitOfWork:
