@@ -46,7 +46,7 @@ services:
     command: >
       sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
                pip install --no-cache-dir -r shared/requirements-test.txt &&
-               python migrations/reset_and_upgrade.py &&
+               cd migrations && python reset_and_upgrade.py && cd .. &&
                pytest auth_service/tests -v;
              else
                uvicorn auth_service.main:app --host 0.0.0.0 --port 8000;
@@ -81,7 +81,7 @@ services:
     command: >
       sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
                pip install --no-cache-dir -r shared/requirements-test.txt &&
-               python migrations/reset_and_upgrade.py &&
+               cd migrations && python reset_and_upgrade.py && cd .. &&
                pytest customer_service/tests -v;
              else
                uvicorn customer_service.main:app --host 0.0.0.0 --port 8000;
@@ -114,7 +114,7 @@ services:
     command: >
       sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
                pip install --no-cache-dir -r shared/requirements-test.txt &&
-               python migrations/reset_and_upgrade.py &&
+               cd migrations && python reset_and_upgrade.py && cd .. &&
                pytest account_service/tests -v;
              else
                uvicorn account_service.main:app --host 0.0.0.0 --port 8000;
@@ -145,7 +145,7 @@ services:
     command: >
       sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
                pip install --no-cache-dir -r shared/requirements-test.txt &&
-               python migrations/reset_and_upgrade.py &&
+               cd migrations && python reset_and_upgrade.py && cd .. &&
                pytest currency_service/tests -v;
              else
                uvicorn currency_service.main:app --host 0.0.0.0 --port 8000;
@@ -261,7 +261,7 @@ services:
     command: >
       sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
                pip install --no-cache-dir -r shared/requirements-test.txt &&
-               python migrations/reset_and_upgrade.py &&
+               cd migrations && python reset_and_upgrade.py && cd .. &&
                pytest transaction_service/tests -v;
              else
                uvicorn transaction_service.main:app --host 0.0.0.0 --port 8000;
@@ -294,7 +294,7 @@ services:
     command: >
       sh -c "if [ \"$$APP_ENV\" = \"test\" ]; then
                pip install --no-cache-dir -r shared/requirements-test.txt &&
-               python migrations/reset_and_upgrade.py &&
+               cd migrations && python reset_and_upgrade.py && cd .. &&
                pytest security_service/tests -v;
              else
                uvicorn security_service.main:app --host 0.0.0.0 --port 8000;

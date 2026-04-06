@@ -28,10 +28,16 @@ target_metadata = models.base.Base.metadata
 
 
 def _get_database_url() -> str:
-    """Получает URL базы данных из централизованного конфига."""
+    """Получает URL базы данных и конвертирует его в синхронный формат для Alembic."""
     url = container.db_settings.DATABASE_URL
-    print(f"[alembic] Using DATABASE_URL from config: {url}", flush=True)
-    return url
+    
+    # Alembic работает в синхронном режиме, поэтому нам нужен драйвер psycopg (v3)
+    from sqlalchemy.engine.url import make_url
+    parsed = make_url(url)
+    sync_url = parsed.set(drivername="postgresql+psycopg").render_as_string(hide_password=False)
+    
+    print(f"[alembic] Using sync URL for migrations: {sync_url}", flush=True)
+    return sync_url
 
 
 def run_migrations_offline() -> None:
