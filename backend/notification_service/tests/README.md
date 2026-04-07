@@ -8,9 +8,14 @@
 
 ## Запуск тестов
 
-### Запуск всех тестов сервиса
+### Локальный запуск
 ```powershell
 pytest backend/notification_service/tests
+```
+
+### Запуск через Docker
+```powershell
+docker compose run --rm -e APP_ENV=test notification_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest notification_service/tests/unit -v"
 ```
 
 ### Тестирование рендеринга шаблонов
