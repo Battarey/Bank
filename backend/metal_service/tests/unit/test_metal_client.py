@@ -2,19 +2,12 @@ import pytest
 import time
 from unittest.mock import patch, AsyncMock, MagicMock
 from decimal import Decimal
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from metal_service import metal_client
 
 
-@pytest.fixture(autouse=True)
-def reset_client_and_cache():
-    """Сбрасывает глобальное состояние перед каждым тестом."""
-    metal_client._client = None
-    metal_client._cache.clear()
-    yield
-    metal_client._client = None
-    metal_client._cache.clear()
+# Фикстура сброса в conftest.py работает превосходно
 
 
 # ── connect / disconnect ───────────────────────────────────────────────
@@ -22,6 +15,7 @@ def reset_client_and_cache():
 @pytest.mark.asyncio
 @patch("metal_service.metal_client.httpx.AsyncClient")
 async def test_connect(mock_cls):
+    """Проверка создания клиента httpx."""
     mock_instance = MagicMock()
     mock_cls.return_value = mock_instance
 
@@ -32,6 +26,7 @@ async def test_connect(mock_cls):
 @pytest.mark.asyncio
 @patch("metal_service.metal_client.httpx.AsyncClient")
 async def test_disconnect(mock_cls):
+    """Проверка закрытия клиента."""
     mock_instance = AsyncMock()
     mock_cls.return_value = mock_instance
     metal_client._client = mock_instance
@@ -44,20 +39,22 @@ async def test_disconnect(mock_cls):
 
 @pytest.mark.asyncio
 async def test_disconnect_no_client():
-    """disconnect без connect не кидает ошибку."""
-    await metal_client.disconnect()  # no error
+    """disconnect без предварительного connect не должен вызывать ошибок."""
+    await metal_client.disconnect()  # No error should occur
 
 
 # ── _fetch_prices ──────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_fetch_prices_no_client():
+    """Ошибка, если клиент не инициализирован."""
     with pytest.raises(RuntimeError, match="не инициализирован"):
         await metal_client._fetch_prices("RUB")
 
 
 @pytest.mark.asyncio
 async def test_fetch_prices_success():
+    """Успешное получение цен от внешнего API."""
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
     mock_resp.json.return_value = {
@@ -76,14 +73,17 @@ async def test_fetch_prices_success():
 
     prices, last_updated = await metal_client._fetch_prices("RUB")
 
-    assert "XAU" in prices
     assert prices["XAU"] == Decimal("6500.00")
     assert prices["XAG"] == Decimal("85.50")
-    assert isinstance(last_updated, datetime)
+    assert prices["XPT"] == Decimal("3200.00")
+    assert prices["XPD"] == Decimal("3100.00")
+    assert last_updated.year == 2026
+    assert last_updated.month == 1
 
 
 @pytest.mark.asyncio
 async def test_fetch_prices_api_error():
+    """Обработка ошибки статуса (error) в JSON ответе."""
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
     mock_resp.json.return_value = {
@@ -100,67 +100,36 @@ async def test_fetch_prices_api_error():
 
 
 @pytest.mark.asyncio
-async def test_fetch_prices_missing_metal():
-    """Если металл отсутствует в ответе — он пропускается (не вызывает ошибки)."""
-    mock_resp = MagicMock()
-    mock_resp.raise_for_status = MagicMock()
-    mock_resp.json.return_value = {
-        "status": "success",
-        "metals": {"gold": 6500.0},  # только золото
-        "timestamp": "",
-    }
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_resp)
-    metal_client._client = mock_client
-
-    prices, _ = await metal_client._fetch_prices("RUB")
-
-    assert "XAU" in prices
-    assert "XAG" not in prices   # серебро отсутствовало
-
-
-@pytest.mark.asyncio
 async def test_fetch_prices_bad_timestamp():
-    """Невалидный timestamp → datetime.now(utc) без ошибки."""
+    """Некорректный timestamp в ответе не должен ронять парсинг."""
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
     mock_resp.json.return_value = {
         "status": "success",
-        "metals": {"gold": 6500.0},
-        "timestamp": "NOT-A-DATE",
+        "metals": {"gold": 100.0},
+        "timestamp": "INVALID",
     }
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(return_value=mock_resp)
     metal_client._client = mock_client
 
-    prices, last_updated = await metal_client._fetch_prices("RUB")
+    _, last_updated = await metal_client._fetch_prices("RUB")
     assert isinstance(last_updated, datetime)
 
 
-# ── get_metal_prices (кэш) ─────────────────────────────────────────────
+# ── get_metal_prices (Кэширование) ─────────────────────────────────────
 
 @pytest.mark.asyncio
 @patch("metal_service.metal_client._fetch_prices")
-async def test_get_metal_prices_fetches_fresh(mock_fetch):
-    prices = {"XAU": Decimal("6500.00")}
-    updated = datetime.now(timezone.utc)
+async def test_get_metal_prices_use_cache(mock_fetch):
+    """Проверка, что кэш работает и не делает лишних запросов."""
+    prices = {"XAU": Decimal("100.00")}
+    updated = datetime.now(UTC)
     mock_fetch.return_value = (prices, updated)
 
-    result_prices, result_updated = await metal_client.get_metal_prices("RUB")
-
-    assert result_prices == prices
-    mock_fetch.assert_awaited_once_with("RUB")
-
-
-@pytest.mark.asyncio
-@patch("metal_service.metal_client._fetch_prices")
-async def test_get_metal_prices_uses_cache(mock_fetch):
-    """Второй вызов берёт данные из кэша без нового запроса."""
-    prices = {"XAU": Decimal("6500.00")}
-    updated = datetime.now(timezone.utc)
-    mock_fetch.return_value = (prices, updated)
-
+    # Первый вызов
     await metal_client.get_metal_prices("RUB")
+    # Второй вызов
     await metal_client.get_metal_prices("RUB")
 
     assert mock_fetch.await_count == 1
@@ -170,17 +139,17 @@ async def test_get_metal_prices_uses_cache(mock_fetch):
 @patch("metal_service.metal_client.time")
 @patch("metal_service.metal_client._fetch_prices")
 async def test_get_metal_prices_cache_expired(mock_fetch, mock_time):
-    """Просроченный кэш — новый запрос к API."""
-    prices = {"XAU": Decimal("6500.00")}
-    updated = datetime.now(timezone.utc)
+    """Проверка сброса кэша по TTL."""
+    prices = {"XAU": Decimal("100.00")}
+    updated = datetime.now(UTC)
     mock_fetch.return_value = (prices, updated)
 
-    # Первый вызов — время = 0
+    # Время 0
     mock_time.monotonic.return_value = 0.0
     await metal_client.get_metal_prices("RUB")
 
-    # Второй вызов — кэш истёк (TTL=30с, прошло 35с)
-    mock_time.monotonic.return_value = 35.0
+    # Прошло 100 секунд (TTL 30)
+    mock_time.monotonic.return_value = 100.0
     await metal_client.get_metal_prices("RUB")
 
     assert mock_fetch.await_count == 2

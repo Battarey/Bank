@@ -8,9 +8,14 @@
 
 ## Запуск тестов
 
-### Запуск всех тестов сервиса
+### Локальный запуск
 ```powershell
 pytest backend/metal_service/tests
+```
+
+### Запуск через Docker
+```powershell
+docker compose run --rm -e APP_ENV=test metal_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest metal_service/tests/unit -v"
 ```
 
 ### Проверка логики конвертации

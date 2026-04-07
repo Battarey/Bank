@@ -13,6 +13,8 @@ import httpx
 from shared.bootstrap import get_container
 from .config import MetalSettings
 
+logger = logging.getLogger("metal_service.client")
+
 def _get_settings() -> MetalSettings:
 	"""Получает специфические настройки для сервиса металлов."""
 	return get_container().settings
