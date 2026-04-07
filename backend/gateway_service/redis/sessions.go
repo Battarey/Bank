@@ -11,7 +11,19 @@ import (
 // DefaultSessionTTL — время жизни сессионного токена (30 минут).
 const DefaultSessionTTL = 30 * time.Minute
 
+// SessionStore — интерфейс для работы с сессионными токенами.
+type SessionStore interface {
+	SaveToken(ctx context.Context, token, userID string, payload map[string]string, ttl time.Duration) error
+	LoadToken(ctx context.Context, token string) (map[string]string, error)
+	TouchToken(ctx context.Context, token, userID string, ttl time.Duration) error
+	UpdateTokenData(ctx context.Context, token string, data map[string]string) error
+	DeleteToken(ctx context.Context, token string) error
+	RevokeAll(ctx context.Context, userID string) error
+	Close() error
+}
+
 // SessionsClient предоставляет операции с сессионными токенами в Redis.
+// Реализует интерфейс SessionStore.
 type SessionsClient struct {
 	rdb *redis.Client
 }

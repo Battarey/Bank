@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
 	"gateway_service/middleware"
-	redisClient "gateway_service/redis"
 )
 
 func TestIsPublic(t *testing.T) {
@@ -22,13 +22,14 @@ func TestIsPublic(t *testing.T) {
 		{"/", "GET", true},
 		{"/health", "GET", true},
 		{"/docs/index.html", "GET", true},
-		{"/users/start", "POST", true},
-		{"/currency/rates", "GET", true},
-		{"/auth/login", "POST", false}, // auth/login-pin is public, but not /auth/login
-		{"/auth/login-pin", "POST", true},
+		{"/users/start", "POST", false}, // old path
+		{"/api/v1/onboarding", "POST", true},
+		{"/api/v1/currencies/rates", "GET", true},
+		{"/auth/login", "POST", false},
+		{"/api/v1/auth/login-pin", "POST", true},
 		{"/users/me", "GET", false},
-		{"/users/me/account/123", "GET", true}, // publicSegment
-		{"/any", "OPTIONS", true},             // OPTIONS is always public
+		{"/api/v1/users/me/account/123", "GET", true},
+		{"/any", "OPTIONS", true},
 	}
 
 	for _, tt := range tests {
@@ -38,15 +39,8 @@ func TestIsPublic(t *testing.T) {
 }
 
 func TestAuthMiddleware(t *testing.T) {
-	redisURL := "redis://redis_test:6379/0"
-	if _, err := redisClient.NewSessionsClient(redisURL); err != nil {
-		redisURL = "redis://localhost:6379/0"
-	}
-	
-	sessions, err := redisClient.NewSessionsClient(redisURL)
-	if err != nil {
-		t.Skip("Redis недоступен для теста AuthMiddleware")
-	}
+	// Используем мок вместо реального Redis
+	sessions := NewMockSessionStore()
 	defer sessions.Close()
 
 	e := echo.New()
@@ -65,7 +59,7 @@ func TestAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("Missing token", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/users/me", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/me", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		
@@ -76,7 +70,7 @@ func TestAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("Invalid token", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/users/me", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/me", nil)
 		req.Header.Set("X-Session-Token", "invalid-token")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -90,10 +84,9 @@ func TestAuthMiddleware(t *testing.T) {
 		token := "valid-token-no-pin"
 		userID := "user-123"
 		ctx := context.Background()
-		sessions.SaveToken(ctx, token, userID, map[string]string{"has_pin": "false"}, redisClient.DefaultSessionTTL)
-		defer sessions.DeleteToken(ctx, token)
+		sessions.SaveToken(ctx, token, userID, map[string]string{"has_pin": "false"}, 30*time.Minute)
 
-		req := httptest.NewRequest(http.MethodGet, "/users/me", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/me", nil)
 		req.Header.Set("X-Session-Token", token)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -108,10 +101,9 @@ func TestAuthMiddleware(t *testing.T) {
 		token := "valid-token-with-pin"
 		userID := "user-456"
 		ctx := context.Background()
-		sessions.SaveToken(ctx, token, userID, map[string]string{"has_pin": "true"}, redisClient.DefaultSessionTTL)
-		defer sessions.DeleteToken(ctx, token)
+		sessions.SaveToken(ctx, token, userID, map[string]string{"has_pin": "true"}, 30*time.Minute)
 
-		req := httptest.NewRequest(http.MethodGet, "/users/me", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/me", nil)
 		req.Header.Set("X-Session-Token", token)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)

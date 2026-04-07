@@ -57,7 +57,7 @@ func TestHeaderSpoofingProtection(t *testing.T) {
 	e := app.SetupApp(cfg, nil, nil, services)
 
 	// Делаем запрос на публичный эндпоинт и пытаемся подменить X-User-ID
-	req := httptest.NewRequest(http.MethodGet, "/currency/rates", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/currencies/rates", nil)
 	req.Header.Set("X-User-ID", "spoofed-user-id")
 	rec := httptest.NewRecorder()
 
@@ -69,11 +69,11 @@ func TestPanicRecovery(t *testing.T) {
 	e := app.SetupApp(&config.Config{}, nil, nil, nil)
 	
 	// Используем путь, который считается публичным в AuthMiddleware
-	e.GET("/currency/rates/panic", func(c echo.Context) error {
+	e.GET("/api/v1/onboarding/panic", func(c echo.Context) error {
 		panic("intentional panic for testing recover middleware")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/currency/rates/panic", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/onboarding/panic", nil)
 	rec := httptest.NewRecorder()
 
 	// Middleware Recover должен поймать панику и вернуть 500

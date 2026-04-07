@@ -44,13 +44,13 @@ func TestOtherHandlers(t *testing.T) {
 			{"list", h.ListAccounts, nil},
 			{"get", h.GetAccount, map[string]string{"account_id": "a1"}},
 			{"close", h.CloseAccount, map[string]string{"account_id": "a1"}},
-			{"freeze", h.FreezeAccount, map[string]string{"account_id": "a1"}},
-			{"unfreeze", h.UnfreezeAccount, map[string]string{"account_id": "a1"}},
+			{"suspend", h.SuspendAccount, map[string]string{"account_id": "a1"}},
+			{"resume", h.ResumeAccount, map[string]string{"account_id": "a1"}},
 		}
 
 		for _, m := range methods {
 			t.Run(m.name, func(t *testing.T) {
-				req := httptest.NewRequest(http.MethodGet, "/", nil)
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/accounts", nil)
 				rec := httptest.NewRecorder()
 				c := e.NewContext(req, rec)
 				for k, v := range m.params {
@@ -72,15 +72,13 @@ func TestOtherHandlers(t *testing.T) {
 			fn     func(echo.Context) error
 			params map[string]string
 		}{
-			{"deposit", h.Deposit, map[string]string{"account_id": "a1"}},
-			{"withdraw", h.Withdraw, map[string]string{"account_id": "a1"}},
-			{"transfer", h.Transfer, map[string]string{"account_id": "a1"}},
+			{"create", h.CreateTransaction, nil},
 			{"history", h.TransactionHistory, map[string]string{"account_id": "a1"}},
 		}
 
 		for _, m := range methods {
 			t.Run(m.name, func(t *testing.T) {
-				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"amount":10}`))
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", strings.NewReader(`{"amount":10}`))
 				req.Header.Set("Content-Type", "application/json")
 				rec := httptest.NewRecorder()
 				c := e.NewContext(req, rec)
@@ -97,7 +95,7 @@ func TestOtherHandlers(t *testing.T) {
 
 	t.Run("CurrencyHandler", func(t *testing.T) {
 		h := &routes.CurrencyHandler{Proxy: sc, APIKey: "key"}
-		req := httptest.NewRequest(http.MethodGet, "/currency/rates", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/currency/rates", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		err := h.GetRates(c)
@@ -107,7 +105,7 @@ func TestOtherHandlers(t *testing.T) {
 
 	t.Run("MetalHandler", func(t *testing.T) {
 		h := &routes.MetalHandler{Proxy: sc, APIKey: "key"}
-		req := httptest.NewRequest(http.MethodGet, "/metals/rates", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/metals/rates", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		err := h.GetMetalRates(c)

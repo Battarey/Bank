@@ -18,8 +18,8 @@ import (
 // SetupApp настраивает экземпляр Echo и возвращает его.
 func SetupApp(
 	cfg *config.Config,
-	sessions *redisClient.SessionsClient,
-	onboarding *redisClient.OnboardingClient,
+	sessions redisClient.SessionStore,
+	onboarding redisClient.OnboardingStore,
 	services *proxy.ServiceClients,
 ) *echo.Echo {
 	e := echo.New()

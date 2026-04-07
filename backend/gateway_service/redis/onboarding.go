@@ -12,7 +12,17 @@ import (
 // DefaultOnboardingTTL — время жизни onboarding-токена (15 минут).
 const DefaultOnboardingTTL = 15 * time.Minute
 
+// OnboardingStore — интерфейс для работы с onboarding-токенами. (Используется для моков в тестах)
+type OnboardingStore interface {
+	SaveOnboardingToken(ctx context.Context, token, userID string, ttl time.Duration) error
+	LoadOnboardingToken(ctx context.Context, token string) (string, error)
+	TouchOnboardingToken(ctx context.Context, token string, ttl time.Duration) error
+	DeleteOnboardingToken(ctx context.Context, token string) error
+	Close() error
+}
+
 // OnboardingClient предоставляет операции с onboarding-токенами в Redis.
+// Реализует интерфейс OnboardingStore.
 type OnboardingClient struct {
 	rdb *redis.Client
 }

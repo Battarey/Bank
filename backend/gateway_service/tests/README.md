@@ -13,7 +13,13 @@
 
 ## Запуск тестов
 
-### Запуск всех тестов проекта
+### Запуск всех тестов через Docker (Рекомендуется)
+Если на вашей машине не установлена среда Go, используйте Docker:
+```bash
+docker run --rm -v "./gateway_service:/app" -v "./shared:/shared" -w /app golang:1.23-alpine go test ./tests -v
+```
+
+### Локальный запуск (требуется Go 1.23)
 ```bash
 go test ./...
 ```

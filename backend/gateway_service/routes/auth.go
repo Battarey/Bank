@@ -13,7 +13,7 @@ import (
 // AuthHandler обрабатывает маршруты аутентификации и управления доступом.
 type AuthHandler struct {
 	Proxy    *proxy.ServiceClients
-	Sessions *redisClient.SessionsClient
+	Sessions redisClient.SessionStore
 	APIKey   string
 }
 

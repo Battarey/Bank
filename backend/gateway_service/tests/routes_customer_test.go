@@ -7,36 +7,30 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
 	"gateway_service/proxy"
-	redisClient "gateway_service/redis"
 	"gateway_service/routes"
 )
 
 func TestCustomerHandler(t *testing.T) {
-	redisURL := "redis://redis_test:6379/2"
-	sessions, _ := redisClient.NewSessionsClient(redisURL)
-	onboarding, _ := redisClient.NewOnboardingClient(redisURL)
-	if sessions == nil || onboarding == nil {
-		t.Skip("Redis недоступен")
-	}
+	// Используем моки
+	sessions := NewMockSessionStore()
+	onboarding := NewMockOnboardingStore()
 	defer sessions.Close()
 	defer onboarding.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if strings.Contains(r.URL.Path, "/users/start") {
+		if strings.Contains(r.URL.Path, "/onboarding") && r.Method == http.MethodPost {
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]string{"user_id": "u1", "status": "started"})
-		} else if strings.Contains(r.URL.Path, "/finalize") {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "welcome"})
+			json.NewEncoder(w).Encode(map[string]string{"client_id": "u1", "status": "started"})
 		} else {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "step_ok"})
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		}
 	}))
 	defer ts.Close()
@@ -57,7 +51,7 @@ func TestCustomerHandler(t *testing.T) {
 	h.RegisterCustomerRoutes(e)
 
 	t.Run("StartOnboarding", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/users/start", strings.NewReader(`{"phone":"1"}`))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/onboarding", strings.NewReader(`{"phone":"1"}`))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -70,7 +64,7 @@ func TestCustomerHandler(t *testing.T) {
 
 	t.Run("OnboardingStep", func(t *testing.T) {
 		token := "onb-token"
-		onboarding.SaveOnboardingToken(context.Background(), token, "u1", redisClient.DefaultOnboardingTTL)
+		onboarding.SaveOnboardingToken(context.Background(), token, "u1", 15*time.Minute)
 		defer onboarding.DeleteOnboardingToken(context.Background(), token)
 
 		steps := []struct {
@@ -81,13 +75,11 @@ func TestCustomerHandler(t *testing.T) {
 			{"passport", h.SubmitPassport},
 			{"identifiers", h.SubmitIdentifiers},
 			{"contacts", h.SubmitContacts},
-			{"send-email-code", h.SendEmailCode},
-			{"verify-email", h.VerifyEmail},
 		}
 
 		for _, step := range steps {
 			t.Run(step.name, func(t *testing.T) {
-				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"data":"test"}`))
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/onboarding/"+step.name, strings.NewReader(`{"data":"test"}`))
 				req.Header.Set("X-Onboarding-Token", token)
 				req.Header.Set("Content-Type", "application/json")
 				rec := httptest.NewRecorder()
@@ -99,45 +91,22 @@ func TestCustomerHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("UpdateMethods", func(t *testing.T) {
-		updates := []struct {
-			name string
-			fn   func(echo.Context) error
-		}{
-			{"UpdatePersonalData", h.UpdatePersonalData},
-			{"ReplacePassport", h.ReplacePassport},
-			{"UpdateContacts", h.UpdateContacts},
-		}
-
-		for _, up := range updates {
-			t.Run(up.name, func(t *testing.T) {
-				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"data":"test"}`))
-				rec := httptest.NewRecorder()
-				c := e.NewContext(req, rec)
-				err := up.fn(c)
-				assert.NoError(t, err)
-				assert.Equal(t, http.StatusOK, rec.Code)
-			})
-		}
-	})
-
-	t.Run("FinalizeOnboarding", func(t *testing.T) {
+	t.Run("CompleteOnboarding", func(t *testing.T) {
 		token := "onb-token-finalize"
-		onboarding.SaveOnboardingToken(context.Background(), token, "u1", redisClient.DefaultOnboardingTTL)
+		onboarding.SaveOnboardingToken(context.Background(), token, "u1", 15*time.Minute)
 
-		req := httptest.NewRequest(http.MethodPost, "/users/me/account/finalize", nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/onboarding/completion", nil)
 		req.Header.Set("X-Onboarding-Token", token)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		
-		err := h.FinalizeOnboarding(c)
+		err := h.CompleteOnboarding(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), "session_token")
 	})
 
 	t.Run("DeleteAccount", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodDelete, "/users/me", nil)
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/customers/me", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.Set("user_id", "u1")

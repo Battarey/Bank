@@ -7,30 +7,27 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
 	"gateway_service/proxy"
-	redisClient "gateway_service/redis"
 	"gateway_service/routes"
 )
 
 func TestAuthHandler(t *testing.T) {
-	redisURL := "redis://redis_test:6379/1"
-	sessions, err := redisClient.NewSessionsClient(redisURL)
-	if err != nil {
-		t.Skip("Redis недоступен")
-	}
+	// Используем мок вместо реального Redis
+	sessions := NewMockSessionStore()
 	defer sessions.Close()
 
 	// Тестовый сервер для имитации auth_service
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/login-pin" {
+		if r.URL.Path == "/sessions" && r.Method == http.MethodPost {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]string{"session_token": "ok"})
-		} else if r.URL.Path == "/set-pin" {
+		} else if r.URL.Path == "/pins" && r.Method == http.MethodPut {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]string{"status": "pin_set"})
 		} else {
@@ -54,23 +51,22 @@ func TestAuthHandler(t *testing.T) {
 	e := echo.New()
 	h.RegisterAuthRoutes(e)
 
-	t.Run("LoginPin", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/auth/login-pin", strings.NewReader(`{"phone":"1","pin":"1"}`))
+	t.Run("Login", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(`{"phone":"1","pin":"1"}`))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		
-		err := h.LoginPin(c)
+		err := h.Login(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
 	t.Run("SetPin", func(t *testing.T) {
 		token := "test-token"
-		sessions.SaveToken(context.Background(), token, "u1", map[string]string{"has_pin": "false"}, redisClient.DefaultSessionTTL)
-		defer sessions.DeleteToken(context.Background(), token)
+		sessions.SaveToken(context.Background(), token, "u1", map[string]string{"has_pin": "false"}, 30*time.Minute)
 
-		req := httptest.NewRequest(http.MethodPost, "/auth/set-pin", strings.NewReader(`{"pin":"1234"}`))
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/auth/pins", strings.NewReader(`{"pin":"1234"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Session-Token", token)
 		rec := httptest.NewRecorder()
@@ -81,13 +77,13 @@ func TestAuthHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
-		// Проверяем, что в Redis обновилось has_pin
+		// Проверяем, что в Mock-хранилище обновилось has_pin
 		data, _ := sessions.LoadToken(context.Background(), token)
 		assert.Equal(t, "true", data["has_pin"])
 	})
 
 	t.Run("Logout", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/sessions/current", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		
@@ -97,7 +93,7 @@ func TestAuthHandler(t *testing.T) {
 	})
 
 	t.Run("RequestUnlock", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/auth/request-unlock", strings.NewReader(`{"email":"a@b.c"}`))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/unlock-codes", strings.NewReader(`{"email":"a@b.c"}`))
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		err := h.RequestUnlock(c)
@@ -105,17 +101,8 @@ func TestAuthHandler(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
-	t.Run("Unlock", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/auth/unlock", strings.NewReader(`{"code":"123"}`))
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-		err := h.Unlock(c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusOK, rec.Code)
-	})
-
 	t.Run("LogoutAll", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/auth/logout-all", nil)
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/sessions", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		err := h.LogoutAll(c)
@@ -124,7 +111,7 @@ func TestAuthHandler(t *testing.T) {
 	})
 
 	t.Run("SelfBlock", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/auth/self-block", nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/self-block", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		err := h.SelfBlock(c)

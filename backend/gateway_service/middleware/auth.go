@@ -19,16 +19,16 @@ var publicPaths = map[string]bool{
 	"/openapi.json": true,
 	"/redoc":        true,
 	"/favicon.ico":  true,
-	"/auth/login-pin":      true,
-	"/auth/request-unlock": true,
-	"/auth/unlock":         true,
+	"/api/v1/auth/login-pin":      true,
+	"/api/v1/auth/request-unlock": true,
+	"/api/v1/auth/unlock":         true,
 }
 
 // Префиксы публичных путей.
 var publicPrefixes = []string{
-	"/users/start",
-	"/currency/rates",
-	"/metals/rates",
+	"/api/v1/onboarding",
+	"/api/v1/currencies/rates",
+	"/api/v1/metals/rates",
 	"/docs/",
 }
 
@@ -66,7 +66,7 @@ func IsPublic(path, method string) bool {
 }
 
 // AuthMiddleware проверяет X-Session-Token и реализует PIN-gate.
-func AuthMiddleware(sessions *redisClient.SessionsClient) echo.MiddlewareFunc {
+func AuthMiddleware(sessions redisClient.SessionStore) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			path := c.Request().URL.Path

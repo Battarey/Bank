@@ -15,8 +15,8 @@ import (
 // CustomerHandler обрабатывает маршруты онбординга (регистрации) и профиля клиента.
 type CustomerHandler struct {
 	Proxy      *proxy.ServiceClients
-	Sessions   *redisClient.SessionsClient
-	Onboarding *redisClient.OnboardingClient
+	Sessions   redisClient.SessionStore
+	Onboarding redisClient.OnboardingStore
 	APIKey     string
 }
 
