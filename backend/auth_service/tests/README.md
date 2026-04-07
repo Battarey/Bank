@@ -12,9 +12,14 @@
 
 ## Запуск тестов
 
-### Запуск всех тестов сервиса
+### Локальный запуск
 ```powershell
 pytest backend/auth_service/tests
+```
+
+### Запуск через Docker
+```powershell
+docker compose run --rm -e APP_ENV=test auth_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest auth_service/tests/unit -v"
 ```
 
 ### Запуск только тестов безопасности (разблокировка)

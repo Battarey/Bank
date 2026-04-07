@@ -7,9 +7,14 @@
 
 ## Запуск тестов
 
-### 1. Запуск всех тестов сервиса
+### Локальный запуск
 ```powershell
 pytest backend/account_service/tests
+```
+
+### Запуск через Docker
+```powershell
+docker compose run --rm -e APP_ENV=test account_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest account_service/tests/unit -v"
 ```
 
 ### 2. Запуск только Unit-тестов

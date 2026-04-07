@@ -7,9 +7,14 @@
 
 ## Запуск тестов
 
-### Запуск всех тестов сервиса
+### Локальный запуск
 ```powershell
 pytest backend/customer_service/tests
+```
+
+### Запуск через Docker
+```powershell
+docker compose run --rm -e APP_ENV=test customer_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest customer_service/tests/unit -v"
 ```
 
 ### Тестирование онбординга
