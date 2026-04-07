@@ -16,14 +16,14 @@ router = APIRouter(
 
 @router.post(
 	"",
-	response_model=schemas.StartOnboardingResponse,
+	response_model=schemas.StartInternalResponse,
 	status_code=status.HTTP_201_CREATED,
 	summary="Начать процесс регистрации",
 )
 async def start_onboarding(uow: CustomerUnitOfWork = Depends(get_uow)):
 	"""Создаёт временного пользователя и возвращает UUID для прохождения шагов."""
 	user_id = await service.start_onboarding(uow)
-	return schemas.StartOnboardingResponse(client_id=user_id)
+	return schemas.StartInternalResponse(user_id=user_id, status="pending")
 
 
 @router.post(
@@ -84,7 +84,7 @@ async def store_contacts(
 
 @router.post(
 	"/{user_id}/completion",
-	response_model=schemas.FinalizeResponse,
+	response_model=schemas.FinalizeInternalResponse,
 	summary="Завершить регистрацию и создать профиль",
 )
 async def complete_onboarding(
@@ -93,7 +93,7 @@ async def complete_onboarding(
 ):
 	"""Переносит данные из черновиков в основной профиль и активирует пользователя."""
 	await service.persist_onboarding_data(uow, user_id)
-	return schemas.FinalizeResponse(
-		client_id=user_id,
+	return schemas.FinalizeInternalResponse(
+		status="completed",
 		message="Регистрация успешно завершена. Теперь вы можете войти в систему.",
 	)

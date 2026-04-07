@@ -8,16 +8,14 @@ from shared.bootstrap import get_container
 from .repository import CustomerRepository
 from .queries.repository import CustomerQueryRepository
 
-# Получаем инфраструктурный контейнер
-container = get_container()
-SessionLocal = container.session_factory
-
-
 class CustomerUnitOfWork(SqlAlchemyUnitOfWork):
 	"""UoW для Customer Service, предоставляющий доступ к репозиторию клиентов."""
 
 	def __init__(self):
-		super().__init__(SessionLocal)
+		"""Инициализирует UoW с фабрикой сессий из контейнера."""
+		container = get_container()
+		session_factory = container.session_factory
+		super().__init__(session_factory)
 		self.customers: CustomerRepository | None = None
 		self.customer_queries: CustomerQueryRepository | None = None
 

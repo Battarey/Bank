@@ -1,47 +1,75 @@
 import os
-from unittest.mock import AsyncMock, patch
-
-# Set required environment variables before importing app
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@postgres_core:5432/bank_core")
-os.environ.setdefault("REDIS_ONBOARDING_URL", "redis://redis_onboarding:6379/1")
-os.environ.setdefault("EXCHANGE_NAME", "logs")
-os.environ.setdefault("RABBITMQ_DSN", "amqp://guest:guest@rabbitmq:5672/")
-
-import asyncio
+from unittest.mock import AsyncMock, patch, MagicMock
 from typing import AsyncGenerator
+import asyncio
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
+from shared.database_core.uow import AbstractUnitOfWork
+
+# Set required environment variables
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/test")
+os.environ.setdefault("REDIS_ONBOARDING_URL", "redis://localhost:6379/1")
+os.environ.setdefault("EXCHANGE_NAME", "logs")
+os.environ.setdefault("RABBITMQ_DSN", "amqp://guest:guest@localhost:5672/")
+
+
+class FakeCustomerUnitOfWork(AbstractUnitOfWork):
+    """Фейковый Unit of Work для тестирования Customer Service."""
+
+    def __init__(self):
+        super().__init__()
+        self.customers = AsyncMock()        # mock CustomerRepository
+        self.customer_queries = AsyncMock()  # mock CustomerQueryRepository
+        self.committed = False
+        self.rolled_back = False
+        self.events = []
+
+    def add_event(self, event):
+        self.events.append(event)
+
+    async def commit(self):
+        self.committed = True
+
+    async def rollback(self):
+        self.rolled_back = True
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+        return False
+
+
+@pytest.fixture
+def uow():
+    """Фикстура для Unit of Work."""
+    return FakeCustomerUnitOfWork()
+
+
+@pytest.fixture
+def mock_session():
+    """Устаревшая фикстура для совместимости."""
+    session = AsyncMock()
+    session.add = MagicMock()
+    session.add_all = MagicMock()
+    session.refresh = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.execute = AsyncMock()
+    session.__aenter__.return_value = session
+    return session
+
+
+# Настройки для FastAPI/HTTPLX (если нужны для unit/интеграционных тестов)
 from customer_service.main import app
-from shared.database_core.db import get_session
-from shared.internal_auth import verify_internal_key
-
-# Заглушка для аутентификации gateway
-async def override_verify_internal_key():
-    pass
-
-app.dependency_overrides[verify_internal_key] = override_verify_internal_key
-
-@pytest.fixture(scope="session", autouse=True)
-def mock_external_services():
-    with patch("customer_service.main.rmq_connect", new_callable=AsyncMock) as mock_connect, \
-         patch("customer_service.main.rmq_disconnect", new_callable=AsyncMock) as mock_disconnect:
-        yield
-
-# Настройки для pytest-asyncio
-@pytest.fixture(scope="session")
-def event_loop():
-    """Создает экземпляр event loop для всей тестовой сессии."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 @pytest_asyncio.fixture()
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    """Асинхронный HTTP-клиент для вызовов FastAPI."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
-

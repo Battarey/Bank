@@ -1,37 +1,63 @@
-from unittest.mock import AsyncMock, patch
 import pytest
-from httpx import AsyncClient
-from customer_service.main import app
-from shared.database_core.db import get_session
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+from datetime import UTC, datetime, date
 
-@pytest.mark.asyncio
-async def test_start_endpoint_success(async_client: AsyncClient):
-    mock_session = AsyncMock()
-    app.dependency_overrides[get_session] = lambda: mock_session
-
-    with patch("customer_service.create_account.router.service.start_onboarding", new_callable=AsyncMock) as mock_start:
-        mock_start.return_value = "123e4567-e89b-12d3-a456-426614174000"
-
-        headers = {"X-Internal-Key": "test-key"}
-        response = await async_client.post("/users/start", headers=headers)
-        
-        assert response.status_code == 201
-        data = response.json()
-        assert data["user_id"] == "123e4567-e89b-12d3-a456-426614174000"
-
-    app.dependency_overrides.pop(get_session)
+from customer_service.create_account.router import (
+    start_onboarding,
+    store_personal_data,
+    store_passport_data,
+    store_identifiers,
+    store_contacts,
+    complete_onboarding,
+)
+from shared import schemas
 
 
 @pytest.mark.asyncio
-async def test_start_endpoint_no_internal_key(async_client: AsyncClient):
-    from shared.internal_auth import verify_internal_key
+@patch("customer_service.create_account.router.service.start_onboarding", new_callable=AsyncMock)
+async def test_router_start_onboarding(mock_svc, uow):
+    """Роутер: начало онбординга."""
+    user_id = uuid4()
+    mock_svc.return_value = user_id
     
-    original_override = app.dependency_overrides.get(verify_internal_key)
-    app.dependency_overrides.pop(verify_internal_key, None)
+    res = await start_onboarding(uow=uow)
     
-    try:
-        response = await async_client.post("/users/start")
-        assert response.status_code == 403 or response.status_code == 422
-    finally:
-        if original_override:
-            app.dependency_overrides[verify_internal_key] = original_override
+    assert res.user_id == user_id
+    assert res.status == "pending"
+    mock_svc.assert_awaited_once_with(uow)
+
+
+@pytest.mark.asyncio
+@patch("customer_service.create_account.router.service.store_personal_data", new_callable=AsyncMock)
+async def test_router_store_personal_data(mock_svc, uow):
+    """Роутер: сохранение персональных данных."""
+    user_id = uuid4()
+    payload = schemas.PersonalDataPayload(
+        first_name="Ivan", last_name="Ivanov", birth_date=date(1990, 1, 1), gender="M"
+    )
+    mock_svc.return_value = schemas.PersonalDataResponse(
+        client_id=user_id, 
+        first_name="IVAN", 
+        last_name="IVANOV", 
+        birth_date=date(1990, 1, 1), 
+        gender="M"
+    )
+    
+    res = await store_personal_data(user_id=user_id, payload=payload, uow=uow)
+    
+    assert res.client_id == user_id
+    mock_svc.assert_awaited_once_with(uow, user_id, payload)
+
+
+@pytest.mark.asyncio
+@patch("customer_service.create_account.router.service.persist_onboarding_data", new_callable=AsyncMock)
+async def test_router_complete_onboarding(mock_svc, uow):
+    """Роутер: завершение онбординга."""
+    user_id = uuid4()
+    
+    res = await complete_onboarding(user_id=user_id, uow=uow)
+    
+    assert res.status == "completed"
+    assert "успешно завершена" in res.message
+    mock_svc.assert_awaited_once_with(uow, user_id)
