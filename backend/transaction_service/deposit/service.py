@@ -18,6 +18,7 @@ _DEPOSIT_ALLOWED_STATUSES = {"open", "frozen"}
 async def deposit(
 	uow: TransactionUnitOfWork,
 	user_id: UUID,
+	account_id: UUID,
 	amount: Decimal,
 	description: str | None,
 	idempotency_key: UUID | None = None,

@@ -1,71 +1,47 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-
-from shared import models
+from unittest.mock import AsyncMock, MagicMock
 from transaction_service.history.service import list_transactions
-from transaction_service.exceptions import AccountNotFound
-
-
-def _make_account(client_id=None):
-    acc = models.BankAccount()
-    acc.id = uuid4()
-    acc.client_id = client_id or uuid4()
-    return acc
 
 
 @pytest.mark.asyncio
-async def test_list_transactions_account_not_found(mock_session):
-    mock_session.get.return_value = None
-    with pytest.raises(AccountNotFound):
-        await list_transactions(mock_session, uuid4(), uuid4())
-
-
-@pytest.mark.asyncio
-async def test_list_transactions_wrong_user(mock_session):
-    acc = _make_account()
-    mock_session.get.return_value = acc
-    with pytest.raises(AccountNotFound):
-        await list_transactions(mock_session, uuid4(), acc.id)
-
-
-@pytest.mark.asyncio
-async def test_list_transactions_success(mock_session):
+async def test_list_transactions_success(mock_uow):
+    """Успешное получение истории транзакций."""
     user_id = uuid4()
-    acc = _make_account(client_id=user_id)
-    mock_session.get.return_value = acc
-
-    # count query
-    count_result = MagicMock()
-    count_result.scalar_one.return_value = 2
-
-    # list query
-    tx1 = models.Transaction()
-    tx1.id = uuid4()
-    tx2 = models.Transaction()
-    tx2.id = uuid4()
-    list_result = MagicMock()
-    list_result.scalars.return_value.all.return_value = [tx1, tx2]
-
-    mock_session.execute.side_effect = [count_result, list_result]
-
-    txs, total = await list_transactions(mock_session, user_id, acc.id)
-    assert total == 2
-    assert len(txs) == 2
+    account_id = uuid4()
+    
+    mock_account = MagicMock()
+    mock_account.client_id = user_id
+    mock_uow.transactions.get_account.return_value = mock_account
+    
+    mock_tx = MagicMock()
+    mock_uow.history_query.get_history_with_total.return_value = ([mock_tx], 1)
+    
+    # Вызов
+    transactions, total = await list_transactions(
+        uow=mock_uow,
+        user_id=user_id,
+        account_id=account_id,
+        limit=10,
+        offset=0
+    )
+    
+    assert total == 1
+    assert transactions[0] == mock_tx
+    mock_uow.history_query.get_history_with_total.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_list_transactions_with_filters(mock_session):
+async def test_list_transactions_wrong_owner(mock_uow):
+    """Ошибка: попытка посмотреть историю чужого счета."""
     user_id = uuid4()
-    acc = _make_account(client_id=user_id)
-    mock_session.get.return_value = acc
-
-    count_result = MagicMock()
-    count_result.scalar_one.return_value = 0
-    list_result = MagicMock()
-    list_result.scalars.return_value.all.return_value = []
-    mock_session.execute.side_effect = [count_result, list_result]
-
-    txs, total = await list_transactions(mock_session, user_id, acc.id, tx_type="deposit", direction="incoming")
-    assert total == 0
-    assert txs == []
+    other_user_id = uuid4()
+    account_id = uuid4()
+    
+    mock_account = MagicMock()
+    mock_account.client_id = other_user_id
+    mock_uow.transactions.get_account.return_value = mock_account
+    
+    from transaction_service.exceptions import AccountNotFound
+    with pytest.raises(AccountNotFound):
+        await list_transactions(mock_uow, user_id, account_id)

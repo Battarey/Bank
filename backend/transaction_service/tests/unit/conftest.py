@@ -1,20 +1,48 @@
 import os
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-os.environ["RABBITMQ_HOST"] = "localhost"
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/test"
-os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-os.environ["SECRET_KEY"] = "test-secret"
-os.environ["INTERNAL_API_KEY"] = "test-internal-key"
-os.environ["CURRENCY_SERVICE_URL"] = "http://localhost:8001"
-os.environ["SECURITY_SERVICE_URL"] = "http://localhost:8002"
+# Устанавливаем переменные окружения
+os.environ.setdefault("CURRENCY_SERVICE_URL", "http://currency:8001")
+os.environ.setdefault("SECURITY_SERVICE_URL", "http://security:8002")
+os.environ.setdefault("INTERNAL_API_KEY", "test-key")
 
+# Вызываем bootstrap ПЕРЕД импортом UoW
+from shared.bootstrap import bootstrap
+from transaction_service.config import TransactionSettings
+bootstrap(TransactionSettings)
+
+from transaction_service.uow import TransactionUnitOfWork
+
+@pytest.fixture(autouse=True)
+def mock_bootstrap():
+    """Мокирует get_container для возврата настроек в тестах."""
+    mock_settings = MagicMock()
+    mock_settings.CURRENCY_SERVICE_URL = "http://currency:8001"
+    mock_settings.SECURITY_SERVICE_URL = "http://security:8002"
+    mock_settings.INTERNAL_API_KEY = "test-key"
+    
+    mock_container = MagicMock()
+    mock_container.settings = mock_settings
+    mock_container.session_factory = MagicMock()
+    
+    with patch("transaction_service.uow.get_container", return_value=mock_container), \
+         patch("transaction_service.currency_client.get_container", return_value=mock_container):
+        yield mock_container
 
 @pytest.fixture
-def mock_session():
-    """Фикстура для имитации асинхронной сессии SQLAlchemy."""
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.add_all = MagicMock()
-    return session
+def mock_uow():
+    """Фикстура-заглушка Unit of Work для Transaction Service."""
+    uow = MagicMock()
+    uow.transactions = AsyncMock()
+    uow.history_query = AsyncMock()
+    uow.session = AsyncMock()
+    
+    # Мок контекстного менеджера
+    uow.__aenter__ = AsyncMock(return_value=uow)
+    uow.__aexit__ = AsyncMock(return_value=None)
+    uow.commit = AsyncMock()
+    uow.rollback = AsyncMock()
+    uow.add_event = MagicMock()
+    
+    return uow

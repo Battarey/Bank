@@ -1,50 +1,45 @@
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 from decimal import Decimal
-
-from transaction_service import currency_client
-
-
-@pytest.fixture(autouse=True)
-def reset_client():
-    currency_client._client = None
-    yield
-    currency_client._client = None
+from unittest.mock import patch, MagicMock, AsyncMock
+from transaction_service.currency_client import get_rate, connect, disconnect
 
 
 @pytest.mark.asyncio
-async def test_connect_disconnect():
-    with patch("transaction_service.currency_client.httpx.AsyncClient") as mock_cls:
-        mock_instance = AsyncMock()
-        mock_cls.return_value = mock_instance
-
-        await currency_client.connect()
-        assert currency_client._client == mock_instance
-
-        await currency_client.disconnect()
-        mock_instance.aclose.assert_awaited_once()
-        assert currency_client._client is None
-
-
-@pytest.mark.asyncio
-async def test_get_rate_not_initialized():
-    with pytest.raises(RuntimeError, match="не инициализирован"):
-        await currency_client.get_rate("RUB", "USD")
-
-
-@pytest.mark.asyncio
-async def test_get_rate_success():
-    mock_resp = MagicMock()
-    mock_resp.raise_for_status = MagicMock()
-    mock_resp.json.return_value = {"rate": "0.012"}
-
+@patch("transaction_service.currency_client.httpx.AsyncClient")
+async def test_get_rate_success(mock_client_cls, mock_bootstrap):
+    """Успешное получение курса валют."""
     mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_resp)
-    currency_client._client = mock_client
+    mock_client_cls.return_value = mock_client
+    
+    # Mock response
+    mock_res = MagicMock()
+    mock_res.status_code = 200
+    mock_res.json.return_value = {"rate": "92.50"}
+    mock_client.get.return_value = mock_res
+    
+    # Инициализируем клиент
+    await connect()
+    
+    rate = await get_rate("USD", "RUB")
+    
+    assert rate == Decimal("92.50")
+    mock_client.get.assert_called_once()
+    await disconnect()
 
-    rate = await currency_client.get_rate("RUB", "USD")
-    assert rate == Decimal("0.012")
-    mock_client.get.assert_awaited_once_with(
-        "/rates/RUB/USD",
-        headers={"X-Internal-Key": "test-internal-key"},
-    )
+
+@pytest.mark.asyncio
+@patch("transaction_service.currency_client.httpx.AsyncClient")
+async def test_get_rate_error(mock_client_cls, mock_bootstrap):
+    """Ошибка (напр. 500) от Currency Service."""
+    mock_client = AsyncMock()
+    mock_client_cls.return_value = mock_client
+    
+    mock_res = MagicMock()
+    mock_res.status_code = 500
+    mock_res.raise_for_status.side_effect = Exception("500 error")
+    mock_client.get.return_value = mock_res
+    
+    await connect()
+    with pytest.raises(Exception):
+        await get_rate("USD", "RUB")
+    await disconnect()

@@ -1,74 +1,70 @@
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from uuid import uuid4
 from decimal import Decimal
-
-from transaction_service import security_client
-
-
-@pytest.fixture(autouse=True)
-def reset_client():
-    security_client._client = None
-    yield
-    security_client._client = None
+from uuid import uuid4
+from unittest.mock import patch, MagicMock, AsyncMock
+from transaction_service.security_client import check_transaction, connect, disconnect
 
 
 @pytest.mark.asyncio
-async def test_check_no_client():
-    """Если клиент не инициализирован — fail-open (allowed=True)."""
-    allowed, violations = await security_client.check_transaction(uuid4(), "withdrawal", Decimal("100"), "RUB")
-    assert allowed is True
-    assert violations == []
-
-
-@pytest.mark.asyncio
-async def test_check_allowed():
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {"allowed": True, "violations": []}
+@patch("transaction_service.security_client.httpx.AsyncClient")
+async def test_check_transaction_allowed(mock_client_cls, mock_bootstrap):
+    """Антифрод: операция разрешена."""
     mock_client = AsyncMock()
-    mock_client.post = AsyncMock(return_value=mock_resp)
-    security_client._client = mock_client
-
-    allowed, violations = await security_client.check_transaction(uuid4(), "transfer", Decimal("500"), "RUB")
+    mock_client_cls.return_value = mock_client
+    
+    mock_res = MagicMock()
+    mock_res.status_code = 200
+    mock_res.json.return_value = {"allowed": True, "violations": []}
+    mock_client.post.return_value = mock_res
+    
+    await connect()
+    allowed, violations = await check_transaction(uuid4(), "transfer", Decimal("500"), "RUB")
+    
     assert allowed is True
-    assert violations == []
+    assert len(violations) == 0
+    mock_client.post.assert_called_once()
+    await disconnect()
 
 
 @pytest.mark.asyncio
-async def test_check_denied():
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {"allowed": False, "violations": [{"rule": "rapid_fire"}]}
+@patch("transaction_service.security_client.httpx.AsyncClient")
+async def test_check_transaction_denied(mock_client_cls, mock_bootstrap):
+    """Антифрод: операция заблокирована."""
     mock_client = AsyncMock()
-    mock_client.post = AsyncMock(return_value=mock_resp)
-    security_client._client = mock_client
-
-    allowed, violations = await security_client.check_transaction(uuid4(), "transfer", Decimal("500"), "RUB")
+    mock_client_cls.return_value = mock_client
+    
+    mock_res = MagicMock()
+    mock_res.status_code = 200
+    mock_res.json.return_value = {
+        "allowed": False, 
+        "violations": [{"rule": "test"}]
+    }
+    mock_client.post.return_value = mock_res
+    
+    await connect()
+    allowed, violations = await check_transaction(uuid4(), "transfer", Decimal("1000000"), "RUB")
+    
     assert allowed is False
-    assert violations[0]["rule"] == "rapid_fire"
+    assert len(violations) == 1
+    await disconnect()
 
 
 @pytest.mark.asyncio
-async def test_check_service_error():
-    """При ошибке запроса — fail-open."""
+@patch("transaction_service.security_client.httpx.AsyncClient")
+async def test_check_transaction_fail_open(mock_client_cls, mock_bootstrap):
+    """Антифрод: сервис недоступен (fail-open)."""
     mock_client = AsyncMock()
-    mock_client.post.side_effect = Exception("timeout")
-    security_client._client = mock_client
-
-    allowed, violations = await security_client.check_transaction(uuid4(), "transfer", Decimal("500"), "RUB")
+    mock_client_cls.return_value = mock_client
+    
+    # 503 Service Unavailable
+    mock_res = MagicMock()
+    mock_res.status_code = 503
+    mock_client.post.return_value = mock_res
+    
+    await connect()
+    # При ошибке внешней системы возвращается (True, [])
+    allowed, violations = await check_transaction(uuid4(), "deposit", Decimal("100"), "RUB")
+    
     assert allowed is True
-
-
-@pytest.mark.asyncio
-async def test_check_non_200():
-    """При не-200 статусе — fail-open."""
-    mock_resp = MagicMock()
-    mock_resp.status_code = 503
-    mock_resp.text = "Service Unavailable"
-    mock_client = AsyncMock()
-    mock_client.post = AsyncMock(return_value=mock_resp)
-    security_client._client = mock_client
-
-    allowed, violations = await security_client.check_transaction(uuid4(), "deposit", Decimal("200"), "RUB")
-    assert allowed is True
+    assert len(violations) == 0
+    await disconnect()

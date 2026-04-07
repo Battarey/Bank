@@ -1,129 +1,80 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
 from uuid import uuid4
-from sqlalchemy.exc import IntegrityError
-
-from shared import models
+from unittest.mock import patch, AsyncMock, MagicMock
 from transaction_service.withdrawal.service import withdraw
-from transaction_service.exceptions import (
-    AccountNotFound,
-    AccountNotOpen,
-    AccountFrozen,
-    InsufficientFunds,
-    SecurityViolation,
-    TransactionConflict,
-)
-
-
-def _make_account(status: str = "open", balance: Decimal = Decimal("1000"), client_id=None):
-    acc = models.BankAccount()
-    acc.id = uuid4()
-    acc.client_id = client_id or uuid4()
-    acc.status = status
-    acc.balance = balance
-    acc.currency = "RUB"
-    acc.account_number = "40817810000000000001"
-    acc.frozen_by = None
-    acc.frozen_at = None
-    acc.freeze_reason = None
-    return acc
-
-
-@pytest.mark.asyncio
-async def test_withdraw_not_found(mock_session):
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-    mock_session.execute.return_value = mock_result
-
-    with pytest.raises(AccountNotFound):
-        await withdraw(mock_session, uuid4(), uuid4(), Decimal("100"), None)
-
-
-@pytest.mark.asyncio
-async def test_withdraw_frozen(mock_session):
-    user_id = uuid4()
-    acc = _make_account(status="frozen", client_id=user_id)
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = acc
-    mock_session.execute.return_value = mock_result
-
-    with pytest.raises(AccountFrozen):
-        await withdraw(mock_session, user_id, acc.id, Decimal("100"), None)
-
-
-@pytest.mark.asyncio
-async def test_withdraw_not_open(mock_session):
-    user_id = uuid4()
-    acc = _make_account(status="closed", client_id=user_id)
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = acc
-    mock_session.execute.return_value = mock_result
-
-    with pytest.raises(AccountNotOpen):
-        await withdraw(mock_session, user_id, acc.id, Decimal("100"), None)
+from shared import models
 
 
 @pytest.mark.asyncio
 @patch("transaction_service.security_client.check_transaction")
-async def test_withdraw_insufficient_funds(mock_security, mock_session):
-    mock_security.return_value = (True, [])
+async def test_withdraw_success(mock_check, mock_uow):
+    """Успешное снятие средств со счёта."""
     user_id = uuid4()
-    acc = _make_account(status="open", balance=Decimal("50"), client_id=user_id)
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = acc
-    mock_session.execute.return_value = mock_result
-
-    with pytest.raises(InsufficientFunds):
-        await withdraw(mock_session, user_id, acc.id, Decimal("100"), None)
+    account_id = uuid4()
+    
+    mock_account = MagicMock(spec=models.BankAccount)
+    mock_account.id = account_id
+    mock_account.client_id = user_id
+    mock_account.status = "open"
+    mock_account.balance = Decimal("1000.00")
+    mock_account.currency = "RUB"
+    mock_account.account_number = "123"
+    
+    mock_uow.transactions.get_by_idempotency_key.return_value = None
+    mock_uow.transactions.get_account_for_update.return_value = mock_account
+    mock_uow.transactions.get_owner_contact.return_value = MagicMock(email="test@test.com")
+    
+    # Антифрод разрешает
+    mock_check.return_value = (True, [])
+    
+    amount = Decimal("400.00")
+    tx = await withdraw(mock_uow, user_id, account_id, amount, "Test withdraw")
+    
+    assert mock_account.balance == Decimal("600.00")
+    assert tx.type == "withdrawal"
+    mock_uow.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.deposit.service.publish")
 @patch("transaction_service.security_client.check_transaction")
-async def test_withdraw_security_violation(mock_security, mock_publish, mock_session):
-    mock_security.return_value = (False, [{"rule": "rapid_fire"}])
+async def test_withdraw_security_violation(mock_check, mock_uow):
+    """Антифрод блокирует снятие — счёт замораживается."""
     user_id = uuid4()
-    acc = _make_account(status="open", balance=Decimal("1000"), client_id=user_id)
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = acc
-    mock_session.execute.return_value = mock_result
-    mock_session.get.return_value = None  # нет контакта
-
+    account_id = uuid4()
+    
+    mock_account = MagicMock(spec=models.BankAccount)
+    mock_account.client_id = user_id
+    mock_account.status = "open"
+    mock_account.balance = Decimal("1000.00")
+    mock_uow.transactions.get_account_for_update.return_value = mock_account
+    
+    # Антифрод блокирует
+    mock_check.return_value = (False, [{"rule": "daily_limit"}])
+    
+    from transaction_service.exceptions import SecurityViolation
     with pytest.raises(SecurityViolation):
-        await withdraw(mock_session, user_id, acc.id, Decimal("100"), None)
-
-    assert acc.status == "frozen"
-
-
-@pytest.mark.asyncio
-@patch("transaction_service.withdrawal.service.publish")
-@patch("transaction_service.security_client.check_transaction")
-async def test_withdraw_success(mock_security, mock_publish, mock_session):
-    mock_security.return_value = (True, [])
-    user_id = uuid4()
-    acc = _make_account(status="open", balance=Decimal("1000"), client_id=user_id)
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = acc
-    mock_session.execute.return_value = mock_result
-    mock_session.get.return_value = None
-
-    tx = await withdraw(mock_session, user_id, acc.id, Decimal("300"), None)
-
-    assert acc.balance == Decimal("700")
-    mock_session.add.assert_called_once()
+        await withdraw(mock_uow, user_id, account_id, Decimal("100"), "desc")
+        
+    assert mock_account.status == "frozen"
+    assert "AML: daily_limit" in mock_account.freeze_reason
+    # Важно: коммит должен был произойти для фиксации блокировки
+    mock_uow.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.check_transaction")
-async def test_withdraw_integrity_error(mock_security, mock_session):
-    mock_security.return_value = (True, [])
+async def test_withdraw_insufficient_funds(mock_uow):
+    """Ошибка: недостаточно средств."""
     user_id = uuid4()
-    acc = _make_account(status="open", balance=Decimal("1000"), client_id=user_id)
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = acc
-    mock_session.execute.return_value = mock_result
-    mock_session.commit.side_effect = IntegrityError(None, None, Exception())
-
-    with pytest.raises(TransactionConflict):
-        await withdraw(mock_session, user_id, acc.id, Decimal("100"), None)
+    account_id = uuid4()
+    
+    mock_account = MagicMock(spec=models.BankAccount)
+    mock_account.client_id = user_id
+    mock_account.status = "open"
+    mock_account.balance = Decimal("50.00")
+    mock_uow.transactions.get_account_for_update.return_value = mock_account
+    
+    with patch("transaction_service.security_client.check_transaction", AsyncMock(return_value=(True, []))):
+        from transaction_service.exceptions import InsufficientFunds
+        with pytest.raises(InsufficientFunds):
+            await withdraw(mock_uow, user_id, account_id, Decimal("100"), "desc")

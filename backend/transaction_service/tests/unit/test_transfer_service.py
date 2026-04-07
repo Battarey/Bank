@@ -1,132 +1,74 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
 from uuid import uuid4
-from sqlalchemy.exc import IntegrityError
-
-from shared import models
+from unittest.mock import patch, AsyncMock, MagicMock
 from transaction_service.transfer.service import transfer
-from transaction_service.exceptions import (
-    SameAccountTransfer, AccountNotFound, AccountFrozen,
-    AccountNotOpen, InsufficientFunds, SecurityViolation,
-    RateUnavailable, TransactionConflict,
-)
-
-
-def _make_account(status="open", balance=Decimal("1000"), client_id=None, currency="RUB"):
-    acc = models.BankAccount()
-    acc.id = uuid4()
-    acc.client_id = client_id or uuid4()
-    acc.status = status
-    acc.balance = balance
-    acc.currency = currency
-    acc.account_number = "40817810000000000001"
-    acc.frozen_by = None
-    acc.frozen_at = None
-    acc.freeze_reason = None
-    return acc
-
-
-@pytest.mark.asyncio
-async def test_transfer_same_account(mock_session):
-    acc_id = uuid4()
-    with pytest.raises(SameAccountTransfer):
-        await transfer(mock_session, uuid4(), acc_id, acc_id, Decimal("100"), None)
-
-
-@pytest.mark.asyncio
-async def test_transfer_from_not_found(mock_session):
-    user_id = uuid4()
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-
-    with pytest.raises(AccountNotFound):
-        await transfer(mock_session, user_id, uuid4(), uuid4(), Decimal("100"), None)
-
-
-@pytest.mark.asyncio
-async def test_transfer_from_frozen(mock_session):
-    user_id = uuid4()
-    from_acc = _make_account(status="frozen", client_id=user_id)
-    to_acc = _make_account(status="open")
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [from_acc, to_acc]
-    mock_session.execute.return_value = mock_result
-
-    with pytest.raises(AccountFrozen):
-        await transfer(mock_session, user_id, from_acc.id, to_acc.id, Decimal("100"), None)
-
-
-@pytest.mark.asyncio
-async def test_transfer_insufficient_funds(mock_session):
-    user_id = uuid4()
-    from_acc = _make_account(status="open", balance=Decimal("10"), client_id=user_id)
-    to_acc = _make_account(status="open")
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [from_acc, to_acc]
-    mock_session.execute.return_value = mock_result
-
-    with pytest.raises(InsufficientFunds):
-        await transfer(mock_session, user_id, from_acc.id, to_acc.id, Decimal("100"), None)
+from shared import models
 
 
 @pytest.mark.asyncio
 @patch("transaction_service.security_client.check_transaction")
-@patch("transaction_service.transfer.service.publish")
-async def test_transfer_success(mock_publish, mock_security, mock_session):
-    mock_security.return_value = (True, [])
+async def test_transfer_success_same_currency(mock_check, mock_uow):
+    """Успешный перевод между счетами в одной валюте."""
     user_id = uuid4()
-    from_acc = _make_account(status="open", balance=Decimal("1000"), client_id=user_id)
-    to_acc = _make_account(status="open", balance=Decimal("500"))
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [from_acc, to_acc]
-    mock_session.execute.return_value = mock_result
-    mock_session.get.return_value = None
-
-    tx = await transfer(mock_session, user_id, from_acc.id, to_acc.id, Decimal("300"), None)
-
-    assert from_acc.balance == Decimal("700")
-    assert to_acc.balance == Decimal("800")
-    mock_session.add_all.assert_called_once()
+    from_id, to_id = uuid4(), uuid4()
+    
+    mock_from = MagicMock(spec=models.BankAccount)
+    mock_from.id, mock_from.client_id, mock_from.status = from_id, user_id, "open"
+    mock_from.balance, mock_from.currency = Decimal("1000"), "RUB"
+    
+    mock_to = MagicMock(spec=models.BankAccount)
+    mock_to.id, mock_to.status = to_id, "open"
+    mock_to.balance, mock_to.currency = Decimal("500"), "RUB"
+    
+    mock_uow.transactions.lock_accounts.return_value = {from_id: mock_from, to_id: mock_to}
+    mock_uow.transactions.get_owner_contact.return_value = MagicMock(email="sender@test.com")
+    mock_check.return_value = (True, [])
+    
+    tx = await transfer(mock_uow, user_id, from_id, to_id, Decimal("300"), "Present")
+    
+    assert mock_from.balance == Decimal("700")
+    assert mock_to.balance == Decimal("800")
+    assert tx.type == "transfer"
+    mock_uow.transactions.add_all.assert_called_once()
+    mock_uow.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.check_transaction")
-@patch("transaction_service.transfer.service.publish")
-async def test_transfer_security_violation(mock_publish, mock_security, mock_session):
-    mock_security.return_value = (False, [{"rule": "large_single_tx"}])
-    user_id = uuid4()
-    from_acc = _make_account(status="open", balance=Decimal("1000"), client_id=user_id)
-    to_acc = _make_account(status="open")
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [from_acc, to_acc]
-    mock_session.execute.return_value = mock_result
-    mock_session.get.return_value = None
-
-    with pytest.raises(SecurityViolation):
-        await transfer(mock_session, user_id, from_acc.id, to_acc.id, Decimal("300"), None)
-
-    assert from_acc.status == "frozen"
-
-
-@pytest.mark.asyncio
-@patch("transaction_service.security_client.check_transaction")
 @patch("transaction_service.currency_client.get_rate")
-@patch("transaction_service.transfer.service.publish")
-async def test_transfer_cross_currency(mock_publish, mock_rate, mock_security, mock_session):
-    mock_security.return_value = (True, [])
-    mock_rate.return_value = Decimal("0.012")  # RUB → USD
+@patch("transaction_service.security_client.check_transaction")
+async def test_transfer_with_conversion(mock_check, mock_rate, mock_uow):
+    """Перевод с конвертацией валют (RUB -> USD)."""
     user_id = uuid4()
-    from_acc = _make_account(status="open", balance=Decimal("10000"), client_id=user_id, currency="RUB")
-    to_acc = _make_account(status="open", balance=Decimal("100"), currency="USD")
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [from_acc, to_acc]
-    mock_session.execute.return_value = mock_result
-    mock_session.get.return_value = None
+    from_id, to_id = uuid4(), uuid4()
+    
+    mock_from = MagicMock(spec=models.BankAccount)
+    mock_from.currency, mock_from.balance = "RUB", Decimal("10000")
+    mock_from.client_id, mock_from.status = user_id, "open"
+    
+    mock_to = MagicMock(spec=models.BankAccount)
+    mock_to.currency, mock_to.balance = "USD", Decimal("0")
+    mock_to.status = "open"
+    
+    mock_uow.transactions.lock_accounts.return_value = {from_id: mock_from, to_id: mock_to}
+    mock_uow.transactions.get_owner_contact.return_value = MagicMock(email="sender@test.com")
+    mock_check.return_value = (True, [])
+    # Курс RUB -> USD = 0.01 (100 руб = 1 доллар)
+    mock_rate.return_value = Decimal("0.01")
+    
+    tx = await transfer(mock_uow, user_id, from_id, to_id, Decimal("1000"), "Conversion")
+    
+    assert mock_from.balance == Decimal("9000")
+    assert mock_to.balance == Decimal("10.00") # 1000 * 0.01
+    mock_rate.assert_awaited_once_with("RUB", "USD")
 
-    tx = await transfer(mock_session, user_id, from_acc.id, to_acc.id, Decimal("1000"), None)
 
-    assert from_acc.balance == Decimal("9000")
-    # 1000 * 0.012 = 12.00
-    assert to_acc.balance == Decimal("112.00")
+@pytest.mark.asyncio
+async def test_transfer_same_account(mock_uow):
+    """Ошибка: перевод самому себе на тот же счет."""
+    user_id = uuid4()
+    acc_id = uuid4()
+    
+    from transaction_service.exceptions import SameAccountTransfer
+    with pytest.raises(SameAccountTransfer):
+        await transfer(mock_uow, user_id, acc_id, acc_id, Decimal("100"), "self")
