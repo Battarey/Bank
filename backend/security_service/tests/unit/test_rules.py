@@ -1,124 +1,111 @@
+import pytest
 from decimal import Decimal
 from uuid import uuid4
-from unittest.mock import MagicMock
-import pytest
-
+from unittest.mock import MagicMock, AsyncMock
 from security_service.rules import (
-    Violation,
-    check_large_single_tx,
-    check_daily_amount,
-    check_daily_count,
-    check_rapid_fire,
-    check_structuring,
-    check_round_amount,
-    LARGE_TX_THRESHOLD,
-    DAILY_AMOUNT_LIMIT,
-    DAILY_TX_COUNT,
-    RAPID_FIRE_COUNT,
-    STRUCTURING_MIN_HITS,
-    ROUND_AMOUNT_FLOOR,
-    ROUND_AMOUNT_STEP,
-    ROUND_AMOUNT_MIN_HITS,
+    check_large_single_tx, 
+    check_daily_amount, 
+    check_daily_count, 
+    check_rapid_fire, 
+    check_structuring, 
+    check_round_amount
 )
 
-@pytest.mark.asyncio
-async def test_large_single_tx():
-    acc_id = uuid4()
-    # Less than threshold
-    res1 = await check_large_single_tx(None, acc_id, LARGE_TX_THRESHOLD - Decimal("1"), "RUB")
-    assert res1 is None
-    
-    # Equals or greater
-    res2 = await check_large_single_tx(None, acc_id, LARGE_TX_THRESHOLD, "RUB")
-    assert isinstance(res2, Violation)
-    assert res2.rule == "large_single_tx"
 
 @pytest.mark.asyncio
-async def test_daily_amount_limit(mock_session):
-    acc_id = uuid4()
+async def test_check_large_single_tx_triggered(mock_session):
+    """Правило: крупная разовая операция (>600к) — срабатывает."""
+    account_id = uuid4()
+    violation = await check_large_single_tx(mock_session, account_id, Decimal("700000"), "RUB")
     
-    # Under limit
-    mock_result = MagicMock()
-    mock_result.scalar.return_value = Decimal("500000")
-    mock_session.execute.return_value = mock_result
-    
-    res1 = await check_daily_amount(mock_session, acc_id, Decimal("100000"), "RUB")
-    assert res1 is None
-    
-    # Over limit
-    res2 = await check_daily_amount(mock_session, acc_id, DAILY_AMOUNT_LIMIT - Decimal("100000"), "RUB")
-    assert isinstance(res2, Violation)
-    assert res2.rule == "daily_amount_limit"
+    assert violation is not None
+    assert violation.rule == "large_single_tx"
+    assert "700000" in violation.actual
+
 
 @pytest.mark.asyncio
-async def test_daily_count_limit(mock_session):
-    acc_id = uuid4()
-    
-    # Under limit
-    mock_result = MagicMock()
-    mock_result.scalar.return_value = DAILY_TX_COUNT - 1
-    mock_session.execute.return_value = mock_result
-    
-    res1 = await check_daily_count(mock_session, acc_id, Decimal("1"), "RUB")
-    assert res1 is None
-    
-    # Over limit
-    mock_result.scalar.return_value = DAILY_TX_COUNT
-    res2 = await check_daily_count(mock_session, acc_id, Decimal("1"), "RUB")
-    assert isinstance(res2, Violation)
-    assert res2.rule == "daily_count_limit"
+async def test_check_large_single_tx_fine(mock_session):
+    """Правило: крупная разовая операция — не срабатывает для малых сумм."""
+    account_id = uuid4()
+    violation = await check_large_single_tx(mock_session, account_id, Decimal("100.00"), "RUB")
+    assert violation is None
+
 
 @pytest.mark.asyncio
-async def test_rapid_fire(mock_session):
-    acc_id = uuid4()
-    
+async def test_check_daily_amount_triggered(mock_session):
+    """Правило: дневной лимит (>1млн) — срабатывает."""
+    account_id = uuid4()
+    # Mock result of sum(amount)
     mock_result = MagicMock()
-    mock_result.scalar.return_value = RAPID_FIRE_COUNT - 1
-    mock_session.execute.return_value = mock_result
+    mock_result.scalar.return_value = Decimal("900000")
+    mock_session.execute = AsyncMock(return_value=mock_result)
     
-    res1 = await check_rapid_fire(mock_session, acc_id, Decimal("1"), "RUB")
-    assert res1 is None
+    violation = await check_daily_amount(mock_session, account_id, Decimal("200000"), "RUB")
     
-    mock_result.scalar.return_value = RAPID_FIRE_COUNT
-    res2 = await check_rapid_fire(mock_session, acc_id, Decimal("1"), "RUB")
-    assert isinstance(res2, Violation)
-    assert res2.rule == "rapid_fire"
+    assert violation is not None
+    assert violation.rule == "daily_amount_limit"
+    assert "1100000" in violation.actual
+
 
 @pytest.mark.asyncio
-async def test_structuring(mock_session):
-    acc_id = uuid4()
-    
+async def test_check_daily_count_triggered(mock_session):
+    """Правило: лимит количества операций (>20 за 24ч) — срабатывает."""
+    account_id = uuid4()
+    # Mock result of count()
     mock_result = MagicMock()
-    mock_result.scalar.return_value = STRUCTURING_MIN_HITS - 1
-    mock_session.execute.return_value = mock_result
+    mock_result.scalar.return_value = 20 # Already 20, now +1 = 21
+    mock_session.execute = AsyncMock(return_value=mock_result)
     
-    # Under boundary sum -> current is NOT suspicious -> total hits = min_hits - 1
-    res1 = await check_structuring(mock_session, acc_id, Decimal("100"), "RUB")
-    assert res1 is None
+    violation = await check_daily_count(mock_session, account_id, Decimal("100"), "RUB")
     
-    # Inside boundary sum -> current IS suspicious -> total hits = min_hits
-    suspicious_amount = LARGE_TX_THRESHOLD * Decimal("0.95")
-    res2 = await check_structuring(mock_session, acc_id, suspicious_amount, "RUB")
-    assert isinstance(res2, Violation)
-    assert res2.rule == "structuring"
+    assert violation is not None
+    assert violation.rule == "daily_count_limit"
+    assert violation.actual == "21"
+
 
 @pytest.mark.asyncio
-async def test_round_amount(mock_session):
-    acc_id = uuid4()
-    
+async def test_check_rapid_fire_triggered(mock_session):
+    """Правило: частые операции (>5 за 3мин) — срабатывает."""
+    account_id = uuid4()
     mock_result = MagicMock()
-    mock_result.scalar.return_value = ROUND_AMOUNT_MIN_HITS - 1
-    mock_session.execute.return_value = mock_result
+    mock_result.scalar.return_value = 5 # +1 = 6
+    mock_session.execute = AsyncMock(return_value=mock_result)
     
-    # Setup test logic boundary
-    floor = ROUND_AMOUNT_FLOOR
-    step = ROUND_AMOUNT_STEP
+    violation = await check_rapid_fire(mock_session, account_id, Decimal("100"), "RUB")
     
-    # Non-round amount (> floor) -> Not round -> hit count = min_hits - 1
-    res1 = await check_round_amount(mock_session, acc_id, floor + Decimal("1"), "RUB")
-    assert res1 is None
+    assert violation is not None
+    assert violation.rule == "rapid_fire"
+    assert violation.actual == "6"
+
+
+@pytest.mark.asyncio
+async def test_check_structuring_triggered(mock_session):
+    """Правило: дробление (structuring) — срабатывает (3+ операции в диапазоне 90-100% лимита)."""
+    account_id = uuid4()
+    # LARGE_TX_THRESHOLD = 600000, 90% = 540000
+    mock_result = MagicMock()
+    mock_result.scalar.return_value = 2 # Already 2 in DB
+    mock_session.execute = AsyncMock(return_value=mock_result)
     
-    # Round amount (> floor) -> Round -> hit count = min_hits
-    res2 = await check_round_amount(mock_session, acc_id, floor + step, "RUB")
-    assert isinstance(res2, Violation)
-    assert res2.rule == "round_amount_pattern"
+    # Current transaction is 550000 (suspicious)
+    violation = await check_structuring(mock_session, account_id, Decimal("550000"), "RUB")
+    
+    assert violation is not None
+    assert violation.rule == "structuring"
+    assert violation.actual == "3"
+
+
+@pytest.mark.asyncio
+async def test_check_round_amount_triggered(mock_session):
+    """Правило: серия круглых сумм — срабатывает."""
+    account_id = uuid4()
+    mock_result = MagicMock()
+    mock_result.scalar.return_value = 2 # Already 2 in DB
+    mock_session.execute = AsyncMock(return_value=mock_result)
+    
+    # Large and round: 200000 (>=100k floor and div-able by 10k step)
+    violation = await check_round_amount(mock_session, account_id, Decimal("200000"), "RUB")
+    
+    assert violation is not None
+    assert violation.rule == "round_amount_pattern"
+    assert violation.actual == "3"

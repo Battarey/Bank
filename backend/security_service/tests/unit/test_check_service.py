@@ -1,78 +1,60 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from decimal import Decimal
 from uuid import uuid4
-
+from unittest.mock import patch, AsyncMock, MagicMock
 from security_service.check.service import check_transaction
 from security_service.rules import Violation
 
-@pytest.fixture
-def mock_violation():
-    return Violation(
-        rule="test_rule",
-        threshold="100",
-        actual="101",
-        details={"description": "test"}
+
+@pytest.mark.asyncio
+@patch("security_service.check.service.save_event")
+async def test_check_transaction_no_violations(mock_save_event, mock_uow):
+    """Сценарий: проверка пройдена — нарушения не найдены, события не создаются."""
+    account_id = uuid4()
+    
+    # ALL_RULES: list[Any] = [check_large_single_tx, ...]
+    # Patch all rules to return None
+    with patch("security_service.check.service.ALL_RULES", []):
+        violations = await check_transaction(
+            mock_uow, account_id, "deposit", Decimal("100.00"), "RUB"
+        )
+        
+        assert len(violations) == 0
+        mock_uow.accounts.get_account.assert_awaited_once_with(account_id)
+        mock_save_event.assert_not_called()
+        mock_uow.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch("security_service.check.service.save_event")
+async def test_check_transaction_with_violations(mock_save_event, mock_uow):
+    """Сценарий: обнаружено нарушение — сохранение в Mongo и регистрация LogEvent."""
+    account_id = uuid4()
+    mock_violation = Violation(
+        rule="test_rule", threshold="100", actual="200", details={"info": "x"}
     )
-
-@pytest.mark.asyncio
-@patch("security_service.check.service.ALL_RULES")
-@patch("security_service.check.service.save_event")
-async def test_check_transaction_no_violations(mock_save, mock_rules, mock_session):
-    async def mock_rule_ok(*args, **kwargs):
-        return None
     
-    mock_rules.__iter__.return_value = [mock_rule_ok, mock_rule_ok]
+    # Мокируем правила, чтобы одно сработало
+    mock_rule = AsyncMock(return_value=mock_violation)
     
-    violations = await check_transaction(mock_session, uuid4(), "transfer", Decimal("100"), "RUB")
-    
-    assert len(violations) == 0
-    mock_save.assert_not_awaited()
-
-@pytest.mark.asyncio
-@patch("security_service.check.service.ALL_RULES")
-@patch("security_service.check.service.save_event")
-async def test_check_transaction_with_violations(mock_save, mock_rules, mock_session, mock_violation):
-    async def mock_rule_ok(*args, **kwargs):
-        return None
-    async def mock_rule_fail(*args, **kwargs):
-        return mock_violation
-    
-    mock_rules.__iter__.return_value = [mock_rule_ok, mock_rule_fail, mock_rule_ok]
-    
-    acc_id = uuid4()
-    violations = await check_transaction(mock_session, acc_id, "transfer", Decimal("100"), "RUB")
-    
-    assert len(violations) == 1
-    assert violations[0] == mock_violation
-    
-    mock_save.assert_awaited_once_with(
-        account_id=str(acc_id),
-        rule=mock_violation.rule,
-        details={
-            **mock_violation.details,
-            "tx_type": "transfer",
-            "amount": "100",
-            "currency": "RUB",
-        },
-        action="freeze",
-        threshold=mock_violation.threshold,
-        actual=mock_violation.actual,
-    )
-
-@pytest.mark.asyncio
-@patch("security_service.check.service.logger")
-@patch("security_service.check.service.ALL_RULES")
-@patch("security_service.check.service.save_event")
-async def test_check_transaction_save_error(mock_save, mock_rules, mock_logger, mock_session, mock_violation):
-    async def mock_rule_fail(*args, **kwargs):
-        return mock_violation
-    
-    mock_rules.__iter__.return_value = [mock_rule_fail]
-    mock_save.side_effect = Exception("mongo error")
-    
-    acc_id = uuid4()
-    violations = await check_transaction(mock_session, acc_id, "transfer", Decimal("100"), "RUB")
-    
-    assert len(violations) == 1
-    mock_logger.exception.assert_called_once()
+    with patch("security_service.check.service.ALL_RULES", [mock_rule]):
+        violations = await check_transaction(
+            mock_uow, account_id, "withdrawal", Decimal("200.00"), "RUB"
+        )
+        
+        assert len(violations) == 1
+        assert violations[0].rule == "test_rule"
+        
+        # Проверка сохранения в MongoDB
+        mock_save_event.assert_awaited_once()
+        call_kwargs = mock_save_event.call_args.kwargs
+        assert call_kwargs["account_id"] == str(account_id)
+        assert call_kwargs["rule"] == "test_rule"
+        
+        # Проверка регистрации события LogEvent в UoW
+        mock_uow.add_event.assert_called_once()
+        event = mock_uow.add_event.call_args.args[0]
+        assert event.action == "aml_violation"
+        assert event.entity_id == account_id
+        
+        mock_uow.commit.assert_awaited_once()

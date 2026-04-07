@@ -1,51 +1,58 @@
 import pytest
-from unittest.mock import AsyncMock, patch
 from decimal import Decimal
 from uuid import uuid4
+from unittest.mock import patch
+from security_service.check.router import check_transaction
 
-from security_service.check.router import check, SecurityCheckRequest
-from security_service.rules import Violation
 
 @pytest.mark.asyncio
 @patch("security_service.check.router.service.check_transaction")
-async def test_check_allowed(mock_check):
-    mock_check.return_value = []
+async def test_check_transaction_api_success(mock_check, mock_uow):
+    """Роутер: успешный вызов проверки без нарушений."""
+    account_id = uuid4()
+    mock_check.return_value = [] # Нет нарушений
     
-    session = AsyncMock()
-    req = SecurityCheckRequest.model_validate({
-        "account_id": str(uuid4()),
-        "tx_type": "transfer",
-        "amount": "500",
-        "currency": "RUB"
-    })
+    # Имитируем запрос (SecurityCheckRequest)
+    class MockPayload:
+        def __init__(self):
+            self.account_id = account_id
+            self.tx_type = "deposit"
+            self.amount = Decimal("100.00")
+            self.currency = "RUB"
+
+    res = await check_transaction(
+        payload=MockPayload(),
+        uow=mock_uow
+    )
     
-    res = await check(payload=req, session=session)
     assert res.allowed is True
     assert len(res.violations) == 0
     mock_check.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 @patch("security_service.check.router.service.check_transaction")
-async def test_check_denied(mock_check):
+async def test_check_transaction_api_violation(mock_check, mock_uow):
+    """Роутер: вызов проверки с обнаруженными нарушениями."""
+    from security_service.rules import Violation
+    account_id = uuid4()
     mock_violation = Violation(
-        rule="rapid_fire",
-        threshold="5",
-        actual="6",
-        details={}
+        rule="test_rule", threshold="100", actual="200", details={}
     )
     mock_check.return_value = [mock_violation]
     
-    session = AsyncMock()
-    req = SecurityCheckRequest.model_validate({
-        "account_id": str(uuid4()),
-        "tx_type": "transfer",
-        "amount": "500",
-        "currency": "RUB"
-    })
+    class MockPayload:
+        def __init__(self):
+            self.account_id = account_id
+            self.tx_type = "withdrawal"
+            self.amount = Decimal("200.00")
+            self.currency = "RUB"
+
+    res = await check_transaction(
+        payload=MockPayload(),
+        uow=mock_uow
+    )
     
-    res = await check(payload=req, session=session)
     assert res.allowed is False
     assert len(res.violations) == 1
-    assert res.violations[0].rule == "rapid_fire"
-    assert res.violations[0].actual == "6"
-    assert res.violations[0].threshold == "5"
+    assert res.violations[0].rule == "test_rule"

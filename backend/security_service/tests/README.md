@@ -8,9 +8,14 @@
 
 ## Запуск тестов
 
-### Запуск всех тестов сервиса
+### Локальный запуск
 ```powershell
 pytest backend/security_service/tests
+```
+
+### Запуск через Docker
+```powershell
+docker compose run --rm -e APP_ENV=test security_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest security_service/tests/unit -v"
 ```
 
 ### Тестирование логики AML-правил
