@@ -34,61 +34,71 @@
         }
         /* Базовые стили контента */
         h1 {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 26px;
+            font-weight: 800;
             margin-top: 0;
             margin-bottom: 24px;
             color: #FFFFFF;
+            letter-spacing: -0.5px;
+            text-align: center;
         }
         p {
             font-size: 16px;
-            line-height: 1.6;
+            line-height: 1.7;
             margin-bottom: 24px;
             color: #A0A09A;
+            font-weight: 400;
+        }
+        .text-center {
+            text-align: center;
         }
         .details {
-            background-color: #1D1D1B;
-            border-radius: 16px;
-            padding: 24px;
+            background-color: #1A1A18;
+            border-radius: 20px;
+            padding: 32px;
             margin-bottom: 24px;
             border: 1px solid #282824;
+            text-align: center;
         }
         .detail-row {
             display: block;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
         .detail-row:last-child {
             margin-bottom: 0;
         }
         .detail-label {
             display: block;
-            font-size: 12px;
+            font-size: 11px;
             color: #666666;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
+            letter-spacing: 1.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
         }
         .detail-value {
             display: block;
-            font-size: 16px;
+            font-size: 17px;
             color: #FFFFFF;
-            font-weight: 500;
+            font-weight: 600;
         }
         .accent {
             color: #00FFA3 !important;
+            font-weight: 700;
         }
         .button {
             display: inline-block;
-            background-color: #00FFA3;
+            background: linear-gradient(135deg, #00FFA3 0%, #00CC82 100%);
             color: #0D0D0B !important;
-            padding: 16px 32px;
-            border-radius: 12px;
+            padding: 18px 36px;
+            border-radius: 14px;
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 800;
             text-decoration: none;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-top: 16px;
+            margin-top: 8px;
+            box-shadow: 0 4px 15px rgba(0, 255, 163, 0.2);
         }
         ul {
             margin: 0 0 24px 0;
@@ -96,12 +106,22 @@
             color: #A0A09A;
         }
         li {
-            margin-bottom: 12px;
+            margin-bottom: 14px;
             line-height: 1.6;
+        }
+        li b {
+            color: #FFFFFF;
         }
         a {
             color: #00FFA3;
-            text-decoration: underline;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .footer-text {
+            color: #444444;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -111,14 +131,15 @@
             }
             .content-card {
                 background-color: #141412 !important;
-                border-color: #282824 !important;
+                border: 1px solid #282824 !important;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
             }
             .details {
-                background-color: #1D1D1B !important;
+                background-color: #1A1A18 !important;
                 border-color: #282824 !important;
             }
             .footer-text {
-                color: #888888 !important;
+                color: #555555 !important;
             }
             p {
                 color: #A0A09A !important;
@@ -127,10 +148,13 @@
         /* Улучшения для мобильных клиентов */
         @media only screen and (max-width: 600px) {
             .content-cell {
-                padding: 24px !important;
+                padding: 32px 20px !important;
             }
             .details {
-                padding: 16px !important;
+                padding: 24px 16px !important;
+            }
+            h1 {
+                font-size: 22px !important;
             }
         }
         /* Фиксы для Outlook/Gmail Dark Mode */
@@ -139,7 +163,7 @@
             color: #FFFFFF !important;
         }
         [data-ogsc] .details {
-            background-color: #1D1D1B !important;
+            background-color: #1A1A18 !important;
         }
         [data-ogsb] .content-card {
             background-color: #141412 !important;
@@ -155,8 +179,8 @@
                         <!-- Logo Section -->
                         <tr>
                             <td align="center" style="padding-bottom: 40px;">
-                                <div style="font-size: 28px; font-weight: 800; letter-spacing: 4px; color: #FFFFFF; text-transform: uppercase;">
-                                    NEXUS
+                                <div style="font-size: 28px; font-weight: 800; letter-spacing: 4px; color: #FFFFFF;">
+                                    Nexus
                                 </div>
                                 <div style="font-size: 10px; color: #00FFA3; letter-spacing: 2px; margin-top: 4px; text-transform: uppercase; font-weight: 500;">
                                     Digital Banking
@@ -172,7 +196,7 @@
                         <!-- Footer -->
                         <tr>
                             <td class="footer-text" align="center" style="padding-top: 40px; color: #666666; font-size: 12px; line-height: 1.5;">
-                                &copy; 2026 NEXUS Digital Bank. Все права защищены.<br>
+                                &copy; 2026 Nexus Digital Bank. Все права защищены.<br>
                                 Это автоматическое уведомление службы безопасности.<br>
                                 Не отвечайте на это письмо.
                             </td>

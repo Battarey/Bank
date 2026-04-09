@@ -42,134 +42,134 @@ class EmailTemplate:
 
 VERIFICATION_CODE = EmailTemplate(
 	name="verification_code",
-	subject_template="Код подтверждения NEXUS",
+	subject_template="Код подтверждения Nexus",
 	body_text_template="Ваш код подтверждения: {code}\nКод действителен 10 минут.",
 	html_template_name="verification_code.html",
 )
 
 EMAIL_VERIFICATION = EmailTemplate(
 	name="email_verification",
-	subject_template="Подтверждение почты NEXUS",
+	subject_template="Подтверждение почты Nexus",
 	body_text_template="Ваш код для подтверждения email: {code}\nКод действителен 10 минут.",
 	html_template_name="verification_code.html",
 )
 
 WELCOME = EmailTemplate(
 	name="welcome",
-	subject_template="Добро пожаловать в NEXUS!",
-	body_text_template="Здравствуйте! Ваш аккаунт в NEXUS успешно создан.",
+	subject_template="Добро пожаловать в Nexus!",
+	body_text_template="Доброго времени суток! Ваш аккаунт в Nexus успешно создан.",
 	html_template_name="welcome.html",
 )
 
 PIN_CHANGED = EmailTemplate(
 	name="pin_changed",
-	subject_template="NEXUS: PIN-код изменён",
+	subject_template="Nexus: PIN-код изменён",
 	body_text_template="Ваш PIN-код был успешно изменён.",
-	html_template_name="security_alert.html",
+	html_template_name="pin_notification.html",
 )
 
 LOGIN_ALERT = EmailTemplate(
 	name="login_alert",
-	subject_template="NEXUS: Вход в аккаунт",
-	body_text_template="Зафиксирован вход в ваш аккаунт NEXUS в {login_time}.",
+	subject_template="Nexus: Вход в аккаунт",
+	body_text_template="Зафиксирован вход в ваш аккаунт Nexus в {login_time}.",
 	html_template_name="security_alert.html",
 )
 
 ACCOUNT_LOCKED = EmailTemplate(
 	name="account_locked",
-	subject_template="NEXUS: Аккаунт заблокирован",
+	subject_template="Nexus: Аккаунт заблокирован",
 	body_text_template="Ваш аккаунт был заблокирован из-за неверного ввода PIN-кода.",
 	html_template_name="security_alert.html",
 )
 
 UNLOCK_CODE = EmailTemplate(
 	name="unlock_code",
-	subject_template="NEXUS: Код разблокировки",
-	body_text_template="Ваш код разблокировки NEXUS: {code}",
+	subject_template="Nexus: Код разблокировки",
+	body_text_template="Ваш код разблокировки Nexus: {code}",
 	html_template_name="verification_code.html",
 )
 
 ACCOUNT_UNLOCKED = EmailTemplate(
 	name="account_unlocked",
-	subject_template="NEXUS: Аккаунт разблокирован",
-	body_text_template="Ваш аккаунт NEXUS успешно разблокирован.",
+	subject_template="Nexus: Аккаунт разблокирован",
+	body_text_template="Ваш аккаунт Nexus успешно разблокирован.",
 	html_template_name="security_alert.html",
 )
 
 ACCOUNT_OPENED = EmailTemplate(
 	name="account_opened",
-	subject_template="NEXUS: Счёт открыт",
-	body_text_template="Ваш {account_type} счёт в NEXUS успешно открыт.",
+	subject_template="Nexus: Счёт открыт",
+	body_text_template="Ваш {account_type} счёт в Nexus успешно открыт.",
 	html_template_name="account_status.html",
 )
 
 ACCOUNT_CLOSED = EmailTemplate(
 	name="account_closed",
-	subject_template="NEXUS: Счёт закрыт",
-	body_text_template="Ваш счёт {account_number} в NEXUS успешно закрыт.",
+	subject_template="Nexus: Счёт закрыт",
+	body_text_template="Ваш счёт {account_number} в Nexus успешно закрыт.",
 	html_template_name="account_status.html",
 )
 
 TRANSACTION_DEPOSIT = EmailTemplate(
 	name="transaction_deposit",
-	subject_template="NEXUS: Пополнение счёта",
+	subject_template="Nexus: Пополнение счёта",
 	body_text_template="Ваш счёт {account_number} пополнен на {amount} {currency}.",
 	html_template_name="transaction.html",
 )
 
 TRANSACTION_WITHDRAWAL = EmailTemplate(
 	name="transaction_withdrawal",
-	subject_template="NEXUS: Списание со счёта",
+	subject_template="Nexus: Списание со счёта",
 	body_text_template="Со счёта {account_number} списано {amount} {currency}.",
 	html_template_name="transaction.html",
 )
 
 TRANSACTION_TRANSFER = EmailTemplate(
 	name="transaction_transfer",
-	subject_template="NEXUS: Перевод выполнен",
+	subject_template="Nexus: Перевод выполнен",
 	body_text_template="Перевод на сумму {amount} {currency} со счёта {from_account} на счёт {to_account} успешно выполнен.",
 	html_template_name="transaction.html",
 )
 
 TRANSACTION_INCOMING = EmailTemplate(
 	name="transaction_incoming",
-	subject_template="NEXUS: Входящий перевод",
+	subject_template="Nexus: Входящий перевод",
 	body_text_template="На ваш счёт {account_number} поступил перевод {amount} {currency} со счёта {from_account}.",
 	html_template_name="transaction.html",
 )
 
 ACCOUNT_FROZEN = EmailTemplate(
 	name="account_frozen",
-	subject_template="NEXUS: Счёт заморожен",
+	subject_template="Nexus: Счёт заморожен",
 	body_text_template="Ваш счёт {account_number} был заморожен по причине: {reason}.",
 	html_template_name="account_status.html",
 )
 
 ACCOUNT_UNFROZEN = EmailTemplate(
 	name="account_unfrozen",
-	subject_template="NEXUS: Счёт разморожен",
+	subject_template="Nexus: Счёт разморожен",
 	body_text_template="Ваш счёт {account_number} успешно разморожен.",
 	html_template_name="account_status.html",
 )
 
 ACCOUNT_SELF_BLOCKED = EmailTemplate(
 	name="account_self_blocked",
-	subject_template="NEXUS: Аккаунт заблокирован по запросу",
+	subject_template="Nexus: Аккаунт заблокирован по запросу",
 	body_text_template="Ваш аккаунт был заблокирован по вашему запросу.",
 	html_template_name="security_alert.html",
 )
 
 SECURITY_FREEZE = EmailTemplate(
 	name="security_freeze",
-	subject_template="NEXUS: Заморозка безопасности",
+	subject_template="Nexus: Заморозка безопасности",
 	body_text_template="Счёт {account_number} заморожен системой безопасности: {rule}.",
 	html_template_name="security_alert.html",
 )
 
 ACCOUNT_DELETED = EmailTemplate(
 	name="account_deleted",
-	subject_template="NEXUS: Аккаунт удалён",
-	body_text_template="Ваш аккаунт в NEXUS был удалён по вашему запросу.",
+	subject_template="Nexus: Аккаунт удалён",
+	body_text_template="Ваш аккаунт в Nexus был удалён по вашему запросу.",
 	html_template_name="security_alert.html",
 )
 

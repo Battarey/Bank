@@ -1,44 +1,38 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Изменение статуса счета</h1>
-<p>Уважаемый клиент,</p>
-<p>Статус вашего счета в системе <strong>NEXUS</strong> был изменен.</p>
+<h1>Статус счета обновлен</h1>
+<p class="text-center">Доброго времени суток!</p>
+<p class="text-center">В системе <strong class="accent">Nexus</strong> зарегистрировано изменение статуса вашего счета.</p>
 
 <div class="details">
     <div class="detail-row">
-        <span class="detail-label">Номер счета:</span>
-        <span class="detail-value">{{ account_number }}</span>
+        <span class="detail-label">Номер счета</span>
+        <span class="detail-value accent">{{ account_number }}</span>
     </div>
     {% if account_type %}
     <div class="detail-row">
-        <span class="detail-label">Тип счета:</span>
+        <span class="detail-label">Тип счета</span>
         <span class="detail-value">{{ account_type }}</span>
     </div>
     {% endif %}
     <div class="detail-row">
-        <span class="detail-label">Операция:</span>
-        <span class="detail-value">{{ subject|replace("NEXUS: ", "") }}</span>
+        <span class="detail-label">Новый статус</span>
+        <span class="detail-value accent">{{ subject|replace("NEXUS: ", "") }}</span>
     </div>
     {% if currency %}
     <div class="detail-row">
-        <span class="detail-label">Валюта:</span>
+        <span class="detail-label">Валюта</span>
         <span class="detail-value">{{ currency }}</span>
-    </div>
-    {% endif %}
-    {% if frozen_by %}
-    <div class="detail-row">
-        <span class="detail-label">Инициатор:</span>
-        <span class="detail-value">{{ frozen_by }}</span>
     </div>
     {% endif %}
     {% if reason %}
     <div class="detail-row">
-        <span class="detail-label">Причина:</span>
+        <span class="detail-label">Причина</span>
         <span class="detail-value">{{ reason }}</span>
     </div>
     {% endif %}
 </div>
 
-<p>Если у вас возникли вопросы, обратитесь в нашу службу поддержки.</p>
+<p>Если у вас возникли вопросы, пожалуйста, обратитесь в нашу службу поддержки.</p>
 {% endblock %}

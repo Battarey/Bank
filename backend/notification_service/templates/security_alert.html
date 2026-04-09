@@ -2,33 +2,33 @@
 
 {% block content %}
 <h1 style="color: #FF5252;">Оповещение системы безопасности</h1>
-<p>Здравствуйте!</p>
-<p>Мы зафиксировали важное событие, связанное с безопасностью вашего аккаунта <strong>NEXUS</strong>.</p>
+<p class="text-center">Доброго времени суток!</p>
+<p class="text-center">Мы зафиксировали важное событие, связанное с безопасностью вашего аккаунта <strong class="accent">Nexus</strong>.</p>
 
 <div class="details">
     <div class="detail-row">
-        <span class="detail-label">Событие:</span>
-        <span class="detail-value">{{ subject|replace("NEXUS: ", "") }}</span>
+        <span class="detail-label">Событие</span>
+        <span class="detail-value accent">{{ subject|replace("NEXUS: ", "") }}</span>
     </div>
     {% if login_time %}
     <div class="detail-row">
-        <span class="detail-label">Время:</span>
+        <span class="detail-label">Время</span>
         <span class="detail-value">{{ login_time }}</span>
     </div>
     {% endif %}
     {% if rule %}
     <div class="detail-row">
-        <span class="detail-label">Нарушенное правило:</span>
+        <span class="detail-label">Правило системы</span>
         <span class="detail-value">{{ rule }}</span>
     </div>
     {% endif %}
     {% if details %}
     <div class="detail-row">
-        <span class="detail-label">Подробности:</span>
+        <span class="detail-label">Подробности</span>
         <span class="detail-value">{{ details }}</span>
     </div>
     {% endif %}
 </div>
 
-<p>Если это совершили не вы, немедленно <strong>смените пароль (пин-код)</strong> и свяжитесь со службой поддержки.</p>
+<p>Если это совершили не вы, пожалуйста, <strong>немедленно смените пароль</strong> и обратитесь в поддержку.</p>
 {% endblock %}
