@@ -77,3 +77,15 @@ func ForwardAndParse(
 
 	return parsed, resp.StatusCode, nil
 }
+
+// JSONToMap конвертирует []byte в map для модификации.
+func JSONToMap(data []byte) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	err := json.Unmarshal(data, &m)
+	return m, err
+}
+
+// MapToJSON конвертирует map обратно в []byte.
+func MapToJSON(m map[string]interface{}) ([]byte, error) {
+	return json.Marshal(m)
+}

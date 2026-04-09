@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API Gateway банковского приложения. Единая точка входа для клиентских запросов: онбординг, аутентификация, управление данными пользователя, счета, транзакции, валюты и металлы.",
+        "description": "API Gateway банковского приложения. Полный список всех доступных маршрутов с примерами.",
         "title": "Gateway Service API",
         "contact": {},
         "version": "1.0"
@@ -9,1773 +9,409 @@
     "host": "localhost:8000",
     "basePath": "/",
     "paths": {
-        "/accounts": {
-            "get": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
+        "/api/v1/sessions": {
+            "post": {
+                "description": "Аутентификация по номеру телефона и PIN-коду.",
+                "consumes": ["application/json"],
+                "tags": ["sessions"],
+                "summary": "Вход",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.LoginPinRequest" } }
                 ],
-                "description": "Возвращает все счета текущего пользователя.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "accounts"
-                ],
-                "summary": "Список счетов",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
+                "responses": { "201": { "description": "Created" } }
             },
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Создаёт банковский счёт указанного типа и валюты для текущего пользователя.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "accounts"
-                ],
-                "summary": "Открыть новый счёт",
+            "delete": {
+                "security": [{"SessionToken": []}],
+                "tags": ["sessions"],
+                "summary": "Выход (все устройства)",
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/sessions/current": {
+            "delete": {
+                "security": [{"SessionToken": []}],
+                "tags": ["sessions"],
+                "summary": "Выход (текущая сессия)",
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/auth/pins": {
+            "put": {
+                "security": [{"SessionToken": []}],
+                "tags": ["auth"],
+                "summary": "Сменить PIN-код",
                 "parameters": [
-                    {
-                        "description": "Тип и валюта счёта",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.OpenAccountRequest"
-                        }
-                    }
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "pin": { "type": "string", "example": "4321" } } } }
                 ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
+                "responses": { "200": { "description": "OK" } }
             }
         },
-        "/accounts/{account_id}": {
-            "get": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Возвращает данные конкретного счёта.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "accounts"
-                ],
-                "summary": "Детали счёта",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/accounts/{account_id}/close": {
+        "/api/v1/auth/unlock-codes": {
             "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Закрывает банковский счёт. Баланс должен быть 0.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "accounts"
-                ],
-                "summary": "Закрыть счёт",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/accounts/{account_id}/deposit": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Вносит средства на указанный счёт.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "transactions"
-                ],
-                "summary": "Пополнить счёт",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Сумма пополнения",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.AmountPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/accounts/{account_id}/freeze": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Замораживает счёт. Исходящие операции блокируются, входящие — разрешены.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "accounts"
-                ],
-                "summary": "Заморозить счёт",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/accounts/{account_id}/transactions": {
-            "get": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Возвращает историю операций по счёту с пагинацией и фильтрами.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "transactions"
-                ],
-                "summary": "История операций",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Кол-во записей (по умолчанию 20)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Смещение",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Тип операции: deposit | withdrawal | transfer",
-                        "name": "type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Направление: incoming | outgoing",
-                        "name": "direction",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/accounts/{account_id}/transfer": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Переводит средства с указанного счёта на другой (свой или чужой).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "transactions"
-                ],
-                "summary": "Перевести между счетами",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта-отправителя",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные перевода",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.TransferRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/accounts/{account_id}/unfreeze": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Размораживает счёт. Доступно только если заморозка инициирована пользователем.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "accounts"
-                ],
-                "summary": "Разморозить счёт",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/accounts/{account_id}/withdraw": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Списывает средства со счёта текущего пользователя.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "transactions"
-                ],
-                "summary": "Снять со счёта",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "UUID счёта",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Сумма снятия",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.AmountPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/login-pin": {
-            "post": {
-                "description": "Аутентификация по номеру телефона и PIN-коду. Возвращает сессионный токен.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Вход по PIN-коду",
-                "parameters": [
-                    {
-                        "description": "Телефон и PIN",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.LoginPinRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/logout": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Завершает текущий сеанс (удаляет сессионный токен).",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Выход",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/logout-all": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Завершает все активные сеансы пользователя.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Выход со всех устройств",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/request-unlock": {
-            "post": {
-                "description": "Отправляет код разблокировки на email, привязанный к аккаунту.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
+                "tags": ["auth"],
                 "summary": "Запросить код разблокировки",
                 "parameters": [
-                    {
-                        "description": "Данные для запроса",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.RequestUnlockRequest"
-                        }
-                    }
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "email": { "type": "string", "example": "test@example.com" } } } }
                 ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+                "responses": { "200": { "description": "OK" } }
             }
         },
-        "/auth/self-block": {
+        "/api/v1/auth/unlock-codes/verifications": {
             "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
+                "tags": ["auth"],
+                "summary": "Подтвердить разблокировку",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "email": { "type": "string", "example": "test@example.com" }, "code": { "type": "string", "example": "123456" } } } }
                 ],
-                "description": "Блокирует аккаунт по запросу владельца. Замораживает все счета и завершает все сеансы.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Самоблокировка аккаунта",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
+                "responses": { "200": { "description": "OK" } }
             }
         },
-        "/auth/set-pin": {
+        "/api/v1/auth/self-block": {
             "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Устанавливает или обновляет PIN-код текущего пользователя.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Установить / сменить PIN",
-                "parameters": [
-                    {
-                        "description": "PIN-код",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.SetPinRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
+                "security": [{"SessionToken": []}],
+                "tags": ["auth"],
+                "summary": "Самоблокировка",
+                "responses": { "200": { "description": "OK" } }
             }
         },
-        "/auth/unlock": {
+        "/api/v1/onboarding": {
             "post": {
-                "description": "Проверяет код и разблокирует аккаунт.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Разблокировать аккаунт",
-                "parameters": [
-                    {
-                        "description": "Код разблокировки",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.UnlockRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/currency/exchange": {
-            "post": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Конвертирует валюту между банковскими счетами (RUB/USD/EUR).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "currency"
-                ],
-                "summary": "Обменять валюту между счетами",
-                "parameters": [
-                    {
-                        "description": "Данные обмена",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.ExchangeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/currency/rates": {
-            "get": {
-                "description": "Возвращает курсы всех валют относительно базовой.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "currency"
-                ],
-                "summary": "Все курсы валют",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "RUB",
-                        "description": "Базовая валюта (по умолчанию RUB)",
-                        "name": "base",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/currency/rates/{base}/{target}": {
-            "get": {
-                "description": "Возвращает курс конкретной валютной пары.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "currency"
-                ],
-                "summary": "Курс валютной пары",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Базовая валюта (RUB, USD, EUR)",
-                        "name": "base",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Целевая валюта (RUB, USD, EUR)",
-                        "name": "target",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/metals/rates": {
-            "get": {
-                "description": "Возвращает цены на драгоценные металлы (за грамм).",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "metals"
-                ],
-                "summary": "Цены на металлы",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "RUB",
-                        "description": "Базовая валюта (по умолчанию RUB)",
-                        "name": "base",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me": {
-            "delete": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Soft delete: статус → deleted, счета заморожены, все сессии отозваны. Данные сохраняются.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-update"
-                ],
-                "summary": "Удалить аккаунт",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/account/contacts": {
-            "post": {
-                "security": [
-                    {
-                        "OnboardingToken": []
-                    }
-                ],
-                "description": "Сохраняет email и номер телефона клиента.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
-                "summary": "Шаг 4: Контактные данные",
-                "parameters": [
-                    {
-                        "description": "Контактные данные",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.ContactsPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/account/finalize": {
-            "post": {
-                "security": [
-                    {
-                        "OnboardingToken": []
-                    }
-                ],
-                "description": "Переносит данные из черновиков в БД, выдаёт сессионный токен и удаляет onboarding-токен.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
-                "summary": "Завершить регистрацию",
-                "responses": {
-                    "200": {
-                        "description": "status + message + session_token + user_id",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/account/identifiers": {
-            "post": {
-                "security": [
-                    {
-                        "OnboardingToken": []
-                    }
-                ],
-                "description": "Сохраняет идентификаторы налогоплательщика и социального страхования.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
-                "summary": "Шаг 3: ИНН и СНИЛС",
-                "parameters": [
-                    {
-                        "description": "ИНН и СНИЛС",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.IdentifiersPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/account/passport": {
-            "post": {
-                "security": [
-                    {
-                        "OnboardingToken": []
-                    }
-                ],
-                "description": "Сохраняет серию, номер, кем выдан и прочие паспортные сведения.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
-                "summary": "Шаг 2: Паспортные данные",
-                "parameters": [
-                    {
-                        "description": "Паспортные данные",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.PassportPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/account/personal-data": {
-            "post": {
-                "security": [
-                    {
-                        "OnboardingToken": []
-                    }
-                ],
-                "description": "Сохраняет ФИО, дату рождения и пол клиента.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
-                "summary": "Шаг 1: Персональные данные",
-                "parameters": [
-                    {
-                        "description": "Персональные данные",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.PersonalDataPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/account/send-email-code": {
-            "post": {
-                "security": [
-                    {
-                        "OnboardingToken": []
-                    }
-                ],
-                "description": "Отправляет 6-значный код подтверждения на email из шага 4 (contacts).",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
-                "summary": "Отправить код на email",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/account/verify-email": {
-            "post": {
-                "security": [
-                    {
-                        "OnboardingToken": []
-                    }
-                ],
-                "description": "Проверяет 6-значный код. После успешной верификации можно вызывать finalize.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
-                "summary": "Подтвердить email",
-                "parameters": [
-                    {
-                        "description": "Код верификации",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.VerifyEmailRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/contacts": {
-            "patch": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Частичное обновление email и/или телефона.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-update"
-                ],
-                "summary": "Обновить контактные данные",
-                "parameters": [
-                    {
-                        "description": "Контактные данные",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.ContactsUpdate"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/passport": {
-            "put": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Полная замена паспортных данных (все поля обязательны).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-update"
-                ],
-                "summary": "Заменить паспортные данные",
-                "parameters": [
-                    {
-                        "description": "Паспортные данные",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.PassportPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/personal-data": {
-            "patch": {
-                "security": [
-                    {
-                        "SessionToken": []
-                    }
-                ],
-                "description": "Частичное обновление ФИО. Дата рождения и пол неизменяемы.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-update"
-                ],
-                "summary": "Обновить персональные данные",
-                "parameters": [
-                    {
-                        "description": "Данные для обновления",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.PersonalDataUpdate"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/start": {
-            "post": {
-                "description": "Создаёт нового пользователя и возвращает onboarding_token для прохождения шагов регистрации.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "onboarding"
-                ],
+                "tags": ["onboarding"],
                 "summary": "Начать регистрацию",
-                "responses": {
-                    "201": {
-                        "description": "onboarding_token + status",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
+                "responses": { "201": { "description": "Created" } }
+            }
+        },
+        "/api/v1/onboarding/personal-data": {
+            "post": {
+                "security": [{"OnboardingToken": []}],
+                "tags": ["onboarding"],
+                "summary": "Шаг 1: ФИО",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.PersonalDataPayload" } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/onboarding/passport": {
+            "post": {
+                "security": [{"OnboardingToken": []}],
+                "tags": ["onboarding"],
+                "summary": "Шаг 2: Паспорт",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.PassportPayload" } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/onboarding/identifiers": {
+            "post": {
+                "security": [{"OnboardingToken": []}],
+                "tags": ["onboarding"],
+                "summary": "Шаг 3: ИНН/СНИЛС",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.IdentifiersPayload" } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/onboarding/contacts": {
+            "post": {
+                "security": [{"OnboardingToken": []}],
+                "tags": ["onboarding"],
+                "summary": "Шаг 4: Контакты",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.ContactsPayload" } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/onboarding/email/send": {
+            "post": {
+                "security": [{"OnboardingToken": []}],
+                "tags": ["onboarding"],
+                "summary": "Отправить код на Email",
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/onboarding/email/verify": {
+            "post": {
+                "security": [{"OnboardingToken": []}],
+                "tags": ["onboarding"],
+                "summary": "Подтвердить Email кодом",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "code": { "type": "string", "example": "123456" } } } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/onboarding/completion": {
+            "post": {
+                "security": [{"OnboardingToken": []}],
+                "tags": ["onboarding"],
+                "summary": "Завершить регистрацию",
+                "responses": { "200": { "description": "OK", "schema": { "type": "object", "properties": { "status": { "type": "string" }, "message": { "type": "string" }, "session_token": { "type": "string" } } } } }
+            }
+        },
+        "/api/v1/customers/me/personal-data": {
+            "patch": {
+                "security": [{"SessionToken": []}],
+                "tags": ["customers"],
+                "summary": "Обновить ФИО",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "last_name": { "type": "string", "example": "НоваяФамилия" } } } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/customers/me/passport": {
+            "put": {
+                "security": [{"SessionToken": []}],
+                "tags": ["customers"],
+                "summary": "Сменить паспорт",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.PassportPayload" } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/customers/me/contacts": {
+            "patch": {
+                "security": [{"SessionToken": []}],
+                "tags": ["customers"],
+                "summary": "Обновить контакты",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.ContactsPayload" } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/customers/me": {
+            "delete": {
+                "security": [{"SessionToken": []}],
+                "tags": ["customers"],
+                "summary": "Удалить аккаунт",
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/accounts": {
+            "get": {
+                "security": [{"SessionToken": []}],
+                "tags": ["accounts"],
+                "summary": "Список счетов",
+                "responses": { "200": { "description": "OK" } }
+            },
+            "post": {
+                "security": [{"SessionToken": []}],
+                "tags": ["accounts"],
+                "summary": "Открыть счет",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.OpenAccountRequest" } }
+                ],
+                "responses": { "201": { "description": "Created" } }
+            }
+        },
+        "/api/v1/accounts/{account_id}": {
+            "get": {
+                "security": [{"SessionToken": []}],
+                "tags": ["accounts"],
+                "summary": "Детали счета",
+                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
+                "responses": { "200": { "description": "OK" } }
+            },
+            "delete": {
+                "security": [{"SessionToken": []}],
+                "tags": ["accounts"],
+                "summary": "Закрыть счет",
+                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/accounts/{account_id}/suspensions": {
+            "post": {
+                "security": [{"SessionToken": []}],
+                "tags": ["accounts"],
+                "summary": "Заморозить счет",
+                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
+                "responses": { "200": { "description": "OK" } }
+            },
+            "delete": {
+                "security": [{"SessionToken": []}],
+                "tags": ["accounts"],
+                "summary": "Разморозить счет",
+                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/transactions": {
+            "post": {
+                "security": [{"SessionToken": []}],
+                "tags": ["transactions"],
+                "summary": "Новая транзакция",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.TransactionCreateRequest" } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/accounts/{account_id}/deposit": {
+            "post": {
+                "security": [{"SessionToken": []}],
+                "tags": ["transactions"],
+                "summary": "Пополнение счёта",
+                "parameters": [
+                    { "name": "account_id", "in": "path", "required": true, "type": "string" },
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "amount": { "type": "number", "example": 1000.0 }, "description": { "type": "string", "example": "Пополнение через кассу" } } } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/accounts/{account_id}/withdraw": {
+            "post": {
+                "security": [{"SessionToken": []}],
+                "tags": ["transactions"],
+                "summary": "Снятие со счёта",
+                "parameters": [
+                    { "name": "account_id", "in": "path", "required": true, "type": "string" },
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "amount": { "type": "number", "example": 500.0 }, "description": { "type": "string", "example": "Снятие в банкомате" } } } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/transfers": {
+            "post": {
+                "security": [{"SessionToken": []}],
+                "tags": ["transactions"],
+                "summary": "Перевод средств",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "from_account_id": { "type": "string" }, "to_account_id": { "type": "string" }, "amount": { "type": "number", "example": 200.0 }, "description": { "type": "string", "example": "Перевод другу" } } } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/accounts/{account_id}/transactions": {
+            "get": {
+                "security": [{"SessionToken": []}],
+                "tags": ["transactions"],
+                "summary": "История транзакций",
+                "parameters": [
+                    { "name": "account_id", "in": "path", "required": true, "type": "string" },
+                    { "name": "type", "in": "query", "type": "string", "description": "deposit|withdrawal|transfer" }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/currencies/rates": {
+            "get": {
+                "tags": ["currencies"],
+                "summary": "Все курсы валют",
+                "parameters": [{ "name": "base", "in": "query", "type": "string", "default": "RUB" }],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/currencies/rates/{base}/{target}": {
+            "get": {
+                "tags": ["currencies"],
+                "summary": "Курс пары",
+                "parameters": [
+                    { "name": "base", "in": "path", "required": true, "type": "string" },
+                    { "name": "target", "in": "path", "required": true, "type": "string" }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/currency-conversions": {
+            "post": {
+                "security": [{"SessionToken": []}],
+                "tags": ["currencies"],
+                "summary": "Обмен валюты",
+                "parameters": [
+                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "from_account_id": { "type": "string" }, "to_account_id": { "type": "string" }, "amount": { "type": "number" } } } }
+                ],
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/api/v1/metals/rates": {
+            "get": {
+                "tags": ["metals"],
+                "summary": "Цены на металлы",
+                "parameters": [{ "name": "base", "in": "query", "type": "string", "default": "RUB" }],
+                "responses": { "200": { "description": "OK" } }
             }
         }
     },
     "definitions": {
-        "schemas.AmountPayload": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "number",
-                    "example": 1000.5
-                }
-            }
-        },
-        "schemas.ContactsPayload": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "format": "email",
-                    "example": "user@example.com"
-                },
-                "phone": {
-                    "type": "string",
-                    "format": "phone",
-                    "example": "+79991234567"
-                }
-            }
-        },
-        "schemas.ContactsUpdate": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "format": "email",
-                    "example": "new@example.com"
-                },
-                "phone": {
-                    "type": "string",
-                    "format": "phone",
-                    "example": "+79990001122"
-                }
-            }
-        },
-        "schemas.ExchangeRequest": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "number",
-                    "example": 100
-                },
-                "from_account_id": {
-                    "type": "string",
-                    "format": "uuid",
-                    "example": "from-uuid-here"
-                },
-                "to_account_id": {
-                    "type": "string",
-                    "format": "uuid",
-                    "example": "to-uuid-here"
-                }
-            }
-        },
-        "schemas.IdentifiersPayload": {
-            "type": "object",
-            "properties": {
-                "inn": {
-                    "type": "string",
-                    "example": "123456789012"
-                },
-                "snils": {
-                    "type": "string",
-                    "example": "12345678900"
-                }
-            }
-        },
         "schemas.LoginPinRequest": {
             "type": "object",
+            "required": ["phone", "pin"],
             "properties": {
-                "phone": {
-                    "type": "string",
-                    "format": "phone",
-                    "example": "+79991234567"
-                },
-                "pin": {
-                    "type": "string",
-                    "example": "1234"
-                }
+                "phone": { "type": "string", "example": "+79001112233" },
+                "pin": { "type": "string", "example": "1234" }
             }
         },
         "schemas.OpenAccountRequest": {
             "type": "object",
+            "required": ["type", "currency"],
             "properties": {
-                "currency": {
-                    "type": "string",
-                    "enum": [
-                        "RUB",
-                        "USD",
-                        "EUR"
-                    ],
-                    "example": "RUB"
-                },
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "checking",
-                        "savings",
-                        "credit",
-                        "deposit"
-                    ],
-                    "example": "checking"
-                }
-            }
-        },
-        "schemas.PassportPayload": {
-            "type": "object",
-            "properties": {
-                "division_code": {
-                    "type": "string",
-                    "example": "123-456"
-                },
-                "expiration_date": {
-                    "type": "string",
-                    "format": "date",
-                    "example": "2030-01-01"
-                },
-                "issued_at": {
-                    "type": "string",
-                    "format": "date",
-                    "example": "2010-01-01"
-                },
-                "issued_by": {
-                    "type": "string",
-                    "example": "ГУ МВД России"
-                },
-                "number": {
-                    "type": "string",
-                    "example": "567890"
-                },
-                "registration_address": {
-                    "type": "string",
-                    "example": "г. Москва, ул. Пушкина"
-                },
-                "series": {
-                    "type": "string",
-                    "example": "1234"
-                }
+                "type": { "type": "string", "enum": ["current", "savings"], "example": "current" },
+                "currency": { "type": "string", "enum": ["RUB", "USD", "EUR"], "example": "RUB" }
             }
         },
         "schemas.PersonalDataPayload": {
             "type": "object",
+            "required": ["last_name", "first_name", "birth_date", "gender"],
             "properties": {
-                "birth_date": {
-                    "type": "string",
-                    "format": "date",
-                    "example": "1990-01-01"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "Иван"
-                },
-                "gender": {
-                    "type": "string",
-                    "enum": [
-                        "M",
-                        "F"
-                    ],
-                    "example": "M"
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Иванов"
-                },
-                "middle_name": {
-                    "type": "string",
-                    "example": "Иванович"
-                }
+                "last_name": { "type": "string", "example": "Иванов" },
+                "first_name": { "type": "string", "example": "Иван" },
+                "middle_name": { "type": "string", "example": "Иванович" },
+                "birth_date": { "type": "string", "format": "date", "example": "1990-01-01" },
+                "gender": { "type": "string", "enum": ["M", "F"], "example": "M" }
             }
         },
-        "schemas.PersonalDataUpdate": {
+        "schemas.PassportPayload": {
             "type": "object",
+            "required": ["series", "number", "division_code", "issued_by", "issued_at", "expiration_date", "registration_address"],
             "properties": {
-                "first_name": {
-                    "type": "string",
-                    "example": "Петр"
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Петров"
-                },
-                "middle_name": {
-                    "type": "string",
-                    "example": "Петрович"
-                }
+                "series": { "type": "string", "example": "1234" },
+                "number": { "type": "string", "example": "567890" },
+                "division_code": { "type": "string", "example": "111-222" },
+                "issued_by": { "type": "string", "example": "УВД г. Москвы" },
+                "issued_at": { "type": "string", "format": "date", "example": "2010-05-15" },
+                "expiration_date": { "type": "string", "format": "date", "example": "2030-05-15" },
+                "registration_address": { "type": "string", "example": "г. Москва, ул. Ленина, д. 1" }
             }
         },
-        "schemas.RequestUnlockRequest": {
+        "schemas.IdentifiersPayload": {
             "type": "object",
+            "required": ["inn", "snils"],
             "properties": {
-                "email": {
-                    "type": "string",
-                    "format": "email",
-                    "example": "user@example.com"
-                }
+                "inn": { "type": "string", "example": "123456789012" },
+                "snils": { "type": "string", "example": "12345678901" }
             }
         },
-        "schemas.SetPinRequest": {
+        "schemas.ContactsPayload": {
             "type": "object",
+            "required": ["email", "phone"],
             "properties": {
-                "pin": {
-                    "type": "string",
-                    "example": "1234"
-                }
+                "email": { "type": "string", "example": "ivanov@example.com" },
+                "phone": { "type": "string", "example": "+79001112233" }
             }
         },
-        "schemas.TransferRequest": {
+        "schemas.TransactionCreateRequest": {
             "type": "object",
+            "required": ["type", "amount"],
             "properties": {
-                "amount": {
-                    "type": "number",
-                    "example": 500
-                },
-                "description": {
-                    "type": "string",
-                    "example": "Перевод другу"
-                },
-                "to_account_id": {
-                    "type": "string",
-                    "format": "uuid",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "schemas.UnlockRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "123456"
-                },
-                "email": {
-                    "type": "string",
-                    "format": "email",
-                    "example": "user@example.com"
-                }
-            }
-        },
-        "schemas.VerifyEmailRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "123456"
-                }
+                "type": { "type": "string", "enum": ["deposit", "withdrawal", "transfer"], "example": "deposit" },
+                "amount": { "type": "number", "example": 1000.0 },
+                "account_id": { "type": "string", "example": "uuid-ваш-счет" },
+                "from_account_id": { "type": "string", "example": "uuid-отправитель" },
+                "to_account_id": { "type": "string", "example": "uuid-получатель" },
+                "description": { "type": "string", "example": "Пополнение счета" },
+                "idempotency_key": { "type": "string", "example": "unique-id-123" }
             }
         }
     },
     "securityDefinitions": {
-        "OnboardingToken": {
-            "description": "Токен онбординга, полученный из /users/start (TTL 15 минут, скользящая экспирация)",
-            "type": "apiKey",
-            "name": "X-Onboarding-Token",
-            "in": "header"
-        },
-        "SessionToken": {
-            "description": "Сессионный токен, полученный при авторизации",
-            "type": "apiKey",
-            "name": "X-Session-Token",
-            "in": "header"
-        }
-    },
-    "tags": [
-        {
-            "description": "Регистрация нового клиента: создание аккаунта, заполнение данных по шагам и финализация. Шаги требуют заголовок X-Onboarding-Token.",
-            "name": "onboarding"
-        },
-        {
-            "description": "Обновление данных авторизованного пользователя. Требует заголовок X-Session-Token.",
-            "name": "user-update"
-        },
-        {
-            "description": "Аутентификация: вход по PIN-коду, управление сессиями. Защищённые эндпоинты требуют заголовок X-Session-Token.",
-            "name": "auth"
-        },
-        {
-            "description": "Банковские счета: открытие, просмотр, закрытие, заморозка.",
-            "name": "accounts"
-        },
-        {
-            "description": "Операции по счетам: пополнение, снятие, переводы, история.",
-            "name": "transactions"
-        },
-        {
-            "description": "Валютные операции: курсы и обмен между счетами.",
-            "name": "currency"
-        },
-        {
-            "description": "Драгоценные металлы: курсы.",
-            "name": "metals"
-        },
-        {
-            "description": "Проверка работоспособности сервиса.",
-            "name": "health"
-        }
-    ]
+        "OnboardingToken": { "type": "apiKey", "name": "X-Onboarding-Token", "in": "header" },
+        "SessionToken": { "type": "apiKey", "name": "X-Session-Token", "in": "header" }
+    }
 }

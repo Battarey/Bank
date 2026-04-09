@@ -19,9 +19,9 @@ var publicPaths = map[string]bool{
 	"/openapi.json": true,
 	"/redoc":        true,
 	"/favicon.ico":  true,
-	"/api/v1/auth/login-pin":      true,
-	"/api/v1/auth/request-unlock": true,
-	"/api/v1/auth/unlock":         true,
+	"/api/v1/sessions":            true,
+	"/api/v1/auth/unlock-codes":   true,
+	"/api/v1/auth/unlock-codes/verifications": true,
 }
 
 // Префиксы публичных путей.
@@ -32,16 +32,13 @@ var publicPrefixes = []string{
 	"/docs/",
 }
 
-// Подстроки, по которым путь считается публичным (шаги онбординга).
-var publicSegments = []string{
-	"/users/me/account/",
-}
+// Подстроки, по которым путь считается публичным.
+var publicSegments = []string{}
 
-// Пути, доступные авторизованным пользователям без PIN.
 var pinExemptPaths = map[string]bool{
-	"/auth/set-pin":    true,
-	"/auth/logout":     true,
-	"/auth/logout-all": true,
+	"/api/v1/auth/pins":            true,
+	"/api/v1/sessions/current":     true,
+	"/api/v1/sessions":             true,
 }
 
 // IsPublic определяет, является ли запрос публичным.

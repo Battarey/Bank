@@ -30,6 +30,8 @@ func (h *CustomerHandler) RegisterCustomerRoutes(e *echo.Echo) {
 	v1.POST("/onboarding/passport", h.SubmitPassport)             // Шаг 2: Паспорт
 	v1.POST("/onboarding/identifiers", h.SubmitIdentifiers)       // Шаг 3: ИНН/СНИЛС
 	v1.POST("/onboarding/contacts", h.SubmitContacts)             // Шаг 4: Контакты
+	v1.POST("/onboarding/email/send", h.SendEmailCode)             // Верификация 1: Отправка
+	v1.POST("/onboarding/email/verify", h.VerifyEmailCode)         // Верификация 2: Проверка
 	v1.POST("/onboarding/completion", h.CompleteOnboarding)       // Завершение
 
 	// Управление профилем (Требуется сессия X-Session-Token)
@@ -80,7 +82,11 @@ func (h *CustomerHandler) StartOnboarding(c echo.Context) error {
 		return c.JSON(statusCode, respData)
 	}
 
-	userID := respData["client_id"].(string)
+	userID, ok := respData["user_id"].(string)
+	if !ok {
+		// Если по какой-то причине ID нет, логируем и возвращаем ошибку
+		return echo.NewHTTPError(http.StatusInternalServerError, "ID пользователя отсутствует в ответе сервиса.")
+	}
 	token, _ := redisClient.GenerateToken()
 
 	_ = h.Onboarding.SaveOnboardingToken(c.Request().Context(), token, userID, redisClient.DefaultOnboardingTTL)
@@ -135,6 +141,22 @@ func (h *CustomerHandler) SubmitContacts(c echo.Context) error {
 	return h.OnboardingStep(c, "contacts")
 }
 
+// SendEmailCode godoc
+// @Summary     Отправить код на Email
+// @Tags        onboarding
+// @Router      /api/v1/onboarding/email/send [post]
+func (h *CustomerHandler) SendEmailCode(c echo.Context) error {
+	return h.OnboardingStep(c, "email/send")
+}
+
+// VerifyEmailCode godoc
+// @Summary     Подтвердить Email кодом
+// @Tags        onboarding
+// @Router      /api/v1/onboarding/email/verify [post]
+func (h *CustomerHandler) VerifyEmailCode(c echo.Context) error {
+	return h.OnboardingStep(c, "email/verify")
+}
+
 // CompleteOnboarding godoc
 // @Summary     Завершение регистрации
 // @Description Переносит данные из черновиков в основной профиль и активирует аккаунт.
@@ -162,6 +184,13 @@ func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 	if onbToken != "" {
 		_ = h.Onboarding.DeleteOnboardingToken(c.Request().Context(), onbToken)
 	}
+
+	// Генерируем сессию, чтобы пользователь сразу был залогинен
+	sessionToken, _ := redisClient.GenerateToken()
+	_ = h.Sessions.SaveToken(c.Request().Context(), sessionToken, userID, nil, redisClient.DefaultSessionTTL)
+
+	// Добавляем токен в ответ
+	respData["session_token"] = sessionToken
 
 	return c.JSON(http.StatusOK, respData)
 }

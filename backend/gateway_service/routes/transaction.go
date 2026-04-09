@@ -19,22 +19,87 @@ type TransactionHandler struct {
 func (h *TransactionHandler) RegisterTransactionRoutes(e *echo.Echo) {
 	v1 := e.Group("/api/v1")
 
-	// Унифицированный эндпоинт для всех типов операций
+	// Семантические роуты для операций
+	v1.POST("/accounts/:account_id/deposit", h.Deposit)
+	v1.POST("/accounts/:account_id/withdraw", h.Withdraw)
+	v1.POST("/transfers", h.Transfer)
+
+	// Унифицированный эндпоинт (для совместимости)
 	v1.POST("/transactions", h.CreateTransaction)
 
 	// История операций (только чтение)
 	v1.GET("/accounts/:account_id/transactions", h.TransactionHistory)
 }
 
-// CreateTransaction godoc
-// @Summary     Выполнить финансовую операцию
-// @Description Создаёт новую транзакцию (пополнение, снятие или перевод). Тип определяется полем 'type' в JSON-теле.
+// Deposit godoc
+// @Summary     Пополнение счёта
+// @Description Вносит средства на указанный счёт.
 // @Tags        transactions
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.TransactionCreateRequest true "Данные операции"
+// @Param       account_id path string true "UUID счёта"
+// @Param       payload body map[string]interface{} true "Сумма и описание"
 // @Success     200 {object} map[string]interface{}
+// @Router      /api/v1/accounts/{account_id}/deposit [post]
+func (h *TransactionHandler) Deposit(c echo.Context) error {
+	return h.forwardWithPayload(c, "deposit")
+}
+
+// Withdraw godoc
+// @Summary     Снятие наличных/со счёта
+// @Description Списывает средства с указанного счёта.
+// @Tags        transactions
+// @Security    SessionToken
+// @Accept      json
+// @Produce     json
+// @Param       account_id path string true "UUID счёта"
+// @Param       payload body map[string]interface{} true "Сумма и описание"
+// @Success     200 {object} map[string]interface{}
+// @Router      /api/v1/accounts/{account_id}/withdraw [post]
+func (h *TransactionHandler) Withdraw(c echo.Context) error {
+	return h.forwardWithPayload(c, "withdrawal")
+}
+
+// Transfer godoc
+// @Summary     Перевод средств
+// @Description Перевод между двумя счетами (своими или другим клиентам).
+// @Tags        transactions
+// @Security    SessionToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body map[string]interface{} true "Отправитель, получатель, сумма"
+// @Success     200 {object} map[string]interface{}
+// @Router      /api/v1/transfers [post]
+func (h *TransactionHandler) Transfer(c echo.Context) error {
+	body, _ := ReadBody(c)
+	data, _ := JSONToMap(body)
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+	data["type"] = "transfer"
+	body, _ = MapToJSON(data)
+
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/transactions", body, "transaction", h.APIKey)
+}
+
+// Вспомогательный метод для инъекции типа и account_id
+func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) error {
+	accountID := c.Param("account_id")
+	body, _ := ReadBody(c)
+
+	data, _ := JSONToMap(body)
+	data["type"] = txType
+	data["account_id"] = accountID
+	body, _ = MapToJSON(data)
+
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/transactions", body, "transaction", h.APIKey)
+}
+
+// CreateTransaction godoc
+// @Summary     Универсальная финансовая операция
+// @Tags        transactions
+// @Security    SessionToken
 // @Router      /api/v1/transactions [post]
 func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 	body, _ := ReadBody(c)
