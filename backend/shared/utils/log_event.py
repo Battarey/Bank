@@ -10,8 +10,12 @@ async def log_event(routing_key: str, event_type: str, payload: dict[str, Any]) 
 	
 	Используется старыми сервисами, которые ещё не перешли на EDA/UoW.
 	"""
+	body = {
+		"type": event_type,
+		"payload": payload,
+	}
 	await publish(
 		exchange_name=LOGS_EXCHANGE,
 		routing_key=routing_key,
-		body=payload,
+		body=body,
 	)
