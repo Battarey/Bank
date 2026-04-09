@@ -64,8 +64,12 @@ async def send_log(
 		"details": details,
 		**kwargs,
 	}
+	body = {
+		"type": "log_event",
+		"payload": payload,
+	}
 	await publish(
 		exchange_name=LOGS_EXCHANGE,
 		routing_key=routing_key,
-		body=payload,
+		body=body,
 	)
