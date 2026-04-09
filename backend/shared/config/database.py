@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseSettings(BaseSettings):
-	"""Настройки PostgreSQL."""
+	"""Настройки всей инфраструктуры данных: PostgreSQL, Redis."""
 
 	model_config = SettingsConfigDict(
 		env_file=".env",
@@ -24,6 +24,17 @@ class DatabaseSettings(BaseSettings):
 	DB_MAX_OVERFLOW: int = Field(20, alias="DB_MAX_OVERFLOW")
 	DB_POOL_RECYCLE: int = Field(1800, alias="DB_POOL_RECYCLE")
 
+	# Redis (хранение сессий и черновиков онбординга)
+	REDIS_SESSIONS_URL: Optional[str] = Field(
+		None, 
+		validation_alias=AliasChoices("REDIS_SESSIONS_URL", "REDIS_URL", "redis_sessions_url")
+	)
+	REDIS_ONBOARDING_URL: Optional[str] = Field(
+		None, 
+		validation_alias=AliasChoices("REDIS_ONBOARDING_URL", "REDIS_URL", "redis_onboarding_url")
+	)
+	REDIS_SESSION_TTL: int = Field(1800, alias="REDIS_SESSION_TTL")
+
 	@model_validator(mode='after')
 	def use_test_database(self) -> 'DatabaseSettings':
 		"""Автоматически переключает URL на тестовый, если APP_ENV=test."""
@@ -34,21 +45,7 @@ class DatabaseSettings(BaseSettings):
 			else:
 				logger.warning("APP_ENV=test but TEST_DATABASE_URL is not set!")
 		return self
-
-
-class RedisSettings(BaseSettings):
-	"""Настройки Redis для разных целей."""
-
-	model_config = SettingsConfigDict(
-		env_file=".env",
-		env_file_encoding="utf-8",
-		extra="ignore",
-	)
-
-	REDIS_SESSIONS_URL: Optional[str] = Field(None, alias="REDIS_SESSIONS_URL")
-	REDIS_ONBOARDING_URL: Optional[str] = Field(None, alias="REDIS_ONBOARDING_URL")
-	SESSION_TTL: int = Field(1800, alias="REDIS_SESSION_TTL")
-
+	
 
 class HistorySettings(BaseSettings):
 	"""Настройки для Clickhouse (аналитика) или доп. хранилищ истории."""
