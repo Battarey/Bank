@@ -12,7 +12,7 @@ from .bank_account import (
 	AccountResponse,
 	OpenAccountRequest,
 )
-from .contacts import ContactsPayload, ContactsResponse, ContactsUpdate
+from .contacts import ContactsPayload, ContactsResponse, ContactsUpdate, EmailVerifyPayload
 from .customer import FullProfileResponse
 from .currency import (
 	ExchangeRatePairResponse,
@@ -59,6 +59,7 @@ __all__ = [
 	"ContactsUpdate",
 	"DepositRequest",
 	"EmailCodeResponse",
+	"EmailVerifyPayload",
 	"ExchangeRatePairResponse",
 	"ExchangeRatesResponse",
 	"ExchangeRequest",

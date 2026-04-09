@@ -28,4 +28,12 @@ class ContactsUpdate(BaseModel):
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
-__all__ = ["ContactsPayload", "ContactsResponse", "ContactsUpdate"]
+class EmailVerifyPayload(BaseModel):
+	"""Payload для подтверждения email кодом."""
+
+	code: constr(pattern=r"^\d{6}$") = Field(description="6-значный код из письма")
+
+	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+__all__ = ["ContactsPayload", "ContactsResponse", "ContactsUpdate", "EmailVerifyPayload"]
