@@ -31,7 +31,8 @@ async def send_email(to: str, subject: str, body: str, html_body: str | None = N
 		raise RuntimeError("SMTP не сконфигурирован: задайте SMTP_HOST, SMTP_USER, SMTP_PASSWORD.")
 
 	msg = EmailMessage()
-	msg["From"] = settings.smtp_from_addr
+	from email.utils import formataddr
+	msg["From"] = formataddr(("Nexus", settings.smtp_from_addr))
 	msg["To"] = to
 	msg["Subject"] = subject
 	msg.set_content(body)
