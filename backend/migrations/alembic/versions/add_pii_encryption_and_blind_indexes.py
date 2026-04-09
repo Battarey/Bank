@@ -30,14 +30,21 @@ def upgrade() -> None:
     op.drop_constraint(op.f('contacts_phone_key'), 'contacts', type_='unique')
     op.create_index(op.f('ix_contacts_email_hash'), 'contacts', ['email_hash'], unique=True)
     op.create_index(op.f('ix_contacts_phone_hash'), 'contacts', ['phone_hash'], unique=True)
+    # identifiers
+    op.add_column('identifiers', sa.Column('inn_hash', sa.String(length=64), nullable=False))
+    op.add_column('identifiers', sa.Column('snils_hash', sa.String(length=64), nullable=False))
     op.alter_column('identifiers', 'inn',
                existing_type=sa.CHAR(length=12),
-               type_=sa.String(length=12),
+               type_=shared.models.types.EncryptedString(),
                existing_nullable=False)
     op.alter_column('identifiers', 'snils',
                existing_type=sa.CHAR(length=11),
-               type_=sa.String(length=11),
+               type_=shared.models.types.EncryptedString(),
                existing_nullable=False)
+    op.drop_constraint('identifiers_inn_key', 'identifiers', type_='unique')
+    op.drop_constraint('identifiers_snils_key', 'identifiers', type_='unique')
+    op.create_index(op.f('ix_identifiers_inn_hash'), 'identifiers', ['inn_hash'], unique=True)
+    op.create_index(op.f('ix_identifiers_snils_hash'), 'identifiers', ['snils_hash'], unique=True)
     op.add_column('passport', sa.Column('passport_hash', sa.String(length=64), nullable=False))
     op.alter_column('passport', 'series',
                existing_type=sa.CHAR(length=4),
@@ -105,14 +112,21 @@ def downgrade() -> None:
                type_=sa.CHAR(length=4),
                existing_nullable=False)
     op.drop_column('passport', 'passport_hash')
+    # identifiers
+    op.drop_index(op.f('ix_identifiers_snils_hash'), table_name='identifiers')
+    op.drop_index(op.f('ix_identifiers_inn_hash'), table_name='identifiers')
+    op.create_unique_constraint('identifiers_snils_key', 'identifiers', ['snils'])
+    op.create_unique_constraint('identifiers_inn_key', 'identifiers', ['inn'])
     op.alter_column('identifiers', 'snils',
-               existing_type=sa.String(length=11),
+               existing_type=shared.models.types.EncryptedString(),
                type_=sa.CHAR(length=11),
                existing_nullable=False)
     op.alter_column('identifiers', 'inn',
-               existing_type=sa.String(length=12),
+               existing_type=shared.models.types.EncryptedString(),
                type_=sa.CHAR(length=12),
                existing_nullable=False)
+    op.drop_column('identifiers', 'snils_hash')
+    op.drop_column('identifiers', 'inn_hash')
     op.drop_index(op.f('ix_contacts_phone_hash'), table_name='contacts')
     op.drop_index(op.f('ix_contacts_email_hash'), table_name='contacts')
     op.create_unique_constraint(op.f('contacts_phone_key'), 'contacts', ['phone'], postgresql_nulls_not_distinct=False)
