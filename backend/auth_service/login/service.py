@@ -4,7 +4,7 @@ import bcrypt
 from datetime import datetime, UTC
 from uuid import UUID
 
-from shared.events.base import LogEvent
+from shared.events.base import LogEvent, NotificationEvent
 from shared.utils.security import get_blind_index
 from shared.redis_sessions import rate_limit, tokens as session_tokens
 from ..uow import AuthUnitOfWork
@@ -112,20 +112,26 @@ async def set_pin(uow: AuthUnitOfWork, user_id: UUID, pin: str) -> None:
 		AuthNotFound: Если пользователь не найден.
 	"""
 	async with uow:
-		user = await uow.users.get(user_id)
-		if not user:
-			raise AuthNotFound("Пользователь не найден.")
+		# Получаем пользователя вместе с контактными данными (email)
+		user, contact = await uow.users.get_user_with_contact(user_id)
 
 		# Хеширование PIN
 		salt = bcrypt.gensalt()
 		user.pin_hash = bcrypt.hashpw(pin.encode(), salt).decode()
 		user.updated_at = datetime.now(UTC)
 
+		# Событие лога
 		uow.add_event(LogEvent(
 			user_id=user_id,
 			action="set_pin",
 			service="auth_service",
 			status="success",
+		))
+
+		# Событие уведомления
+		uow.add_event(NotificationEvent(
+			type="pin_changed",
+			to=contact.email
 		))
 
 		await uow.commit()
