@@ -8,6 +8,7 @@ from uuid import UUID
 from .client import get_client
 
 DEFAULT_CODE_TTL = timedelta(minutes=10)
+SEND_COOLDOWN = timedelta(minutes=2)
 CODE_LENGTH = 6
 
 
@@ -22,6 +23,10 @@ def _code_key(user_id: UUID) -> str:
 
 def _verified_key(user_id: UUID) -> str:
 	return f"onboarding:{user_id}:email_verified"
+
+
+def _cooldown_key(user_id: UUID) -> str:
+	return f"onboarding:{user_id}:email_send_cooldown"
 
 
 async def save_email_code(
@@ -66,6 +71,21 @@ async def has_email_code(user_id: UUID) -> bool:
 	return await client.exists(_code_key(user_id)) > 0
 
 
+async def get_remaining_cooldown(user_id: UUID) -> int:
+	"""Возвращает оставшееся время кулдауна в секундах. 0 если отправка разрешена."""
+
+	client = get_client()
+	ttl = await client.ttl(_cooldown_key(user_id))
+	return max(0, ttl) if ttl > 0 else 0
+
+
+async def set_send_cooldown(user_id: UUID, ttl: timedelta = SEND_COOLDOWN) -> None:
+	"""Установить блокировку на повторную отправку письма."""
+
+	client = get_client()
+	await client.set(_cooldown_key(user_id), "1", ex=int(ttl.total_seconds()))
+
+
 async def clear_email_verification(user_id: UUID) -> None:
 	"""Удалить все данные верификации email (код + флаг)."""
 
@@ -77,8 +97,10 @@ __all__ = [
 	"CODE_LENGTH",
 	"clear_email_verification",
 	"generate_code",
+	"get_remaining_cooldown",
 	"has_email_code",
 	"is_email_verified",
 	"save_email_code",
+	"set_send_cooldown",
 	"verify_email_code",
 ]

@@ -14,7 +14,8 @@ from shared.redis_onboarding.email_codes import (
 	generate_code, 
 	save_email_code, 
 	verify_email_code,
-	has_email_code
+	get_remaining_cooldown,
+	set_send_cooldown
 )
 from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
@@ -231,9 +232,10 @@ async def send_verification_email(
 	Raises:
 		OnboardingError: Если код уже был отправлен или данные контактов отсутствуют.
 	"""
-	# 1. Проверка на повторную отправку
-	if await has_email_code(user_id):
-		raise OnboardingError("Код подтверждения уже был отправлен. Пожалуйста, проверьте почту.")
+	# 1. Проверка на кулдаун (повторную отправку раз в 2 минуты)
+	cooldown = await get_remaining_cooldown(user_id)
+	if cooldown > 0:
+		raise OnboardingError(f"Повторная отправка кода возможна через {cooldown} сек.")
 
 	# 2. Получение email из черновика
 	draft = await onboarding_drafts.load_draft(user_id, "contacts")
@@ -242,9 +244,10 @@ async def send_verification_email(
 	
 	email = draft["payload"]["email"]
 	
-	# 3. Регистрация кода в Redis
+	# 3. Регистрация кода в Redis и установка кулдауна
 	code = generate_code()
 	await save_email_code(user_id, code)
+	await set_send_cooldown(user_id)
 	
 	# 4. Отправка уведомления через событие
 	async with uow:
