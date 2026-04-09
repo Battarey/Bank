@@ -204,6 +204,7 @@
                 "security": [{"SessionToken": []}],
                 "tags": ["accounts"],
                 "summary": "Открыть счет",
+                "description": "Создаёт новый банковский счёт. Доступные типы: checking (расчётный), savings (накопительный), credit, deposit (вклад).",
                 "parameters": [
                     { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.OpenAccountRequest" } }
                 ],
@@ -352,7 +353,7 @@
             "type": "object",
             "required": ["type", "currency"],
             "properties": {
-                "type": { "type": "string", "enum": ["current", "savings"], "example": "current" },
+                "type": { "type": "string", "enum": ["checking", "savings", "credit", "deposit"], "example": "checking" },
                 "currency": { "type": "string", "enum": ["RUB", "USD", "EUR"], "example": "RUB" }
             }
         },

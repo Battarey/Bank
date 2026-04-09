@@ -215,7 +215,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Создаёт банковский счёт указанного типа и валюты для текущего пользователя.
+      description: "Создаёт новый банковский счёт. Доступные типы: checking (расчётный), savings (накопительный), credit, deposit (вклад)."
       parameters:
       - description: Тип и валюта счёта
         in: body

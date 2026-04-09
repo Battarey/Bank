@@ -84,7 +84,9 @@ type ContactsUpdate struct {
 
 // OpenAccountRequest запрос на открытие счёта
 type OpenAccountRequest struct {
+	// Тип счёта: checking (расчётный), savings (накопительный), credit, deposit (вклад)
 	Type     string `json:"type" example:"checking" enums:"checking,savings,credit,deposit"`
+	// Валюта счёта: RUB, USD, EUR
 	Currency string `json:"currency" example:"RUB" enums:"RUB,USD,EUR"`
 }
 
