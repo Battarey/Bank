@@ -83,6 +83,37 @@ async def store_contacts(
 
 
 @router.post(
+	"/{user_id}/email/send",
+	status_code=status.HTTP_200_OK,
+	summary="Отправить код подтверждения на Email",
+)
+async def send_verification_email(
+	user_id: UUID,
+	uow: CustomerUnitOfWork = Depends(get_uow),
+):
+	"""Генерирует код и отправляет его на указанный в черновике Email."""
+	await service.send_verification_email(uow, user_id)
+	return {"message": "Код подтверждения отправлен на вашу почту."}
+
+
+@router.post(
+	"/{user_id}/email/verify",
+	status_code=status.HTTP_200_OK,
+	summary="Подтвердить Email кодом",
+)
+async def verify_email(
+	user_id: UUID,
+	payload: schemas.EmailVerifyPayload,
+):
+	"""Проверяет код. Если код верный, Email помечается как подтверждённый."""
+	success = await service.verify_email(user_id, payload.code)
+	if not success:
+		from ..exceptions import OnboardingError
+		raise OnboardingError("Неверный код или срок его действия истёк.")
+	return {"message": "Email успешно подтверждён."}
+
+
+@router.post(
 	"/{user_id}/completion",
 	response_model=schemas.FinalizeInternalResponse,
 	summary="Завершить регистрацию и создать профиль",

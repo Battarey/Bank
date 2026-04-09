@@ -8,7 +8,14 @@ from sqlalchemy.exc import IntegrityError
 from shared import models, schemas
 from shared.events.base import LogEvent, NotificationEvent
 from shared.redis_onboarding import drafts as onboarding_drafts
-from shared.redis_onboarding.email_codes import clear_email_verification, is_email_verified
+from shared.redis_onboarding.email_codes import (
+	clear_email_verification, 
+	is_email_verified, 
+	generate_code, 
+	save_email_code, 
+	verify_email_code,
+	has_email_code
+)
 from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
 
@@ -107,19 +114,19 @@ async def store_passport_data(
 		OnboardingConflict: Если паспорт уже используется другим пользователем.
 		OnboardingNotFound: Если пользователь не найден.
 	"""
-	async with uow:
-		await uow.customers.get_active_user(user_id)
-
 	normalized = payload.model_copy(
 		update={
 			"issued_by": payload.issued_by.strip(),
 			"registration_address": payload.registration_address.strip(),
 		},
 	)
-	
-	# Проверка уникальности по хешу
-	p_hash = get_blind_index(f"{normalized.series}{normalized.number}")
-	await uow.customers.check_passport_unique(p_hash, exclude_client_id=user_id)
+
+	async with uow:
+		await uow.customers.get_active_user(user_id)
+
+		# Проверка уникальности по хешу
+		p_hash = get_blind_index(f"{normalized.series}{normalized.number}")
+		await uow.customers.check_passport_unique(p_hash, exclude_client_id=user_id)
 	
 	await onboarding_drafts.save_draft(user_id, "passport", normalized.model_dump(mode="json"))
 	
@@ -147,21 +154,20 @@ async def store_identifiers(
 	Raises:
 		OnboardingConflict: Если ИНН или СНИЛС уже заняты.
 	"""
-	async with uow:
-		await uow.customers.get_active_user(user_id)
-
 	normalized = payload.model_copy(
 		update={
 			"inn": digits_only(payload.inn),
 			"snils": digits_only(payload.snils),
 		},
 	)
-	
-	await uow.customers.check_identifiers_unique(
-		inn_hash=normalized.inn, 
-		snils_hash=normalized.snils, 
-		exclude_client_id=user_id
-	)
+
+	async with uow:
+		await uow.customers.get_active_user(user_id)
+		await uow.customers.check_identifiers_unique(
+			inn_hash=get_blind_index(normalized.inn), 
+			snils_hash=get_blind_index(normalized.snils), 
+			exclude_client_id=user_id
+		)
 	
 	await onboarding_drafts.save_draft(user_id, "identifiers", normalized.model_dump(mode="json"))
 	
@@ -189,21 +195,20 @@ async def store_contacts(
 	Raises:
 		OnboardingConflict: Если Email или телефон уже используются.
 	"""
-	async with uow:
-		await uow.customers.get_active_user(user_id)
-
 	normalized = payload.model_copy(
 		update={
 			"email": normalize_email(payload.email),
 			"phone": normalize_phone(payload.phone),
 		},
 	)
-	
-	await uow.customers.check_contacts_unique(
-		email_hash=get_blind_index(normalized.email),
-		phone_hash=get_blind_index(normalized.phone),
-		exclude_client_id=user_id
-	)
+
+	async with uow:
+		await uow.customers.get_active_user(user_id)
+		await uow.customers.check_contacts_unique(
+			email_hash=get_blind_index(normalized.email),
+			phone_hash=get_blind_index(normalized.phone),
+			exclude_client_id=user_id
+		)
 	
 	await onboarding_drafts.save_draft(user_id, "contacts", normalized.model_dump(mode="json"))
 	
@@ -211,6 +216,65 @@ async def store_contacts(
 		client_id=user_id,
 		**normalized.model_dump(),
 	)
+
+
+async def send_verification_email(
+	uow: CustomerUnitOfWork,
+	user_id: UUID,
+) -> None:
+	"""Генерирует код подтверждения и инициирует отправку уведомления.
+
+	Args:
+		uow: Unit of Work для регистрации событий.
+		user_id: ID пользователя.
+
+	Raises:
+		OnboardingError: Если код уже был отправлен или данные контактов отсутствуют.
+	"""
+	# 1. Проверка на повторную отправку
+	if await has_email_code(user_id):
+		raise OnboardingError("Код подтверждения уже был отправлен. Пожалуйста, проверьте почту.")
+
+	# 2. Получение email из черновика
+	draft = await onboarding_drafts.load_draft(user_id, "contacts")
+	if not draft or not draft.get("payload"):
+		raise OnboardingError("Сначала заполните контактные данные (шаг 4).")
+	
+	email = draft["payload"]["email"]
+	
+	# 3. Регистрация кода в Redis
+	code = generate_code()
+	await save_email_code(user_id, code)
+	
+	# 4. Отправка уведомления через событие
+	async with uow:
+		uow.add_event(NotificationEvent(
+			type="email_verification",
+			to=email,
+			variables={
+				"code": code,
+				"user_id": str(user_id),
+			},
+		))
+		# События отправляются при коммите/завершении блока UOW (в зависимости от реализации)
+		# В данном проекте события обычно обрабатываются после коммита сессии.
+		await uow.commit()
+
+
+async def verify_email(
+	user_id: UUID,
+	code: str,
+) -> bool:
+	"""Проверяет введённый пользователем код.
+
+	Args:
+		user_id: ID пользователя.
+		code: Код из письма.
+
+	Returns:
+		bool: True если подтверждено успешно.
+	"""
+	return await verify_email_code(user_id, code)
 
 
 async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> None:
@@ -269,7 +333,12 @@ async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> Non
 			
 			# Identifiers
 			ids = drafts["identifiers"]
-			await uow.customers.add_profile_part(models.Identifier(client_id=user_id, **ids.model_dump()))
+			await uow.customers.add_profile_part(models.Identifier(
+				client_id=user_id,
+				inn_hash=get_blind_index(ids.inn),
+				snils_hash=get_blind_index(ids.snils),
+				**ids.model_dump()
+			))
 			
 			# Contacts
 			contacts = drafts["contacts"]
@@ -295,7 +364,7 @@ async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> Non
 			))
 			
 			uow.add_event(NotificationEvent(
-				type="registration_success",
+				type="welcome",
 				to=contacts.email,
 				variables={
 					"user_id": str(user_id),

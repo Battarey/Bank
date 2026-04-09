@@ -92,7 +92,7 @@ async def test_persist_onboarding_data_success(uow):
         # Проверка регистрации событий
         assert len(uow.events) == 2
         assert uow.events[0].action == "registration"
-        assert uow.events[1].type == "registration_success"
+        assert uow.events[1].type == "welcome"
 
 
 @pytest.mark.asyncio
