@@ -4,3 +4,4 @@ motor>=3.6
 cryptography>=42.0.0
 pydantic-settings
 email-validator
+jinja2>=3.1.3

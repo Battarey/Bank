@@ -10,13 +10,14 @@ import aiosmtplib
 from shared.bootstrap import get_container
 
 
-async def send_email(to: str, subject: str, body: str) -> None:
+async def send_email(to: str, subject: str, body: str, html_body: str | None = None) -> None:
 	"""Отправить email через SMTP.
 
 	Args:
 		to: Email получателя.
 		subject: Тема письма.
-		body: Текст письма.
+		body: Текстовая версия письма.
+		html_body: HTML версия письма (необязательно).
 
 	Raises:
 		RuntimeError: Если SMTP не сконфигурирован.
@@ -31,6 +32,9 @@ async def send_email(to: str, subject: str, body: str) -> None:
 	msg["To"] = to
 	msg["Subject"] = subject
 	msg.set_content(body)
+
+	if html_body:
+		msg.add_alternative(html_body, subtype="html")
 
 	tls_context = ssl.create_default_context() if settings.SMTP_USE_TLS else None
 

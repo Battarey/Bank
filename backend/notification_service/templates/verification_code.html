@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 style="font-size: 24px; font-weight: 700; margin: 0 0 16px 0; color: #FFFFFF; text-align: center;">Подтверждение входа</h1>
+
+<p style="font-size: 16px; color: #A0A09A; line-height: 1.6; margin: 0 0 32px 0; text-align: center;">
+    Здравствуйте!<br>
+    Используйте этот код для подтверждения вашего действия в системе <b>NEXUS</b>.
+</p>
+
+<table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 32px;">
+    <tr>
+        <td align="center">
+            <div style="background-color: #1D1D1B; color: #00FFA3; font-size: 48px; font-weight: 800; letter-spacing: 12px; padding: 24px; border-radius: 16px; border: 1px solid #282824; display: inline-block; min-width: 280px;">
+                {{ code }}
+            </div>
+        </td>
+    </tr>
+</table>
+
+<p style="font-size: 14px; color: #666666; line-height: 1.6; margin: 0; text-align: center;">
+    Код действителен в течение <b style="color: #FFFFFF;">10 минут</b>.<br>
+    Если вы не запрашивали этот код, просто проигнорируйте это письмо.
+</p>
+{% endblock %}

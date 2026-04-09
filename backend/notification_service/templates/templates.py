@@ -1,13 +1,15 @@
-"""Шаблоны email-уведомлений.
-
-Каждый шаблон — dataclass с subject_template и body_template.
-Переменные подставляются через str.format_map().
-Реестр TEMPLATES связывает строковое имя шаблона с его определением.
-"""
-
-from __future__ import annotations
-
+import os
 from dataclasses import dataclass
+from typing import Any
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+# Настройка Jinja2
+TEMPLATES_DIR = os.path.dirname(os.path.abspath(__file__))
+env = Environment(
+	loader=FileSystemLoader(TEMPLATES_DIR),
+	autoescape=select_autoescape(["html", "xml"]),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,266 +17,167 @@ class EmailTemplate:
 	"""Определение email-шаблона."""
 
 	name: str
-	subject: str
-	body: str
+	subject_template: str
+	body_text_template: str
+	html_template_name: str | None = None
 
-	def render(self, variables: dict[str, str]) -> tuple[str, str]:
-		"""Подставить переменные в subject и body.
+	def render(self, variables: dict[str, Any]) -> tuple[str, str, str | None]:
+		"""Подставить переменные в subject, body и html_body.
 
 		Returns:
-			(rendered_subject, rendered_body)
-
-		Raises:
-			KeyError: если в variables нет обязательной переменной.
+			(rendered_subject, rendered_body, rendered_html)
 		"""
-		return (
-			self.subject.format_map(variables),
-			self.body.format_map(variables),
-		)
+		subject = self.subject_template.format_map(variables)
+		body_text = self.body_text_template.format_map(variables)
+		
+		html_body = None
+		if self.html_template_name:
+			template = env.get_template(self.html_template_name)
+			html_body = template.render(subject=subject, name=self.name, **variables)
+
+		return subject, body_text, html_body
 
 
 # ── Шаблоны ────────────────────────────────────────────────────────────
 
 VERIFICATION_CODE = EmailTemplate(
 	name="verification_code",
-	subject="Код подтверждения email",
-	body=(
-		"Ваш код подтверждения: {code}\n\n"
-		"Код действителен 10 минут.\n"
-		"Если вы не запрашивали код, проигнорируйте это письмо."
-	),
+	subject_template="Код подтверждения NEXUS",
+	body_text_template="Ваш код подтверждения: {code}\nКод действителен 10 минут.",
+	html_template_name="verification_code.html",
+)
+
+EMAIL_VERIFICATION = EmailTemplate(
+	name="email_verification",
+	subject_template="Подтверждение почты NEXUS",
+	body_text_template="Ваш код для подтверждения email: {code}\nКод действителен 10 минут.",
+	html_template_name="verification_code.html",
 )
 
 WELCOME = EmailTemplate(
 	name="welcome",
-	subject="Добро пожаловать в Bank App!",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш аккаунт успешно создан.\n"
-		"Если у вас возникнут вопросы, свяжитесь с нашей службой поддержки.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="Добро пожаловать в NEXUS!",
+	body_text_template="Здравствуйте! Ваш аккаунт в NEXUS успешно создан.",
+	html_template_name="welcome.html",
 )
 
 PIN_CHANGED = EmailTemplate(
 	name="pin_changed",
-	subject="PIN-код изменён",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш PIN-код был успешно изменён.\n"
-		"Если вы не совершали это действие, немедленно свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: PIN-код изменён",
+	body_text_template="Ваш PIN-код был успешно изменён.",
+	html_template_name="security_alert.html",
 )
 
 LOGIN_ALERT = EmailTemplate(
 	name="login_alert",
-	subject="Вход в аккаунт",
-	body=(
-		"Здравствуйте!\n\n"
-		"Зафиксирован вход в ваш аккаунт.\n"
-		"Время: {login_time}\n\n"
-		"Если это были не вы, немедленно смените PIN-код и свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Вход в аккаунт",
+	body_text_template="Зафиксирован вход в ваш аккаунт NEXUS в {login_time}.",
+	html_template_name="security_alert.html",
 )
 
 ACCOUNT_LOCKED = EmailTemplate(
 	name="account_locked",
-	subject="Аккаунт заблокирован",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш аккаунт был заблокирован из-за многократного неверного ввода PIN-кода "
-		"(15 неудачных попыток).\n\n"
-		"Для разблокировки отправьте запрос через /auth/request-unlock и введите "
-		"6-значный код, который придёт на этот email.\n\n"
-		"Если это были не вы, немедленно свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Аккаунт заблокирован",
+	body_text_template="Ваш аккаунт был заблокирован из-за неверного ввода PIN-кода.",
+	html_template_name="security_alert.html",
 )
 
 UNLOCK_CODE = EmailTemplate(
 	name="unlock_code",
-	subject="Код разблокировки аккаунта",
-	body=(
-		"Ваш код разблокировки: {code}\n\n"
-		"Код действителен 10 минут.\n"
-		"Если вы не запрашивали разблокировку, немедленно свяжитесь с поддержкой."
-	),
+	subject_template="NEXUS: Код разблокировки",
+	body_text_template="Ваш код разблокировки NEXUS: {code}",
+	html_template_name="verification_code.html",
 )
 
 ACCOUNT_UNLOCKED = EmailTemplate(
 	name="account_unlocked",
-	subject="Аккаунт разблокирован",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш аккаунт успешно разблокирован.\n"
-		"Теперь вы можете войти по PIN-коду.\n\n"
-		"Если вы не запрашивали разблокировку, немедленно свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Аккаунт разблокирован",
+	body_text_template="Ваш аккаунт NEXUS успешно разблокирован.",
+	html_template_name="security_alert.html",
 )
 
 ACCOUNT_OPENED = EmailTemplate(
 	name="account_opened",
-	subject="Счёт открыт",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш {account_type} счёт успешно открыт.\n"
-		"Валюта: {currency}\n"
-		"Номер счёта: {account_number}\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Счёт открыт",
+	body_text_template="Ваш {account_type} счёт в NEXUS успешно открыт.",
+	html_template_name="account_status.html",
 )
 
 ACCOUNT_CLOSED = EmailTemplate(
 	name="account_closed",
-	subject="Счёт закрыт",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш счёт {account_number} успешно закрыт.\n"
-		"Если вы не совершали это действие, немедленно свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Счёт закрыт",
+	body_text_template="Ваш счёт {account_number} в NEXUS успешно закрыт.",
+	html_template_name="account_status.html",
 )
 
 TRANSACTION_DEPOSIT = EmailTemplate(
 	name="transaction_deposit",
-	subject="Пополнение счёта",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш счёт {account_number} пополнен на {amount} {currency}.\n"
-		"Текущий баланс: {balance_after} {currency}.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Пополнение счёта",
+	body_text_template="Ваш счёт {account_number} пополнен на {amount} {currency}.",
+	html_template_name="transaction.html",
 )
 
 TRANSACTION_WITHDRAWAL = EmailTemplate(
 	name="transaction_withdrawal",
-	subject="Списание со счёта",
-	body=(
-		"Здравствуйте!\n\n"
-		"Со счёта {account_number} списано {amount} {currency}.\n"
-		"Текущий баланс: {balance_after} {currency}.\n\n"
-		"Если вы не совершали это действие, немедленно свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Списание со счёта",
+	body_text_template="Со счёта {account_number} списано {amount} {currency}.",
+	html_template_name="transaction.html",
 )
 
 TRANSACTION_TRANSFER = EmailTemplate(
 	name="transaction_transfer",
-	subject="Перевод выполнен",
-	body=(
-		"Здравствуйте!\n\n"
-		"Перевод {amount} {currency} выполнен.\n"
-		"Со счёта: {from_account}\n"
-		"На счёт: {to_account}\n"
-		"Баланс счёта-отправителя: {balance_after} {currency}.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Перевод выполнен",
+	body_text_template="Перевод на сумму {amount} {currency} со счёта {from_account} на счёт {to_account} успешно выполнен.",
+	html_template_name="transaction.html",
 )
 
 TRANSACTION_INCOMING = EmailTemplate(
 	name="transaction_incoming",
-	subject="Входящий перевод",
-	body=(
-		"Здравствуйте!\n\n"
-		"На ваш счёт {account_number} поступил перевод {amount} {currency} "
-		"со счёта {from_account}.\n"
-		"Текущий баланс: {balance_after} {currency}.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Входящий перевод",
+	body_text_template="На ваш счёт {account_number} поступил перевод {amount} {currency} со счёта {from_account}.",
+	html_template_name="transaction.html",
 )
 
 ACCOUNT_FROZEN = EmailTemplate(
 	name="account_frozen",
-	subject="Счёт заморожен",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш счёт {account_number} был заморожен.\n"
-		"Инициатор: {frozen_by}\n"
-		"Причина: {reason}\n\n"
-		"Исходящие операции по счёту временно заблокированы.\n"
-		"Входящие переводы и пополнения по-прежнему доступны.\n\n"
-		"Если заморозка инициирована вами, вы можете разморозить счёт "
-		"через /accounts/{{id}}/unfreeze.\n"
-		"При системной заморозке свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Счёт заморожен",
+	body_text_template="Ваш счёт {account_number} был заморожен по причине: {reason}.",
+	html_template_name="account_status.html",
 )
 
 ACCOUNT_UNFROZEN = EmailTemplate(
 	name="account_unfrozen",
-	subject="Счёт разморожен",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш счёт {account_number} успешно разморожен.\n"
-		"Все операции по счёту снова доступны.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Счёт разморожен",
+	body_text_template="Ваш счёт {account_number} успешно разморожен.",
+	html_template_name="account_status.html",
 )
 
 ACCOUNT_SELF_BLOCKED = EmailTemplate(
 	name="account_self_blocked",
-	subject="Аккаунт заблокирован по вашему запросу",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш аккаунт был заблокирован по вашему запросу.\n"
-		"Все активные сеансы завершены, все счета заморожены.\n\n"
-		"Для разблокировки отправьте запрос через /auth/request-unlock "
-		"и введите 6-значный код, который придёт на этот email.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Аккаунт заблокирован по запросу",
+	body_text_template="Ваш аккаунт был заблокирован по вашему запросу.",
+	html_template_name="security_alert.html",
 )
 
 SECURITY_FREEZE = EmailTemplate(
 	name="security_freeze",
-	subject="Счёт заморожен по результатам проверки безопасности",
-	body=(
-		"Здравствуйте!\n\n"
-		"Система безопасности обнаружила подозрительную активность по вашему "
-		"счёту {account_number}.\n\n"
-		"Нарушенное правило: {rule}\n"
-		"Описание: {details}\n\n"
-		"Счёт временно заморожен для вашей защиты.\n"
-		"Для разморозки свяжитесь со службой поддержки.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Заморозка безопасности",
+	body_text_template="Счёт {account_number} заморожен системой безопасности: {rule}.",
+	html_template_name="security_alert.html",
 )
 
 ACCOUNT_DELETED = EmailTemplate(
 	name="account_deleted",
-	subject="Аккаунт удалён",
-	body=(
-		"Здравствуйте!\n\n"
-		"Ваш аккаунт в Bank App был удалён по вашему запросу.\n"
-		"Все счета заморожены, все активные сеансы завершены.\n\n"
-		"Данные вашего аккаунта сохранены в соответствии с требованиями законодательства.\n\n"
-		"Если вы не совершали это действие, немедленно свяжитесь с поддержкой.\n\n"
-		"С уважением,\n"
-		"Команда Bank App"
-	),
+	subject_template="NEXUS: Аккаунт удалён",
+	body_text_template="Ваш аккаунт в NEXUS был удалён по вашему запросу.",
+	html_template_name="security_alert.html",
 )
 
 # ── Реестр ──────────────────────────────────────────────────────────────
 
 TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
 	VERIFICATION_CODE,
+	EMAIL_VERIFICATION,
 	WELCOME,
 	PIN_CHANGED,
 	LOGIN_ALERT,
@@ -296,34 +199,15 @@ TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
 
 
 def get_template(name: str) -> EmailTemplate:
-	"""Получить шаблон по имени.
-
-	Raises:
-		ValueError: если шаблон не найден.
-	"""
+	"""Получить шаблон по имени."""
 	template = TEMPLATES.get(name)
 	if template is None:
-		raise ValueError(
-			f"Шаблон '{name}' не найден. "
-			f"Доступные: {', '.join(TEMPLATES.keys())}"
-		)
+		raise ValueError(f"Шаблон '{name}' не найден.")
 	return template
 
 
 __all__ = [
-	"ACCOUNT_DELETED",
-	"ACCOUNT_FROZEN",
-	"ACCOUNT_LOCKED",
-	"ACCOUNT_SELF_BLOCKED",
-	"ACCOUNT_UNFROZEN",
-	"ACCOUNT_UNLOCKED",
 	"EmailTemplate",
-	"LOGIN_ALERT",
-	"PIN_CHANGED",
-	"SECURITY_FREEZE",
 	"TEMPLATES",
-	"UNLOCK_CODE",
-	"VERIFICATION_CODE",
-	"WELCOME",
 	"get_template",
 ]

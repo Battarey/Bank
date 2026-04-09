@@ -31,15 +31,16 @@ class NotificationService:
 		try:
 			# 1. Рендеринг шаблона
 			template = get_template(msg_type)
-			subject, body = template.render(variables)
+			subject, body, html_body = template.render(variables)
 
 			# 2. Отправка Email
 			await send_email(
 				to=payload.to,
 				subject=subject,
 				body=body,
+				html_body=html_body,
 			)
-			logger.info("%s → %s", msg_type, payload.to)
+			logger.info("%s → %s (HTML: %s)", msg_type, payload.to, bool(html_body))
 
 			# 3. Успешное сохранение в журнал
 			await self.repository.save(
