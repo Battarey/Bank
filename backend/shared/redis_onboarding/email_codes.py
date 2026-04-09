@@ -59,6 +59,13 @@ async def is_email_verified(user_id: UUID) -> bool:
 	return await client.get(_verified_key(user_id)) == "1"
 
 
+async def has_email_code(user_id: UUID) -> bool:
+	"""Проверить, существует ли уже активный код подтверждения в Redis."""
+
+	client = get_client()
+	return await client.exists(_code_key(user_id)) > 0
+
+
 async def clear_email_verification(user_id: UUID) -> None:
 	"""Удалить все данные верификации email (код + флаг)."""
 
@@ -70,6 +77,7 @@ __all__ = [
 	"CODE_LENGTH",
 	"clear_email_verification",
 	"generate_code",
+	"has_email_code",
 	"is_email_verified",
 	"save_email_code",
 	"verify_email_code",
