@@ -5,6 +5,7 @@ from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
+from shared.models.types import EncryptedString
 
 class Identifier(Base):
 	"""Идентификаторы налогоплательщика и социального страхования."""
@@ -17,7 +18,12 @@ class Identifier(Base):
 		primary_key=True,
 		nullable=False,
 	)
-	inn: Mapped[str] = mapped_column(String(12), nullable=False, unique=True)
-	snils: Mapped[str] = mapped_column(String(11), nullable=False, unique=True)
+	# Шифрованные данные
+	inn: Mapped[str] = mapped_column(EncryptedString, nullable=False)
+	snils: Mapped[str] = mapped_column(EncryptedString, nullable=False)
+
+	# Слепые индексы для поиска и уникальности (Blind Index)
+	inn_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+	snils_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
 
 __all__ = ["Identifier"]
