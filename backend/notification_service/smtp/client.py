@@ -1,5 +1,6 @@
 """Асинхронная отправка email через SMTP (Gmail / Yandex / другие)."""
 
+import logging
 import os
 import ssl
 from email.message import EmailMessage
@@ -8,6 +9,8 @@ from typing import Final
 import aiosmtplib
 
 from shared.bootstrap import get_container
+
+logger = logging.getLogger("notification_service.smtp")
 
 
 async def send_email(to: str, subject: str, body: str, html_body: str | None = None) -> None:
@@ -36,17 +39,25 @@ async def send_email(to: str, subject: str, body: str, html_body: str | None = N
 	if html_body:
 		msg.add_alternative(html_body, subtype="html")
 
-	tls_context = ssl.create_default_context() if settings.SMTP_USE_TLS else None
+	try:
+		logger.info(
+			"Отправка email на %s через %s:%d (Implicit TLS: %s)...",
+			to, settings.SMTP_HOST, settings.SMTP_PORT, settings.SMTP_USE_TLS
+		)
 
-	await aiosmtplib.send(
-		msg,
-		hostname=settings.SMTP_HOST,
-		port=settings.SMTP_PORT,
-		username=settings.SMTP_USER,
-		password=settings.SMTP_PASSWORD,
-		use_tls=settings.SMTP_USE_TLS,
-		tls_context=tls_context,
-	)
+		await aiosmtplib.send(
+			msg,
+			hostname=settings.SMTP_HOST,
+			port=settings.SMTP_PORT,
+			username=settings.SMTP_USER,
+			password=settings.SMTP_PASSWORD,
+			use_tls=settings.SMTP_USE_TLS,
+		)
+		logger.info("Email успешно отправлен.")
+
+	except Exception as exc:
+		logger.error("Ошибка при отправке email: %s", exc)
+		raise
 
 
 __all__ = ["send_email"]
