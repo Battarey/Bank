@@ -29,7 +29,7 @@ async def open_account(
 ):
 	"""Создаёт новый банковский счёт указанного типа и валюты для текущего пользователя."""
 	account = await service.open_account(uow, user_id, payload)
-	
+
 	return schemas.AccountMessageResponse(
 		message="Счёт успешно открыт.",
 		account=schemas.AccountResponse.model_validate(account),
@@ -48,7 +48,7 @@ async def list_accounts(
 ):
 	"""Возвращает список всех счетов (активных, закрытых, замороженных) текущего пользователя."""
 	accounts, total = await service.list_accounts(uow, user_id)
-	
+
 	return schemas.AccountListResponse(
 		accounts=accounts,
 		total=total,

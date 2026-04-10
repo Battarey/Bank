@@ -27,8 +27,8 @@ async def get_rates(
 	try:
 		rates, updated = await service.get_all_rates(base.upper())
 	except RateUnavailable as exc:
-		raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
-	
+		raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
 	return schemas.ExchangeRatesResponse(
 		base=base.upper(),
 		rates=rates,
@@ -47,10 +47,10 @@ async def get_pair_rate(base: str, target: str):
 	try:
 		rate, updated = await service.get_pair_rate(base.upper(), target.upper())
 	except RateUnavailable as exc:
-		raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+		raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 	except CurrencyNotAvailable as exc:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
-		
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
 	return schemas.ExchangeRatePairResponse(
 		base=base.upper(),
 		target=target.upper(),

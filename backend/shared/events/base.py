@@ -12,6 +12,7 @@ class BaseEvent(BaseModel):
 
 class NotificationEvent(BaseEvent):
 	"""Событие на отправку уведомления."""
+
 	type: str = Field(..., description="Тип уведомления (шаблон)")
 	to: str = Field(..., description="Email получателя")
 	variables: dict[str, Any] = Field(default_factory=dict, description="Переменные для шаблона")
@@ -19,6 +20,7 @@ class NotificationEvent(BaseEvent):
 
 class LogEvent(BaseEvent):
 	"""Событие на запись бизнес-лога."""
+
 	user_id: UUID | None = Field(None)
 	action: str
 	service: str

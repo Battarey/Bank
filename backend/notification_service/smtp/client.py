@@ -29,6 +29,7 @@ async def send_email(to: str, subject: str, body: str, html_body: str | None = N
 
 	msg = EmailMessage()
 	from email.utils import formataddr
+
 	msg["From"] = formataddr(("Nexus Bank", settings.smtp_from_addr))
 	msg["To"] = to
 	msg["Subject"] = subject
@@ -40,7 +41,10 @@ async def send_email(to: str, subject: str, body: str, html_body: str | None = N
 	try:
 		logger.info(
 			"Отправка email на %s через %s:%d (Implicit TLS: %s)...",
-			to, settings.SMTP_HOST, settings.SMTP_PORT, settings.SMTP_USE_TLS
+			to,
+			settings.SMTP_HOST,
+			settings.SMTP_PORT,
+			settings.SMTP_USE_TLS,
 		)
 
 		await aiosmtplib.send(

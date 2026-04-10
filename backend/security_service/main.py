@@ -22,7 +22,7 @@ from .store import close_mongo, init_mongo
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
 	await rmq_connect()
 	await init_mongo()
 	yield
@@ -34,7 +34,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
 	title="Security Service",
 	version="0.2.0",
-	description="Внутренний сервис мониторинга безопасности: автоматическое выявление подозрительных операций и AML-проверка.",
+	description=(
+		"Внутренний сервис мониторинга безопасности: автоматическое выявление подозрительных операций и AML-проверка."
+	),
 	lifespan=lifespan,
 	dependencies=[Depends(verify_internal_key)],
 	openapi_tags=[

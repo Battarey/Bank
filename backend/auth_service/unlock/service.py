@@ -29,7 +29,7 @@ async def request_unlock(uow: AuthUnitOfWork, email: str) -> None:
 		row = await uow.users.get_by_email(get_blind_index(email))
 		if not row:
 			raise AuthNotFound(f"Пользователь с email '{email}' не найден.")
-		
+
 		user, contact = row
 
 		if user.status != "blocked":
@@ -40,17 +40,21 @@ async def request_unlock(uow: AuthUnitOfWork, email: str) -> None:
 		await unlock_codes.save_unlock_code(user.id, code)
 
 		# Регистрация событий
-		uow.add_event(NotificationEvent(
-			type="unlock_code",
-			to=contact.email,
-			variables={"code": code},
-		))
+		uow.add_event(
+			NotificationEvent(
+				type="unlock_code",
+				to=contact.email,
+				variables={"code": code},
+			)
+		)
 
-		uow.add_event(LogEvent(
-			user_id=user.id,
-			action="unlock_request",
-			service="auth_service",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user.id,
+				action="unlock_request",
+				service="auth_service",
+			)
+		)
 
 		await uow.commit()
 
@@ -78,7 +82,7 @@ async def confirm_unlock(uow: AuthUnitOfWork, email: str, code: str) -> None:
 		row = await uow.users.get_by_email(get_blind_index(email))
 		if not row:
 			raise AuthNotFound(f"Пользователь с email '{email}' не найден.")
-		
+
 		user, contact = row
 
 		if user.status != "blocked":
@@ -100,17 +104,21 @@ async def confirm_unlock(uow: AuthUnitOfWork, email: str, code: str) -> None:
 			acc.freeze_reason = None
 
 		# Регистрация событий
-		uow.add_event(NotificationEvent(
-			type="account_unlocked",
-			to=contact.email,
-		))
+		uow.add_event(
+			NotificationEvent(
+				type="account_unlocked",
+				to=contact.email,
+			)
+		)
 
-		uow.add_event(LogEvent(
-			user_id=user.id,
-			action="unlock",
-			service="auth_service",
-			details="Доступ восстановлен по Email-коду",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user.id,
+				action="unlock",
+				service="auth_service",
+				details="Доступ восстановлен по Email-коду",
+			)
+		)
 
 		await uow.commit()
 

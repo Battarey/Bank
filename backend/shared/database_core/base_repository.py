@@ -1,7 +1,7 @@
 """Базовый класс репозитория для работы с SQLAlchemy."""
 
 from collections.abc import Sequence
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 from uuid import UUID
 
 from sqlalchemy import delete, select
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 ModelT = TypeVar("ModelT")
 
 
-class BaseRepository(Generic[ModelT]):
+class BaseRepository[ModelT]:
 	"""Базовая реализация паттерна Repository.
 
 	Инкапсулирует общие операции с базой данных (GET, LIST, ADD, DELETE).
@@ -47,11 +47,11 @@ class BaseRepository(Generic[ModelT]):
 
 	async def delete_older_than(self, dt: Any, field_name: str = "created_at") -> int:
 		"""Удаляет записи старше указанной даты.
-		
+
 		Args:
 			dt: Дата/время, всё что раньше которой подлежит удалению.
 			field_name: Имя поля для фильтрации (по умолчанию 'created_at').
-			
+
 		Returns:
 			int: Количество удаленных строк.
 		"""

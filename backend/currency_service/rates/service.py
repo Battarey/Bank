@@ -50,5 +50,5 @@ async def get_pair_rate(base: str, target: str) -> tuple[Decimal, datetime]:
 	rate = rates.get(target_upper)
 	if rate is None:
 		raise CurrencyNotAvailable(f"Валюта {target_upper} не поддерживается или не найдена.")
-		
+
 	return rate, updated

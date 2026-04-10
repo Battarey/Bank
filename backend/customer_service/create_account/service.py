@@ -45,7 +45,7 @@ async def start_onboarding(uow: CustomerUnitOfWork) -> UUID:
 			candidate_id = uuid4()
 			if await uow.customers.get(candidate_id):
 				continue
-				
+
 			user = models.User(
 				id=candidate_id,
 				created_at=datetime.now(UTC),
@@ -88,9 +88,9 @@ async def store_personal_data(
 			"middle_name": normalize_name(payload.middle_name),
 		},
 	)
-	
+
 	await onboarding_drafts.save_draft(user_id, "personal_data", normalized.model_dump(mode="json"))
-	
+
 	return schemas.PersonalDataResponse(
 		client_id=user_id,
 		**normalized.model_dump(),
@@ -129,9 +129,9 @@ async def store_passport_data(
 		# Проверка уникальности по хешу
 		p_hash = get_blind_index(f"{normalized.series}{normalized.number}")
 		await uow.customers.check_passport_unique(p_hash, exclude_client_id=user_id)
-	
+
 	await onboarding_drafts.save_draft(user_id, "passport", normalized.model_dump(mode="json"))
-	
+
 	return schemas.PassportResponse(
 		client_id=user_id,
 		**normalized.model_dump(),
@@ -166,13 +166,13 @@ async def store_identifiers(
 	async with uow:
 		await uow.customers.get_active_user(user_id)
 		await uow.customers.check_identifiers_unique(
-			inn_hash=get_blind_index(normalized.inn), 
-			snils_hash=get_blind_index(normalized.snils), 
-			exclude_client_id=user_id
+			inn_hash=get_blind_index(normalized.inn),
+			snils_hash=get_blind_index(normalized.snils),
+			exclude_client_id=user_id,
 		)
-	
+
 	await onboarding_drafts.save_draft(user_id, "identifiers", normalized.model_dump(mode="json"))
-	
+
 	return schemas.IdentifiersResponse(
 		client_id=user_id,
 		**normalized.model_dump(),
@@ -209,11 +209,11 @@ async def store_contacts(
 		await uow.customers.check_contacts_unique(
 			email_hash=get_blind_index(normalized.email),
 			phone_hash=get_blind_index(normalized.phone),
-			exclude_client_id=user_id
+			exclude_client_id=user_id,
 		)
-	
+
 	await onboarding_drafts.save_draft(user_id, "contacts", normalized.model_dump(mode="json"))
-	
+
 	return schemas.ContactsResponse(
 		client_id=user_id,
 		**normalized.model_dump(),
@@ -242,24 +242,26 @@ async def send_verification_email(
 	draft = await onboarding_drafts.load_draft(user_id, "contacts")
 	if not draft or not draft.get("payload"):
 		raise OnboardingError("Сначала заполните контактные данные (шаг 4).")
-	
+
 	email = draft["payload"]["email"]
-	
+
 	# 3. Регистрация кода в Redis и установка кулдауна
 	code = generate_code()
 	await save_email_code(user_id, code)
 	await set_send_cooldown(user_id)
-	
+
 	# 4. Отправка уведомления через событие
 	async with uow:
-		uow.add_event(NotificationEvent(
-			type="email_verification",
-			to=email,
-			variables={
-				"code": code,
-				"user_id": str(user_id),
-			},
-		))
+		uow.add_event(
+			NotificationEvent(
+				type="email_verification",
+				to=email,
+				variables={
+					"code": code,
+					"user_id": str(user_id),
+				},
+			)
+		)
 		# События отправляются при коммите/завершении блока UOW (в зависимости от реализации)
 		# В данном проекте события обычно обрабатываются после коммита сессии.
 		await uow.commit()
@@ -307,14 +309,14 @@ async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> Non
 			("identifiers", schemas.IdentifiersPayload),
 			("contacts", schemas.ContactsPayload),
 		]
-		
+
 		for step_name, schema in steps:
 			draft = await onboarding_drafts.load_draft(user_id, step_name)
 			if not draft or not draft.get("payload"):
 				missing.append(step_name)
 			else:
 				drafts[step_name] = schema.model_validate(draft["payload"])
-				
+
 		if missing:
 			raise OnboardingError(f"Не все шаги онбординга завершены: {', '.join(missing)}")
 
@@ -326,58 +328,68 @@ async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> Non
 			# Personal Data
 			p_data = drafts["personal_data"]
 			await uow.customers.add_profile_part(models.PersonalData(client_id=user_id, **p_data.model_dump()))
-			
+
 			# Passport
 			passport = drafts["passport"]
-			await uow.customers.add_profile_part(models.Passport(
-				client_id=user_id,
-				passport_hash=get_blind_index(f"{passport.series}{passport.number}"),
-				**passport.model_dump()
-			))
-			
+			await uow.customers.add_profile_part(
+				models.Passport(
+					client_id=user_id,
+					passport_hash=get_blind_index(f"{passport.series}{passport.number}"),
+					**passport.model_dump(),
+				)
+			)
+
 			# Identifiers
 			ids = drafts["identifiers"]
-			await uow.customers.add_profile_part(models.Identifier(
-				client_id=user_id,
-				inn_hash=get_blind_index(ids.inn),
-				snils_hash=get_blind_index(ids.snils),
-				**ids.model_dump()
-			))
-			
+			await uow.customers.add_profile_part(
+				models.Identifier(
+					client_id=user_id,
+					inn_hash=get_blind_index(ids.inn),
+					snils_hash=get_blind_index(ids.snils),
+					**ids.model_dump(),
+				)
+			)
+
 			# Contacts
 			contacts = drafts["contacts"]
-			await uow.customers.add_profile_part(models.Contact(
-				client_id=user_id,
-				email_hash=get_blind_index(contacts.email),
-				phone_hash=get_blind_index(contacts.phone),
-				**contacts.model_dump()
-			))
-			
+			await uow.customers.add_profile_part(
+				models.Contact(
+					client_id=user_id,
+					email_hash=get_blind_index(contacts.email),
+					phone_hash=get_blind_index(contacts.phone),
+					**contacts.model_dump(),
+				)
+			)
+
 			# Активация пользователя
 			user = await uow.customers.get_active_user(user_id)
 			user.status = "active"
 			user.is_verified = True
 			user.updated_at = datetime.now(UTC)
-			
+
 			# Регистрация событий ДО коммита
-			uow.add_event(LogEvent(
-				user_id=user_id,
-				action="registration",
-				service="customer_service",
-				details="Регистрация завершена (онбординг финализирован)",
-			))
-			
-			uow.add_event(NotificationEvent(
-				type="welcome",
-				to=contacts.email,
-				variables={
-					"user_id": str(user_id),
-					"first_name": drafts["personal_data"].first_name,
-				},
-			))
+			uow.add_event(
+				LogEvent(
+					user_id=user_id,
+					action="registration",
+					service="customer_service",
+					details="Регистрация завершена (онбординг финализирован)",
+				)
+			)
+
+			uow.add_event(
+				NotificationEvent(
+					type="welcome",
+					to=contacts.email,
+					variables={
+						"user_id": str(user_id),
+						"first_name": drafts["personal_data"].first_name,
+					},
+				)
+			)
 
 			await uow.commit()
-			
+
 		except IntegrityError as exc:
 			raise OnboardingConflict("Данные конфликтуют с существующим клиентом.") from exc
 

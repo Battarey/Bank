@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # ── Курсы ──────────────────────────────────────────────────────────────
 
+
 class ExchangeRatesResponse(BaseModel):
 	"""Курсы валют относительно базовой валюты."""
 
@@ -26,6 +27,7 @@ class ExchangeRatePairResponse(BaseModel):
 
 
 # ── Обмен между счетами ───────────────────────────────────────────────
+
 
 class ExchangeRequest(BaseModel):
 	"""Запрос на обмен валюты между банковскими счетами (RUB/USD/EUR)."""

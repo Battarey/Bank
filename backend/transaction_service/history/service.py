@@ -35,6 +35,7 @@ async def list_transactions(
 		account = await uow.transactions.get_account(account_id)
 		if account.client_id != user_id:
 			from ..exceptions import AccountNotFound
+
 			raise AccountNotFound("Счёт не принадлежит вам.")
 
 		# 2. Получение данных через репозиторий чтения (CQRS Query Layer)
@@ -50,7 +51,9 @@ async def list_transactions(
 from shared.rabbitmq import send_notification
 
 
-async def _notify_security_freeze(repo: TransactionRepository, user_id: UUID, account: models.BankAccount, rules: str) -> None:
+async def _notify_security_freeze(
+	repo: TransactionRepository, user_id: UUID, account: models.BankAccount, rules: str
+) -> None:
 	"""Вспомогательный метод для уведомления о блокировке AML (используется другими сервисами)."""
 	contact = await repo.get_owner_contact(user_id)
 	if not contact:

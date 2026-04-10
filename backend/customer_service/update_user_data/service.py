@@ -34,9 +34,7 @@ async def _get_active_user(uow: CustomerUnitOfWork, user_id: UUID) -> models.Use
 	"""
 	user = await uow.customers.get_active_user(user_id)
 	if user.status != "active":
-		raise UpdateDataError(
-			f"Обновление данных запрещено: текущий статус пользователя '{user.status}'."
-		)
+		raise UpdateDataError(f"Обновление данных запрещено: текущий статус пользователя '{user.status}'.")
 	return user
 
 
@@ -86,7 +84,7 @@ async def update_personal_data(
 			raise UpdateDataEmpty("Необходимо передать хотя бы одно поле для обновления.")
 
 		await _get_active_user(uow, user_id)
-		
+
 		record = await uow.customers.get_personal_data(user_id)
 		if record is None:
 			raise UpdateDataNotFound("Персональные данные (профиль) не найдены.")
@@ -100,16 +98,18 @@ async def update_personal_data(
 			setattr(record, attr, value)
 
 		# Логирование события ДО коммита
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="update_personal_data",
-			service="customer_service",
-			details=f"Обновлены поля: {', '.join(fields.keys())}",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="update_personal_data",
+				service="customer_service",
+				details=f"Обновлены поля: {', '.join(fields.keys())}",
+			)
+		)
 
 		await uow.commit()
 		await uow.customers.refresh(record)
-		
+
 		return schemas.PersonalDataResponse.model_validate(record)
 
 
@@ -134,7 +134,7 @@ async def replace_passport(
 	"""
 	async with uow:
 		await _get_active_user(uow, user_id)
-		
+
 		record = await uow.customers.get_passport(user_id)
 		if record is None:
 			raise UpdateDataNotFound("Паспортные данные профиля не найдены.")
@@ -149,18 +149,20 @@ async def replace_passport(
 		record.passport_hash = p_hash
 
 		# Логирование события ДО коммита
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="replace_passport",
-			service="customer_service",
-			details="Паспорт заменен на новый",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="replace_passport",
+				service="customer_service",
+				details="Паспорт заменен на новый",
+			)
+		)
 
 		try:
 			await uow.commit()
 		except IntegrityError as exc:
 			raise UpdateDataConflict("Паспорт с такими данными уже зарегистрирован.") from exc
-			
+
 		await uow.customers.refresh(record)
 		return schemas.PassportResponse.model_validate(record)
 
@@ -191,7 +193,7 @@ async def update_contacts(
 			raise UpdateDataEmpty("Необходимо передать email или телефон.")
 
 		await _get_active_user(uow, user_id)
-		
+
 		record = await uow.customers.get_contact(user_id)
 		if record is None:
 			raise UpdateDataNotFound("Контактные данные профиля не найдены.")
@@ -202,9 +204,7 @@ async def update_contacts(
 
 		# Проверка уникальности
 		await uow.customers.check_contacts_unique(
-			email_hash=email_hash, 
-			phone_hash=phone_hash, 
-			exclude_client_id=user_id
+			email_hash=email_hash, phone_hash=phone_hash, exclude_client_id=user_id
 		)
 
 		# Применяем изменения
@@ -216,12 +216,14 @@ async def update_contacts(
 			record.phone_hash = phone_hash
 
 		# Логирование события ДО коммита
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="update_contacts",
-			service="customer_service",
-			details=f"Обновлены контакты: {', '.join(fields.keys())}",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="update_contacts",
+				service="customer_service",
+				details=f"Обновлены контакты: {', '.join(fields.keys())}",
+			)
+		)
 
 		try:
 			await uow.commit()

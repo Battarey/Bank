@@ -11,9 +11,7 @@ def _resolve_history_url() -> str:
 	if value:
 		return value
 
-	raise RuntimeError(
-		"HISTORY_DATABASE_URL не задан!"
-	)
+	raise RuntimeError("HISTORY_DATABASE_URL не задан!")
 
 
 HISTORY_DATABASE_URL: Final[str] = _resolve_history_url()

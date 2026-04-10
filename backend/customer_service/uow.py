@@ -30,7 +30,12 @@ class CustomerUnitOfWork(SqlAlchemyUnitOfWork):
 			self.customer_queries = CustomerQueryRepository(self._session)
 		return uow
 
-	async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
+	async def __aexit__(
+		self,
+		exc_type: type[BaseException] | None,
+		exc_val: BaseException | None,
+		exc_tb: Any | None,
+	) -> None:
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 		self.customers = None
 		self.customer_queries = None

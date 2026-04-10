@@ -48,14 +48,11 @@ async def close_account(
 
 		# 2. Валидация состояния
 		if account.status != "open":
-			raise AccountNotOpen(
-				f"Невозможно закрыть счёт со статусом «{account.status}»."
-			)
+			raise AccountNotOpen(f"Невозможно закрыть счёт со статусом «{account.status}».")
 
 		if account.balance != 0:
 			raise AccountNonZeroBalance(
-				f"На счёте остаток {account.balance} {account.currency}. "
-				"Снимите все средства перед закрытием."
+				f"На счёте остаток {account.balance} {account.currency}. Снимите все средства перед закрытием."
 			)
 
 		# 3. Закрытие
@@ -65,22 +62,26 @@ async def close_account(
 		# 4. Регистрация событий ДО коммита
 		contact = await uow.accounts.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="account_closed",
-				to=contact.email,
-				variables={
-					"account_number": account.account_number,
-				},
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="account_closed",
+					to=contact.email,
+					variables={
+						"account_number": account.account_number,
+					},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="close_account",
-			service="account_service",
-			details=f"Счёт {account.account_number} закрыт",
-			entity_id=account.id,
-			entity_type="bank_account",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="close_account",
+				service="account_service",
+				details=f"Счёт {account.account_number} закрыт",
+				entity_id=account.id,
+				entity_type="bank_account",
+			)
+		)
 
 		try:
 			await uow.commit()

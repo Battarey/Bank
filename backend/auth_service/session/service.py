@@ -70,17 +70,21 @@ async def self_block(uow: AuthUnitOfWork, user_id: UUID) -> None:
 			acc.freeze_reason = "Самоблокировка аккаунта"
 
 		# Регистрация событий
-		uow.add_event(NotificationEvent(
-			type="account_self_blocked",
-			to=contact.email,
-		))
+		uow.add_event(
+			NotificationEvent(
+				type="account_self_blocked",
+				to=contact.email,
+			)
+		)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="self_block",
-			service="auth_service",
-			details="Аккаунт заблокирован по инициативе пользователя",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="self_block",
+				service="auth_service",
+				details="Аккаунт заблокирован по инициативе пользователя",
+			)
+		)
 
 		await uow.commit()
 

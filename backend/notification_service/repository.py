@@ -28,7 +28,7 @@ class NotificationRepository:
 		error: str | None = None,
 	) -> None:
 		"""Сохраняет запись об уведомлении в MongoDB."""
-		
+
 		doc = {
 			"type": msg_type,
 			"to": to,

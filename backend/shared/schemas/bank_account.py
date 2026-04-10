@@ -16,10 +16,13 @@ AccountStatus = Literal["open", "closed", "frozen"]
 
 # ── Запросы ────────────────────────────────────────────────────────────
 
+
 class OpenAccountRequest(BaseModel):
 	"""Запрос на открытие банковского счёта."""
 
-	type: AccountType = Field(description="Тип счёта: checking (расчётный), savings (накопительный), credit, deposit (вклад)")
+	type: AccountType = Field(
+		description="Тип счёта: checking (расчётный), savings (накопительный), credit, deposit (вклад)"
+	)
 	currency: Currency = Field(description="Валюта счёта: RUB, USD, EUR")
 
 	model_config = ConfigDict(extra="forbid")

@@ -34,4 +34,4 @@ def require_user_id(x_user_id: str = Header(..., alias="X-User-ID")) -> UUID:
 		raise HTTPException(
 			status_code=status.HTTP_401_UNAUTHORIZED,
 			detail="Отсутствует или невалиден заголовок X-User-ID.",
-		)
+		) from None

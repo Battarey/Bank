@@ -13,6 +13,7 @@ class ContactsPayload(BaseModel):
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
+
 class ContactsResponse(ContactsPayload):
 	"""Контактные данные клиента (ответ)."""
 
@@ -25,7 +26,9 @@ class ContactsUpdate(BaseModel):
 	"""Частичное обновление контактов — email и/или телефон."""
 
 	email: EmailStr | None = Field(default=None, description="Новый email-адрес")
-	phone: constr(pattern=r"^\+7\d{10}$") | None = Field(default=None, description="Новый телефон в формате +7XXXXXXXXXX")
+	phone: constr(pattern=r"^\+7\d{10}$") | None = Field(
+		default=None, description="Новый телефон в формате +7XXXXXXXXXX"
+	)
 
 	model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

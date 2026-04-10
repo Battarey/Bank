@@ -50,7 +50,7 @@ SETTINGS index_granularity = 8192
 async def init_clickhouse() -> None:
 	"""Подключение к ClickHouse и создание таблицы."""
 
-	global _client  # noqa: PLW0603
+	global _client
 
 	_client = await clickhouse_connect.get_async_client(
 		host=CLICKHOUSE_HOST,
@@ -65,14 +65,16 @@ async def init_clickhouse() -> None:
 
 	logger.info(
 		"ClickHouse подключён: %s:%s/%s",
-		CLICKHOUSE_HOST, CLICKHOUSE_PORT, CLICKHOUSE_DB,
+		CLICKHOUSE_HOST,
+		CLICKHOUSE_PORT,
+		CLICKHOUSE_DB,
 	)
 
 
 async def close_clickhouse() -> None:
 	"""Закрытие соединения с ClickHouse."""
 
-	global _client  # noqa: PLW0603
+	global _client
 
 	if _client is not None:
 		await _client.close()  # clickhouse_connect async client.close() is a coroutine

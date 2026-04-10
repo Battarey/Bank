@@ -59,33 +59,40 @@ async def check_transaction(
 							"amount": str(amount),
 							"currency": currency,
 						},
-						action="freeze", # Рекомендованное действие
+						action="freeze",  # Рекомендованное действие
 						threshold=violation.threshold,
 						actual=violation.actual,
 					)
 				except Exception:
 					logger.exception(
 						"Ошибка записи security event в хранилище: rule=%s, account=%s",
-						violation.rule, account_id,
+						violation.rule,
+						account_id,
 					)
 
 		if violations:
 			rules_summary = ", ".join(v.rule for v in violations)
 			logger.warning(
 				"AML Violation Detected: account=%s, type=%s, amount=%s %s, rules=[%s]",
-				account_id, tx_type, amount, currency, rules_summary,
+				account_id,
+				tx_type,
+				amount,
+				currency,
+				rules_summary,
 			)
 
 			# Регистрация события безопасности «на вырост»
-			uow.add_event(LogEvent(
-				user_id=None, # Security-лог может быть не привязан к сессии пользователя
-				action="aml_violation",
-				service="security_service",
-				details=f"Нарушения: {rules_summary}",
-				entity_id=account_id,
-				entity_type="bank_account",
-				status="warning",
-			))
+			uow.add_event(
+				LogEvent(
+					user_id=None,  # Security-лог может быть не привязан к сессии пользователя
+					action="aml_violation",
+					service="security_service",
+					details=f"Нарушения: {rules_summary}",
+					entity_id=account_id,
+					entity_type="bank_account",
+					status="warning",
+				)
+			)
 
 		await uow.commit()
 

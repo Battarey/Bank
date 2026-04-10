@@ -17,14 +17,14 @@ _client: httpx.AsyncClient | None = None
 
 async def connect() -> None:
 	"""Создаёт httpx-клиент для Security Service."""
-	global _client  # noqa: PLW0603
+	global _client
 	_client = httpx.AsyncClient(base_url=SECURITY_SERVICE_URL, timeout=10.0)
 	logger.info("Security client подключён: %s", SECURITY_SERVICE_URL)
 
 
 async def disconnect() -> None:
 	"""Закрывает httpx-клиент."""
-	global _client  # noqa: PLW0603
+	global _client
 	if _client is not None:
 		await _client.aclose()
 		_client = None

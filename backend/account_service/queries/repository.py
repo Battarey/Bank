@@ -19,7 +19,7 @@ class AccountQueryRepository(BaseQueryRepository):
 			tuple[list[AccountResponse], int]: Список счетов и их общее количество.
 		"""
 		params = {"client_id": user_id}
-		
+
 		# Оптимизированный запрос данных (обходим ORM)
 		data_query = """
 			SELECT 
@@ -30,13 +30,13 @@ class AccountQueryRepository(BaseQueryRepository):
 			WHERE client_id = :client_id
 			ORDER BY opened_at DESC
 		"""
-		
+
 		# Запрос общего количества
 		count_query = "SELECT COUNT(*) FROM bank_accounts WHERE client_id = :client_id"
-		
+
 		rows = await self._fetch_rows(data_query, params)
 		total = await self._get_total(count_query, params)
-		
+
 		return self._map_to_schemas(rows, AccountResponse), total
 
 	async def get_by_id_raw(self, user_id: UUID, account_id: UUID) -> AccountResponse | None:

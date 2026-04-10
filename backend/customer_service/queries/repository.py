@@ -21,7 +21,7 @@ class CustomerQueryRepository(BaseQueryRepository):
 			FullProfileResponse | None: Агрегированные расшифрованные данные профиля или None.
 		"""
 		params = {"client_id": user_id}
-		
+
 		# Оптимизированный запрос агрегации
 		query = """
 			SELECT 
@@ -37,22 +37,26 @@ class CustomerQueryRepository(BaseQueryRepository):
 			LEFT JOIN identifiers i ON i.client_id = u.id
 			WHERE u.id = :client_id
 		"""
-		
+
 		row = await self._fetch_one(query, params)
 		if not row:
 			return None
 
-		# Raw SQL не применяет TypeDecorator (EncryptedString), поэтому 
+		# Raw SQL не применяет TypeDecorator (EncryptedString), поэтому
 		# расшифровываем чувствительные данные вручную в Query-слое.
 		data = dict(row)
-		
+
 		# Расшифровка PII полей (Фамилия, Имя, Отчество, Email, Телефон, Паспорт)
 		encrypted_fields = [
-			"last_name", "first_name", "middle_name", 
-			"email", "phone", 
-			"passport_series", "passport_number"
+			"last_name",
+			"first_name",
+			"middle_name",
+			"email",
+			"phone",
+			"passport_series",
+			"passport_number",
 		]
-		
+
 		for field in encrypted_fields:
 			if data.get(field):
 				try:

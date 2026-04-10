@@ -33,15 +33,15 @@ async def list_transactions(
 ):
 	"""Возвращает историю операций по конкретному счёту с поддержкой пагинации и фильтров по типам/направлению."""
 	transactions, total = await service.list_transactions(
-		uow, 
-		user_id, 
+		uow,
+		user_id,
 		account_id,
 		limit=limit,
 		offset=offset,
 		tx_type=type,
 		direction=direction,
 	)
-	
+
 	return schemas.TransactionListResponse(
 		transactions=transactions,
 		total=total,

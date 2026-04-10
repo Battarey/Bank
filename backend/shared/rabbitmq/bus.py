@@ -28,7 +28,7 @@ class MessageBus:
 	@staticmethod
 	async def _publish(event: BaseEvent) -> None:
 		"""Логика публикации конкретного события."""
-		
+
 		if isinstance(event, NotificationEvent):
 			await send_notification(
 				notification_type=event.type,
@@ -61,5 +61,5 @@ class MessageBus:
 			return LOG_ACCOUNT_KEY
 		if "transaction" in service or "transfer" in service:
 			return LOG_TRANSACTION_KEY
-		
+
 		return "log.general"

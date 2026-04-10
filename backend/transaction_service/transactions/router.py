@@ -30,12 +30,12 @@ async def create_transaction(
 	uow: TransactionUnitOfWork = Depends(get_uow),
 ):
 	"""Создаёт новую транзакцию (пополнение, снятие или перевод).
-	
+
 	Тип операции определяется полем 'type'. Все идентификаторы счетов передаются в теле запроса.
 	"""
 	if payload.type == "deposit":
 		tx = await deposit_service.deposit(
-			uow, 
+			uow,
 			user_id,
 			account_id=payload.account_id,
 			amount=payload.amount,
@@ -43,10 +43,10 @@ async def create_transaction(
 			idempotency_key=payload.idempotency_key,
 		)
 		message = "Пополнение успешно выполнено."
-		
+
 	elif payload.type == "withdrawal":
 		tx = await withdrawal_service.withdraw(
-			uow, 
+			uow,
 			user_id,
 			account_id=payload.account_id,
 			amount=payload.amount,
@@ -54,10 +54,10 @@ async def create_transaction(
 			idempotency_key=payload.idempotency_key,
 		)
 		message = "Снятие успешно выполнено."
-		
+
 	elif payload.type == "transfer":
 		tx = await transfer_service.transfer(
-			uow, 
+			uow,
 			user_id,
 			from_account_id=payload.from_account_id,
 			to_account_id=payload.to_account_id,
@@ -69,6 +69,7 @@ async def create_transaction(
 	else:
 		# На случай если Discriminated Union пропустит что-то не то
 		from fastapi import HTTPException
+
 		raise HTTPException(status_code=400, detail="Неверный тип операции")
 
 	return schemas.TransactionMessageResponse(

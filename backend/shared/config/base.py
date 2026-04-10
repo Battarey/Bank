@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class BaseAppSettings(BaseSettings):
 	"""Абстрактный класс настроек, загружаемых из .env.
-	
+
 	Каждый сервис должен наследовать свой класс Settings от этого класса.
 	"""
 
@@ -20,7 +20,7 @@ class BaseAppSettings(BaseSettings):
 
 	# Окружение: local (dev-машина), test, dev (docker), prod
 	APP_ENV: Literal["local", "test", "dev", "prod"] = "local"
-	
+
 	# Общие настройки безопасности (ОБЯЗАТЕЛЬНЫ к заполнению в .env)
 	SECRET_KEY: str = Field(..., alias="SECRET_KEY")
 	INTERNAL_API_KEY: str = Field(..., alias="INTERNAL_API_KEY")

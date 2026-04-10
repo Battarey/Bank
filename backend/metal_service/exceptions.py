@@ -8,9 +8,11 @@ from shared.utils.exceptions import (
 
 class MetalError(BaseBusinessError):
 	"""Базовая ошибка операций с металлами."""
+
 	title = "Ошибка операций с драгметаллами"
 
 
 class RateUnavailable(MetalError, UnprocessableError):
 	"""Не удалось получить актуальную цену металла."""
+
 	title = "Цена металла недоступна"

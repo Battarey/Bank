@@ -18,6 +18,7 @@ from ..config import SecuritySettings
 
 logger = logging.getLogger("security_service")
 
+
 def _get_settings() -> SecuritySettings:
 	"""Получает специфические настройки для сервиса безопасности."""
 	return get_container().settings
@@ -30,7 +31,7 @@ _db: AsyncIOMotorDatabase | None = None
 async def init_mongo() -> None:
 	"""Подключение к MongoDB и создание TTL-индекса."""
 
-	global _client, _db  # noqa: PLW0603
+	global _client, _db
 
 	settings = _get_settings()
 	_client = AsyncIOMotorClient(settings.MONGO_URL)
@@ -48,7 +49,7 @@ async def init_mongo() -> None:
 async def close_mongo() -> None:
 	"""Закрытие соединения с MongoDB."""
 
-	global _client, _db  # noqa: PLW0603
+	global _client, _db
 
 	if _client is not None:
 		_client.close()

@@ -20,7 +20,12 @@ class AbstractUnitOfWork(abc.ABC):
 	async def __aenter__(self) -> AbstractUnitOfWork:
 		return self
 
-	async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
+	async def __aexit__(
+		self,
+		exc_type: type[BaseException] | None,
+		exc_val: BaseException | None,
+		exc_tb: Any | None,
+	) -> None:
 		if exc_type:
 			await self.rollback()
 
@@ -63,7 +68,12 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 		self._session = self.session_factory()
 		return await super().__aenter__()
 
-	async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
+	async def __aexit__(
+		self,
+		exc_type: type[BaseException] | None,
+		exc_val: BaseException | None,
+		exc_tb: Any | None,
+	) -> None:
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 		if self._session:
 			await self._session.close()

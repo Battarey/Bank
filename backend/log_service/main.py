@@ -17,7 +17,7 @@ def main() -> None:
 	"""Entry point."""
 	# Инициализация инфраструктуры на базе типизированных настроек
 	bootstrap(LogSettings)
-	
+
 	try:
 		asyncio.run(run_consumers())
 	except KeyboardInterrupt:

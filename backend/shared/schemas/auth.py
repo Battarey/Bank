@@ -12,6 +12,7 @@ Pin = Annotated[str, Field(pattern=r"^\d{4,6}$", description="PIN-код: от 4
 
 # ── Вход по PIN ────────────────────────────────────────────────────────
 
+
 class LoginPinRequest(BaseModel):
 	"""Запрос на вход по PIN-коду."""
 
@@ -27,6 +28,7 @@ class LoginPinResponse(BaseModel):
 
 
 # ── Установка PIN ──────────────────────────────────────────────────────
+
 
 class SetPinRequest(BaseModel):
 	"""Запрос на установку или смену PIN-кода."""

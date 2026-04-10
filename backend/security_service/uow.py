@@ -36,10 +36,7 @@ class SecurityUnitOfWork(SqlAlchemyUnitOfWork):
 		return uow
 
 	async def __aexit__(
-		self, 
-		exc_type: type[BaseException] | None, 
-		exc_val: BaseException | None, 
-		exc_tb: Any | None
+		self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None
 	) -> None:
 		"""Выход из контекстного менеджера и очистка ресурсов."""
 		await super().__aexit__(exc_type, exc_val, exc_tb)

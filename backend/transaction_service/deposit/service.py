@@ -53,9 +53,10 @@ async def deposit(
 
 		# 1. Получение счёта с блокировкой
 		account = await uow.transactions.get_account_for_update(account_id)
-		
+
 		if account.client_id != user_id:
 			from ..exceptions import AccountNotFound
+
 			raise AccountNotFound("Счёт не принадлежит вам.")
 
 		if account.status not in _DEPOSIT_ALLOWED_STATUSES:
@@ -88,26 +89,30 @@ async def deposit(
 		# 4. Регистрация событий в UoW (ДО коммита для авто-публикации)
 		contact = await uow.transactions.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="transaction_deposit",
-				to=contact.email,
-				variables={
-					"account_number": account.account_number,
-					"amount": str(amount),
-					"currency": account.currency,
-					"balance_after": str(balance_after),
-				},
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="transaction_deposit",
+					to=contact.email,
+					variables={
+						"account_number": account.account_number,
+						"amount": str(amount),
+						"currency": account.currency,
+						"balance_after": str(balance_after),
+					},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="deposit",
-			service="transaction_service",
-			details=f"Пополнение счёта {account.account_number}",
-			entity_id=tx.id,
-			amount=float(amount),
-			currency=account.currency,
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="deposit",
+				service="transaction_service",
+				details=f"Пополнение счёта {account.account_number}",
+				entity_id=tx.id,
+				amount=float(amount),
+				currency=account.currency,
+			)
+		)
 
 		try:
 			await uow.commit()

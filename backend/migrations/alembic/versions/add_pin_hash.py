@@ -10,8 +10,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("pin_hash", sa.Text(), nullable=True))
+	op.add_column("users", sa.Column("pin_hash", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("users", "pin_hash")
+	op.drop_column("users", "pin_hash")

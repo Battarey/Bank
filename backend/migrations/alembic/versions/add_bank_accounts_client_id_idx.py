@@ -9,12 +9,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_index(
-        "ix_bank_accounts_client_id",
-        "bank_accounts",
-        ["client_id"],
-    )
+	op.create_index(
+		"ix_bank_accounts_client_id",
+		"bank_accounts",
+		["client_id"],
+	)
 
 
 def downgrade() -> None:
-    op.drop_index("ix_bank_accounts_client_id", table_name="bank_accounts")
+	op.drop_index("ix_bank_accounts_client_id", table_name="bank_accounts")

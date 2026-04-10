@@ -110,6 +110,7 @@ async def verify_email(
 	success = await service.verify_email(user_id, payload.code)
 	if not success:
 		from ..exceptions import OnboardingError
+
 		raise OnboardingError("Неверный код или срок его действия истёк.")
 	return {"message": "Email успешно подтверждён."}
 

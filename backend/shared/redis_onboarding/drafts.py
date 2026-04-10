@@ -32,7 +32,7 @@ async def save_draft(
 	user_id: UUID,
 	step: StepName,
 	payload: dict[str, Any],
-	status: DraftRecord["status"] = "pending",
+	status: Literal["pending", "validated"] = "pending",
 	ttl: timedelta = DEFAULT_DRAFT_TTL,
 ) -> None:
 	"""Сохранить или перезаписать данные черновика для указанного шага онбординга."""

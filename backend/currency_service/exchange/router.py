@@ -29,7 +29,7 @@ async def convert_currency(
 	uow: CurrencyUnitOfWork = Depends(get_uow),
 ):
 	"""Конвертирует средства между двумя банковскими счетами разных валют текущего пользователя.
-	
+
 	Курс конвертации запрашивается в реальном времени. Операция атомарна.
 
 	Args:
@@ -41,7 +41,7 @@ async def convert_currency(
 		schemas.ExchangeResponse: Результат конвертации с деталями списания и зачисления.
 	"""
 	from_amount, to_amount, rate = await service.exchange(
-		uow, 
+		uow,
 		user_id,
 		from_account_id=payload.from_account_id,
 		to_account_id=payload.to_account_id,

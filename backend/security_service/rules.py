@@ -44,6 +44,7 @@ class Violation:
 		actual: Фактическое значение, вызвавшее срабатывание.
 		details: Словарь с техническими деталями для инспектора.
 	"""
+
 	rule: str
 	threshold: str
 	actual: str
@@ -51,19 +52,19 @@ class Violation:
 
 
 async def check_large_single_tx(
-	session: AsyncSession,
-	account_id: UUID,
+	_session: AsyncSession,
+	_account_id: UUID,
 	amount: Decimal,
 	currency: str,
 ) -> Violation | None:
 	"""Проверяет, не превышает ли разовая операция порог крупной сделки (600к+ руб).
-	
+
 	Args:
 		session: Сессия БД.
 		account_id: ID анализируемого счёта.
 		amount: Сумма операции.
 		currency: Валюта операции.
-		
+
 	Returns:
 		Violation | None: Описание нарушения или None, если всё в норме.
 	"""
@@ -88,23 +89,20 @@ async def check_daily_amount(
 	currency: str,
 ) -> Violation | None:
 	"""Проверяет суммарный объём операций по счёту за последние 24 часа.
-	
+
 	Args:
 		session: Сессия БД.
 		account_id: ID анализируемого счёта.
 		amount: Сумма новой (pending) операции.
 		currency: Валюта операции.
-		
+
 	Returns:
 		Violation | None: Описание нарушения или None.
 	"""
 	since = datetime.now(UTC) - timedelta(hours=24)
-	stmt = (
-		select(func.coalesce(func.sum(models.Transaction.amount), 0))
-		.where(
-			models.Transaction.account_id == account_id,
-			models.Transaction.created_at >= since,
-		)
+	stmt = select(func.coalesce(func.sum(models.Transaction.amount), 0)).where(
+		models.Transaction.account_id == account_id,
+		models.Transaction.created_at >= since,
 	)
 	result = await session.execute(stmt)
 	total_today = result.scalar()
@@ -128,17 +126,17 @@ async def check_daily_amount(
 async def check_daily_count(
 	session: AsyncSession,
 	account_id: UUID,
-	amount: Decimal,
-	currency: str,
+	_amount: Decimal,
+	_currency: str,
 ) -> Violation | None:
 	"""Проверяет количество операций по счёту за последние 24 часа.
-	
+
 	Args:
 		session: Сессия БД.
 		account_id: ID анализируемого счёта.
 		amount: Сумма операции (не влияет на проверку количества).
 		currency: Валюта операции.
-		
+
 	Returns:
 		Violation | None: Описание нарушения или None.
 	"""
@@ -172,17 +170,17 @@ async def check_daily_count(
 async def check_rapid_fire(
 	session: AsyncSession,
 	account_id: UUID,
-	amount: Decimal,
-	currency: str,
+	_amount: Decimal,
+	_currency: str,
 ) -> Violation | None:
 	"""Выявляет серию операций за аномально короткий период времени.
-	
+
 	Args:
 		session: Сессия БД.
 		account_id: ID анализируемого счёта.
 		amount: Сумма операции.
 		currency: Валюта операции.
-		
+
 	Returns:
 		Violation | None: Описание нарушения или None.
 	"""
@@ -218,18 +216,18 @@ async def check_structuring(
 	session: AsyncSession,
 	account_id: UUID,
 	amount: Decimal,
-	currency: str,
+	_currency: str,
 ) -> Violation | None:
 	"""Выявляет признаки дробления транзакций (structuring) перед порогом мониторинга.
-	
+
 	Дробление — это серия переводов на суммы чуть ниже лимита обязательного контроля.
-	
+
 	Args:
 		session: Сессия БД.
 		account_id: ID анализируемого счёта.
 		amount: Сумма операции.
 		currency: Валюта операции.
-		
+
 	Returns:
 		Violation | None: Описание нарушения или None.
 	"""
@@ -275,24 +273,21 @@ async def check_round_amount(
 	session: AsyncSession,
 	account_id: UUID,
 	amount: Decimal,
-	currency: str,
+	_currency: str,
 ) -> Violation | None:
 	"""Выявляет серийные крупные переводы круглыми суммами — косвенный признак обналичивания.
-	
+
 	Args:
 		session: Сессия БД.
 		account_id: ID анализируемого счёта.
 		amount: Сумма операции.
 		currency: Валюта операции.
-		
+
 	Returns:
 		Violation | None: Описание нарушения или None.
 	"""
 	since = datetime.now(UTC) - timedelta(hours=24)
-	current_is_round = (
-		amount >= ROUND_AMOUNT_FLOOR
-		and amount % ROUND_AMOUNT_STEP == 0
-	)
+	current_is_round = amount >= ROUND_AMOUNT_FLOOR and amount % ROUND_AMOUNT_STEP == 0
 
 	# Проверка нацелена на крупные операции с круглой суммой
 	stmt = (

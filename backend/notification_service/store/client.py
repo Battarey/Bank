@@ -23,7 +23,7 @@ _db: AsyncIOMotorDatabase | None = None
 async def init_mongo(mongo_url: str) -> None:
 	"""Подключение к MongoDB и создание TTL-индекса."""
 
-	global _client, _db  # noqa: PLW0603
+	global _client, _db
 
 	_client = AsyncIOMotorClient(mongo_url)
 	_db = _client.get_default_database()
@@ -41,7 +41,7 @@ async def init_mongo(mongo_url: str) -> None:
 async def close_mongo() -> None:
 	"""Закрытие соединения с MongoDB."""
 
-	global _client, _db  # noqa: PLW0603
+	global _client, _db
 
 	if _client is not None:
 		_client.close()

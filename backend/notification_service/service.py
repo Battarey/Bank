@@ -18,7 +18,7 @@ class NotificationService:
 
 	async def process_notification(self, task: NotificationTask) -> None:
 		"""Обрабатывает одно задание на уведомление.
-		
+
 		1. Рендерит шаблон.
 		2. Отправляет email.
 		3. Сохраняет результат.
@@ -53,7 +53,7 @@ class NotificationService:
 
 		except Exception as exc:
 			logger.exception("Ошибка обработки уведомления type=%s", msg_type)
-			
+
 			# Фиксация ошибки в журнале
 			await self.repository.save(
 				msg_type=msg_type,

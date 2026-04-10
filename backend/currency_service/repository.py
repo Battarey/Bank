@@ -19,7 +19,7 @@ class CurrencyRepository(BaseRepository[models.BankAccount]):
 
 	async def lock_accounts(self, account_ids: list[UUID]) -> dict[UUID, models.BankAccount]:
 		"""Атомарно блокирует несколько счетов в БД (FOR UPDATE).
-		
+
 		Сортировка ID важна для исключения Deadlocks.
 		"""
 		stmt = (

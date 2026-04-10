@@ -29,4 +29,5 @@ class Contact(Base):
 	email_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
 	phone_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
 
+
 __all__ = ["Contact"]

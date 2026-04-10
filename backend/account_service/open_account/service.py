@@ -46,7 +46,7 @@ _TYPE_LABELS: dict[str, str] = {
 
 async def _generate_unique_number(uow: AccountUnitOfWork, account_type: str, currency: str) -> str:
 	"""Генерирует уникальный 20-значный номер банковского счёта.
-	
+
 	Формат: [Тип][Валюта][Бранч][Рандом] (5 + 3 + 4 + 8 = 20 цифр).
 
 	Args:
@@ -67,12 +67,12 @@ async def _generate_unique_number(uow: AccountUnitOfWork, account_type: str, cur
 	for _ in range(10):
 		random_part = "".join(str(secrets.randbelow(10)) for _ in range(8))
 		number = f"{type_prefix}{curr_prefix}{branch}{random_part}"
-		
+
 		# Проверка уникальности
 		existing = await uow.accounts.get_by_number(number)
 		if not existing:
 			return number
-			
+
 	raise AccountError("Системная ошибка: не удалось сгенерировать уникальный номер счёта после 10 попыток.")
 
 
@@ -127,24 +127,28 @@ async def open_account(
 		# 5. Регистрация событий ДО коммита
 		contact = await uow.accounts.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="account_opened",
-				to=contact.email,
-				variables={
-					"account_type": _TYPE_LABELS.get(account.type, account.type),
-					"currency": account.currency,
-					"account_number": account.account_number,
-				},
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="account_opened",
+					to=contact.email,
+					variables={
+						"account_type": _TYPE_LABELS.get(account.type, account.type),
+						"currency": account.currency,
+						"account_number": account.account_number,
+					},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="open_account",
-			service="account_service",
-			details=f"Открыт счёт {account.account_number} ({payload.type})",
-			entity_id=account.id,
-			entity_type="bank_account",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="open_account",
+				service="account_service",
+				details=f"Открыт счёт {account.account_number} ({payload.type})",
+				entity_id=account.id,
+				entity_type="bank_account",
+			)
+		)
 
 		try:
 			await uow.commit()
@@ -188,5 +192,6 @@ async def get_account(uow: AccountUnitOfWork, user_id: UUID, account_id: UUID) -
 		account = await uow.account_queries.get_by_id_raw(user_id, account_id)
 		if not account:
 			from ..exceptions import AccountNotFound
+
 			raise AccountNotFound("Счёт не найден или не принадлежит вам.")
 		return account

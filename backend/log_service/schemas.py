@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class LogPayload(BaseModel):
 	"""Полезная нагрузка лога."""
+
 	user_id: UUID | None = Field(None, description="ID пользователя")
 	action: str = Field(..., description="Действие (например, transfer, deposit)")
 	service: str = Field(..., description="Имя сервиса-источника")
@@ -23,5 +24,6 @@ class LogPayload(BaseModel):
 
 class LogEvent(BaseModel):
 	"""Входящее событие логирования из RabbitMQ."""
+
 	type: str = Field(..., description="Тип события")
 	payload: LogPayload

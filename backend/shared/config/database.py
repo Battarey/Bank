@@ -26,17 +26,15 @@ class DatabaseSettings(BaseSettings):
 
 	# Redis (хранение сессий и черновиков онбординга)
 	REDIS_SESSIONS_URL: str | None = Field(
-		None, 
-		validation_alias=AliasChoices("REDIS_SESSIONS_URL", "REDIS_URL", "redis_sessions_url")
+		None, validation_alias=AliasChoices("REDIS_SESSIONS_URL", "REDIS_URL", "redis_sessions_url")
 	)
 	REDIS_ONBOARDING_URL: str | None = Field(
-		None, 
-		validation_alias=AliasChoices("REDIS_ONBOARDING_URL", "REDIS_URL", "redis_onboarding_url")
+		None, validation_alias=AliasChoices("REDIS_ONBOARDING_URL", "REDIS_URL", "redis_onboarding_url")
 	)
 	REDIS_SESSION_TTL: int = Field(1800, alias="REDIS_SESSION_TTL")
 
-	@model_validator(mode='after')
-	def use_test_database(self) -> 'DatabaseSettings':
+	@model_validator(mode="after")
+	def use_test_database(self) -> "DatabaseSettings":
 		"""Автоматически переключает URL на тестовый, если APP_ENV=test."""
 		if os.getenv("APP_ENV") == "test":
 			if self.TEST_DATABASE_URL:
@@ -45,7 +43,7 @@ class DatabaseSettings(BaseSettings):
 			else:
 				logger.warning("APP_ENV=test but TEST_DATABASE_URL is not set!")
 		return self
-	
+
 
 class HistorySettings(BaseSettings):
 	"""Настройки для Clickhouse (аналитика) или доп. хранилищ истории."""

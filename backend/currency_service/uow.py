@@ -12,7 +12,7 @@ from .repository import CurrencyRepository
 class CurrencyUnitOfWork(SqlAlchemyUnitOfWork):
 	"""Unit of Work для Currency Service.
 
-	Управляет атомарностью операций со счетами и транзакциями, 
+	Управляет атомарностью операций со счетами и транзакциями,
 	обеспечивая консистентность данных при обмене валют.
 
 	Attributes:
@@ -34,10 +34,7 @@ class CurrencyUnitOfWork(SqlAlchemyUnitOfWork):
 		return uow
 
 	async def __aexit__(
-		self, 
-		exc_type: type[BaseException] | None, 
-		exc_val: BaseException | None, 
-		exc_tb: Any | None
+		self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None
 	) -> None:
 		"""Выход из контекстного менеджера и очистка репозиториев."""
 		await super().__aexit__(exc_type, exc_val, exc_tb)

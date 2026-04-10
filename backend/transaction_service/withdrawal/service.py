@@ -56,9 +56,10 @@ async def withdraw(
 
 		# 1. Блокировка счёта
 		account = await uow.transactions.get_account_for_update(account_id)
-		
+
 		if account.client_id != user_id:
 			from ..exceptions import AccountNotFound
+
 			raise AccountNotFound("Счёт не принадлежит вам.")
 
 		if account.status == "frozen":
@@ -68,6 +69,7 @@ async def withdraw(
 
 		# 2. Антифрод-проверка
 		from .. import security_client
+
 		is_safe, violations = await security_client.check_transaction(
 			account_id, "withdrawal", amount, account.currency
 		)
@@ -77,14 +79,16 @@ async def withdraw(
 			account.frozen_by = "system"
 			account.frozen_at = datetime.now(UTC)
 			account.freeze_reason = f"AML: {reason}"
-			
-			uow.add_event(NotificationEvent(
-				type="security_freeze",
-				to="owner", 
-				variables={"account_number": account.account_number, "rule": reason}
-			))
-			
-			await uow.commit() # Сохраняем блокировку даже при нарушении правил
+
+			uow.add_event(
+				NotificationEvent(
+					type="security_freeze",
+					to="owner",
+					variables={"account_number": account.account_number, "rule": reason},
+				)
+			)
+
+			await uow.commit()  # Сохраняем блокировку даже при нарушении правил
 			raise SecurityViolation(f"Операция отклонена безопасностью. Счёт заморожен: {reason}")
 
 		# 3. Проверка баланса
@@ -118,26 +122,30 @@ async def withdraw(
 		# 6. Регистрация событий в UoW (ДО коммита для авто-публикации)
 		contact = await uow.transactions.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="transaction_withdrawal",
-				to=contact.email,
-				variables={
-					"account_number": account.account_number,
-					"amount": str(amount),
-					"currency": account.currency,
-					"balance_after": str(balance_after),
-				},
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="transaction_withdrawal",
+					to=contact.email,
+					variables={
+						"account_number": account.account_number,
+						"amount": str(amount),
+						"currency": account.currency,
+						"balance_after": str(balance_after),
+					},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="withdrawal",
-			service="transaction_service",
-			details=f"Снятие со счёта {account.account_number}",
-			entity_id=tx.id,
-			amount=float(amount),
-			currency=account.currency,
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="withdrawal",
+				service="transaction_service",
+				details=f"Снятие со счёта {account.account_number}",
+				entity_id=tx.id,
+				amount=float(amount),
+				currency=account.currency,
+			)
+		)
 
 		try:
 			await uow.commit()

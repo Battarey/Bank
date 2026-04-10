@@ -16,6 +16,7 @@ TransactionStatus = Literal["pending", "posted", "failed"]
 
 # ── Запросы ────────────────────────────────────────────────────────────
 
+
 class DepositRequest(BaseModel):
 	"""Запрос на пополнение счёта."""
 
@@ -53,12 +54,11 @@ class TransferRequest(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 
 
-import typing as t
-
-TransactionCreateRequest = t.Union[DepositRequest, WithdrawalRequest, TransferRequest]
+TransactionCreateRequest = DepositRequest | WithdrawalRequest | TransferRequest
 
 
 # ── Ответы ─────────────────────────────────────────────────────────────
+
 
 class TransactionResponse(BaseModel):
 	"""Полные данные одной транзакции."""
@@ -98,6 +98,7 @@ class TransactionListResponse(BaseModel):
 
 __all__ = [
 	"DepositRequest",
+	"TransactionCreateRequest",
 	"TransactionDirection",
 	"TransactionListResponse",
 	"TransactionMessageResponse",
@@ -106,5 +107,4 @@ __all__ = [
 	"TransactionType",
 	"TransferRequest",
 	"WithdrawalRequest",
-	"TransactionCreateRequest",
 ]

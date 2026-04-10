@@ -9,6 +9,7 @@ def _resolve_redis_url() -> str:
 	"""Определяет URL для Redis онбординга из окружения или Bootstrap-контейнера."""
 	try:
 		from shared.bootstrap import get_container
+
 		return get_container().db_settings.REDIS_ONBOARDING_URL or ""
 	except (RuntimeError, ImportError):
 		return os.getenv("REDIS_ONBOARDING_URL", "")
@@ -37,4 +38,4 @@ async def close_client() -> None:
 	_client = None
 
 
-__all__ = ["get_client", "close_client"]
+__all__ = ["close_client", "get_client"]

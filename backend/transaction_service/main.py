@@ -23,7 +23,7 @@ from .transactions.router import router as transactions_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
 	await rmq_connect()
 	await security_client.connect()
 	await currency_client.connect()

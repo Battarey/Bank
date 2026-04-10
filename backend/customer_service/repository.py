@@ -44,16 +44,13 @@ class CustomerRepository(BaseRepository[models.User]):
 		stmt = select(models.Passport).where(models.Passport.passport_hash == passport_hash)
 		if exclude_client_id:
 			stmt = stmt.where(models.Passport.client_id != exclude_client_id)
-		
+
 		result = await self.session.execute(stmt)
 		if result.scalar_one_or_none():
 			raise UpdateDataConflict("Паспорт с такой серией/номером уже зарегистрирован.")
 
 	async def check_contacts_unique(
-		self, 
-		email_hash: str | None = None, 
-		phone_hash: str | None = None,
-		exclude_client_id: UUID | None = None
+		self, email_hash: str | None = None, phone_hash: str | None = None, exclude_client_id: UUID | None = None
 	) -> None:
 		"""Проверяет уникальность email и телефона."""
 		conditions = []
@@ -61,23 +58,20 @@ class CustomerRepository(BaseRepository[models.User]):
 			conditions.append(models.Contact.email_hash == email_hash)
 		if phone_hash:
 			conditions.append(models.Contact.phone_hash == phone_hash)
-		
+
 		if not conditions:
 			return
 
 		stmt = select(models.Contact).where(or_(*conditions))
 		if exclude_client_id:
 			stmt = stmt.where(models.Contact.client_id != exclude_client_id)
-		
+
 		result = await self.session.execute(stmt)
 		if result.scalar_one_or_none():
 			raise UpdateDataConflict("Email или номер телефона уже используется другим клиентом.")
 
 	async def check_identifiers_unique(
-		self, 
-		inn_hash: str | None = None, 
-		snils_hash: str | None = None,
-		exclude_client_id: UUID | None = None
+		self, inn_hash: str | None = None, snils_hash: str | None = None, exclude_client_id: UUID | None = None
 	) -> None:
 		"""Проверяет уникальность ИНН и СНИЛС."""
 		conditions = []
@@ -85,14 +79,14 @@ class CustomerRepository(BaseRepository[models.User]):
 			conditions.append(models.Identifier.inn_hash == inn_hash)
 		if snils_hash:
 			conditions.append(models.Identifier.snils_hash == snils_hash)
-		
+
 		if not conditions:
 			return
 
 		stmt = select(models.Identifier).where(or_(*conditions))
 		if exclude_client_id:
 			stmt = stmt.where(models.Identifier.client_id != exclude_client_id)
-		
+
 		result = await self.session.execute(stmt)
 		if result.scalar_one_or_none():
 			raise UpdateDataConflict("ИНН или СНИЛС уже зарегистрирован в системе.")
@@ -112,9 +106,13 @@ class CustomerRepository(BaseRepository[models.User]):
 
 	async def get_open_accounts(self, client_id: UUID) -> Sequence[models.BankAccount]:
 		"""Возвращает все активные (незамороженные и неоткрытые) счета клиента."""
-		stmt = select(models.BankAccount).where(
-			models.BankAccount.client_id == client_id,
-			models.BankAccount.status == "open",
-		).with_for_update()
+		stmt = (
+			select(models.BankAccount)
+			.where(
+				models.BankAccount.client_id == client_id,
+				models.BankAccount.status == "open",
+			)
+			.with_for_update()
+		)
 		result = await self.session.execute(stmt)
 		return result.scalars().all()

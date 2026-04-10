@@ -15,51 +15,51 @@ BLIND_INDEX_SALT: Final[str] = os.getenv("BLIND_INDEX_SALT", "bank_default_salt_
 
 def encrypt_data(data: str) -> str:
 	"""Шифрует строку с использованием Fernet (AES-128 в режиме CBC с HMAC).
-	
+
 	Args:
 		data: Исходные данные в виде строки.
-		
+
 	Returns:
 		Зашифрованные данные в формате Base64 (строка).
-		
+
 	Raises:
 		ValueError: Если ENCRYPTION_KEY не задан.
 	"""
 	if not ENCRYPTION_KEY:
 		raise ValueError("Переменная окружения ENCRYPTION_KEY не задана!")
-	
+
 	f = Fernet(ENCRYPTION_KEY.encode())
 	return f.encrypt(data.encode()).decode()
 
 
 def decrypt_data(token: str) -> str:
 	"""Расшифровывает строку, зашифрованную через Fernet.
-	
+
 	Args:
 		token: Зашифрованные данные (Base64).
-		
+
 	Returns:
 		Исходная строка.
-		
+
 	Raises:
 		ValueError: Если ENCRYPTION_KEY не задан.
 	"""
 	if not ENCRYPTION_KEY:
 		raise ValueError("Переменная окружения ENCRYPTION_KEY не задана!")
-	
+
 	f = Fernet(ENCRYPTION_KEY.encode())
 	return f.decrypt(token.encode()).decode()
 
 
 def get_blind_index(data: str) -> str:
 	"""Создает детерминированный хеш (слепой индекс) для поиска по зашифрованным полям.
-	
+
 	Используется для обеспечения уникальности и возможности поиска (равенства),
 	так как основное шифрование Fernet недетерминировано (разный IV при каждом вызове).
-	
+
 	Args:
 		data: Исходные данные.
-		
+
 	Returns:
 		Хеш в шестнадцатеричном формате.
 	"""

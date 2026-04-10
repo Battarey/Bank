@@ -1,6 +1,5 @@
 """Роутер для проведения AML / антифрод-проверок транзакций."""
 
-
 from fastapi import APIRouter, Depends, status
 
 from shared.schemas import (
@@ -16,6 +15,7 @@ from . import service
 
 router = APIRouter(prefix="/security", tags=["Security"])
 
+
 @router.post(
 	"/evaluations",
 	response_model=SecurityCheckResponse,
@@ -27,7 +27,7 @@ async def check_transaction(
 	uow: SecurityUnitOfWork = Depends(get_uow),
 ):
 	"""Проверяет входящую операцию на соответствие набору AML-правил безопасности.
-	
+
 	Используется Transaction Service и Account Service перед завершением финансовых проводок.
 	Возвращает `allowed: false` при выявлении хотя бы одного нарушения.
 

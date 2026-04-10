@@ -25,11 +25,13 @@ class PassportPayload(BaseModel):
 			raise ValueError("expiration_date must be later than issued_at")
 		return self
 
+
 class PassportResponse(PassportPayload):
 	"""Паспортные данные клиента (ответ)."""
 
 	client_id: UUID = Field(description="UUID клиента")
 
 	model_config = ConfigDict(from_attributes=True)
+
 
 __all__ = ["PassportPayload", "PassportResponse"]

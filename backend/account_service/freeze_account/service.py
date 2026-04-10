@@ -51,9 +51,7 @@ async def freeze_account(
 			raise AccountAlreadyFrozen(f"Счёт {account.account_number} уже заморожен.")
 
 		if account.status != "open":
-			raise AccountNotOpen(
-				f"Невозможно заморозить счёт в статусе «{account.status}»."
-			)
+			raise AccountNotOpen(f"Невозможно заморозить счёт в статусе «{account.status}».")
 
 		now = datetime.now(UTC)
 		account.status = "frozen"
@@ -64,24 +62,28 @@ async def freeze_account(
 		# Регистрация событий ДО коммита для авто-публикации
 		contact = await uow.accounts.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="account_frozen",
-				to=contact.email,
-				variables={
-					"account_number": account.account_number,
-					"frozen_by": frozen_by,
-					"reason": reason,
-				},
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="account_frozen",
+					to=contact.email,
+					variables={
+						"account_number": account.account_number,
+						"frozen_by": frozen_by,
+						"reason": reason,
+					},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="freeze_account",
-			service="account_service",
-			details=f"Счёт {account.account_number} заморожен ({frozen_by}: {reason})",
-			entity_id=account.id,
-			entity_type="bank_account",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="freeze_account",
+				service="account_service",
+				details=f"Счёт {account.account_number} заморожен ({frozen_by}: {reason})",
+				entity_id=account.id,
+				entity_type="bank_account",
+			)
+		)
 
 		await uow.commit()
 		await uow.accounts.refresh(account)
@@ -116,9 +118,7 @@ async def unfreeze_account(
 			raise AccountNotFrozen(f"Счёт {account.account_number} не заморожен.")
 
 		if account.frozen_by != "user":
-			raise UnfreezeNotAllowed(
-				"Счёт заморожен системой безопасности. Самостоятельная разморозка невозможна."
-			)
+			raise UnfreezeNotAllowed("Счёт заморожен системой безопасности. Самостоятельная разморозка невозможна.")
 
 		account.status = "open"
 		account.frozen_by = None
@@ -128,22 +128,26 @@ async def unfreeze_account(
 		# Регистрация событий
 		contact = await uow.accounts.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="account_unfrozen",
-				to=contact.email,
-				variables={
-					"account_number": account.account_number,
-				},
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="account_unfrozen",
+					to=contact.email,
+					variables={
+						"account_number": account.account_number,
+					},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="unfreeze_account",
-			service="account_service",
-			details=f"Счёт {account.account_number} разморожен",
-			entity_id=account.id,
-			entity_type="bank_account",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="unfreeze_account",
+				service="account_service",
+				details=f"Счёт {account.account_number} разморожен",
+				entity_id=account.id,
+				entity_type="bank_account",
+			)
+		)
 
 		await uow.commit()
 		await uow.accounts.refresh(account)
@@ -180,15 +184,17 @@ async def cascade_freeze(
 			acc.frozen_at = now
 			acc.freeze_reason = reason
 			count += 1
-			
-			uow.add_event(LogEvent(
-				user_id=user_id,
-				action="cascade_freeze_account",
-				service="account_service",
-				details=f"Счёт {acc.account_number} заморожен системой: {reason}",
-				entity_id=acc.id,
-				entity_type="bank_account",
-			))
+
+			uow.add_event(
+				LogEvent(
+					user_id=user_id,
+					action="cascade_freeze_account",
+					service="account_service",
+					details=f"Счёт {acc.account_number} заморожен системой: {reason}",
+					entity_id=acc.id,
+					entity_type="bank_account",
+				)
+			)
 
 		if count:
 			await uow.commit()
@@ -219,15 +225,17 @@ async def cascade_unfreeze(
 			acc.frozen_at = None
 			acc.freeze_reason = None
 			count += 1
-			
-			uow.add_event(LogEvent(
-				user_id=user_id,
-				action="cascade_unfreeze_account",
-				service="account_service",
-				details=f"Счёт {acc.account_number} разморожен системой",
-				entity_id=acc.id,
-				entity_type="bank_account",
-			))
+
+			uow.add_event(
+				LogEvent(
+					user_id=user_id,
+					action="cascade_unfreeze_account",
+					service="account_service",
+					details=f"Счёт {acc.account_number} разморожен системой",
+					entity_id=acc.id,
+					entity_type="bank_account",
+				)
+			)
 
 		if count:
 			await uow.commit()

@@ -41,4 +41,5 @@ class Passport(Base):
 		# из-за шифрования, поэтому мы его убираем из БД, заменяя на passport_hash.
 	)
 
+
 __all__ = ["Passport"]

@@ -14,6 +14,7 @@ MAX_AGE = 120
 
 NameStr = constr(strip_whitespace=True, min_length=1, max_length=100)
 
+
 class PersonalDataPayload(BaseModel):
 	"""Персональные данные клиента: ФИО, дата рождения, пол."""
 
@@ -40,10 +41,7 @@ class PersonalDataPayload(BaseModel):
 		# Проверка високосного года (29 февраля)
 		if value.month == 2 and value.day == 29:
 			if not calendar.isleap(value.year):
-				raise ValueError(
-					f"{value.year} не является високосным годом, "
-					f"дата 29 февраля невозможна"
-				)
+				raise ValueError(f"{value.year} не является високосным годом, дата 29 февраля невозможна")
 
 		# Дата рождения не может быть в будущем
 		if value > today:
@@ -55,15 +53,11 @@ class PersonalDataPayload(BaseModel):
 			age -= 1
 
 		if age < MIN_AGE:
-			raise ValueError(
-				f"Клиент должен быть не младше {MIN_AGE} лет "
-				f"(указан возраст: {age})"
-			)
+			raise ValueError(f"Клиент должен быть не младше {MIN_AGE} лет (указан возраст: {age})")
 
 		if age > MAX_AGE:
 			raise ValueError(
-				f"Дата рождения указывает на возраст {age} лет, "
-				f"что превышает максимально допустимый ({MAX_AGE})"
+				f"Дата рождения указывает на возраст {age} лет, что превышает максимально допустимый ({MAX_AGE})"
 			)
 
 		return value
@@ -77,6 +71,7 @@ class PersonalDataPayload(BaseModel):
 			if normalized in {"M", "F"}:
 				return normalized
 		raise ValueError("gender must be 'M' or 'F'")
+
 
 class PersonalDataResponse(PersonalDataPayload):
 	"""Персональные данные клиента (ответ)."""

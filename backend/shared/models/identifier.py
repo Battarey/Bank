@@ -30,4 +30,5 @@ class Identifier(Base):
 	inn_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
 	snils_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
 
+
 __all__ = ["Identifier"]

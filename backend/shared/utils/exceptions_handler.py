@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from .exceptions import BaseBusinessError
 
 
-async def business_exception_handler(request: Request, exc: BaseBusinessError) -> JSONResponse:
+async def business_exception_handler(_request: Request, exc: BaseBusinessError) -> JSONResponse:
 	"""Ловит исключения, наследуемые от BaseBusinessError, и превращает их в RFC 7807 ответ."""
 
 	content = {

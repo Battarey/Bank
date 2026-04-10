@@ -9,11 +9,13 @@ def _resolve_redis_url() -> str:
 	"""Определяет URL для сессионного Redis из окружения или Bootstrap-контейнера."""
 	try:
 		from shared.bootstrap import get_container
+
 		# Пытаемся взять из типизированных настроек
 		return get_container().db_settings.REDIS_SESSIONS_URL or ""
 	except (RuntimeError, ImportError):
 		# Fallback для совместимости
 		return os.getenv("REDIS_SESSIONS_URL")
+
 
 _client: Redis | None = None
 
@@ -38,4 +40,4 @@ async def close_client() -> None:
 	_client = None
 
 
-__all__ = ["get_client", "close_client", "REDIS_SESSIONS_URL"]
+__all__ = ["close_client", "get_client"]

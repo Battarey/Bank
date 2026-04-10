@@ -15,9 +15,7 @@ class PersonalData(Base):
 	"""Персональные данные клиента (ФИО, дата рождения, пол)."""
 
 	__tablename__ = "personal_data"
-	__table_args__ = (
-		CheckConstraint("gender IN ('M','F')", name="ck_personal_data_gender"),
-	)
+	__table_args__ = (CheckConstraint("gender IN ('M','F')", name="ck_personal_data_gender"),)
 
 	client_id: Mapped[UUID] = mapped_column(
 		PGUUID(as_uuid=True),
@@ -32,5 +30,6 @@ class PersonalData(Base):
 
 	birth_date: Mapped[date] = mapped_column(Date, nullable=False)
 	gender: Mapped[str] = mapped_column(String(1), nullable=False)
+
 
 __all__ = ["PersonalData"]

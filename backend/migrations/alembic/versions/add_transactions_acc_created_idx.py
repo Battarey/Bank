@@ -10,12 +10,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_index(
-        "ix_transactions_acc_created",
-        "transactions",
-        ["account_id", sa.text("created_at DESC")],
-    )
+	op.create_index(
+		"ix_transactions_acc_created",
+		"transactions",
+		["account_id", sa.text("created_at DESC")],
+	)
 
 
 def downgrade() -> None:
-    op.drop_index("ix_transactions_acc_created", table_name="transactions")
+	op.drop_index("ix_transactions_acc_created", table_name="transactions")

@@ -17,36 +17,38 @@ bootstrap(SecuritySettings)
 
 @pytest.fixture(autouse=True)
 def mock_bootstrap():
-    """Мокирует get_container для возврата настроек и сессии в тестах."""
-    mock_settings = MagicMock()
-    mock_settings.INTERNAL_API_KEY = "test-key"
-    mock_settings.MONGO_URL = "mongodb://test"
-    
-    mock_container = MagicMock()
-    mock_container.settings = mock_settings
-    mock_container.session_factory = MagicMock() # SQLAlchemy session factory
-    
-    with patch("security_service.uow.get_container", return_value=mock_container):
-        yield mock_container
+	"""Мокирует get_container для возврата настроек и сессии в тестах."""
+	mock_settings = MagicMock()
+	mock_settings.INTERNAL_API_KEY = "test-key"
+	mock_settings.MONGO_URL = "mongodb://test"
+
+	mock_container = MagicMock()
+	mock_container.settings = mock_settings
+	mock_container.session_factory = MagicMock()  # SQLAlchemy session factory
+
+	with patch("security_service.uow.get_container", return_value=mock_container):
+		yield mock_container
+
 
 @pytest.fixture
 def mock_session():
-    """Фикстура для имитации асинхронной сессии SQLAlchemy."""
-    session = AsyncMock()
-    return session
+	"""Фикстура для имитации асинхронной сессии SQLAlchemy."""
+	session = AsyncMock()
+	return session
+
 
 @pytest.fixture
 def mock_uow():
-    """Фикстура-заглушка Unit of Work."""
-    uow = MagicMock()
-    uow.accounts = AsyncMock()
-    uow.session = AsyncMock()
-    
-    # Мок контекстного менеджера
-    uow.__aenter__ = AsyncMock(return_value=uow)
-    uow.__aexit__ = AsyncMock(return_value=None)
-    uow.commit = AsyncMock()
-    uow.rollback = AsyncMock()
-    uow.add_event = MagicMock()
-    
-    return uow
+	"""Фикстура-заглушка Unit of Work."""
+	uow = MagicMock()
+	uow.accounts = AsyncMock()
+	uow.session = AsyncMock()
+
+	# Мок контекстного менеджера
+	uow.__aenter__ = AsyncMock(return_value=uow)
+	uow.__aexit__ = AsyncMock(return_value=None)
+	uow.commit = AsyncMock()
+	uow.rollback = AsyncMock()
+	uow.add_event = MagicMock()
+
+	return uow

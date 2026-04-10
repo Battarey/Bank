@@ -21,7 +21,7 @@ class PostgresHistoryRepository:
 
 	async def save_action(self, payload: LogPayload) -> None:
 		"""Сохраняет действие пользователя в postgres_history."""
-		
+
 		# Если user_id нет (системный лог), в аудит-лог пользователя не пишем
 		if not payload.user_id:
 			return
@@ -47,14 +47,15 @@ class PostgresHistoryRepository:
 
 	async def delete_old_history(self, days: int) -> int:
 		"""Удаляет записи истории старше N дней.
-		
+
 		Модель UserAction имеет поле created_at.
 		"""
 		from datetime import UTC, datetime, timedelta
+
 		cutoff = datetime.now(UTC) - timedelta(days=days)
-		
+
 		stmt = delete(UserAction).where(UserAction.created_at < cutoff)
-		
+
 		async with HistorySessionLocal() as session:
 			result = await session.execute(stmt)
 			await session.commit()
@@ -66,7 +67,7 @@ class ClickHouseRepository:
 
 	async def save_event(self, event_type: str, payload: LogPayload) -> None:
 		"""Сохраняет событие в ClickHouse."""
-		
+
 		await insert_log_event(
 			event_type=event_type,
 			service=payload.service,

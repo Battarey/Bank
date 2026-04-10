@@ -28,11 +28,11 @@ async def suspend_account(
 	uow: AccountUnitOfWork = Depends(get_uow),
 ):
 	"""Приостанавливает операции по банковскому счёту (заморозка).
-	
+
 	Замороженный счёт недоступен для любых расходных операций (переводы, оплата).
 	"""
 	account = await service.freeze_account(uow, user_id, account_id)
-	
+
 	return schemas.AccountMessageResponse(
 		message="Обслуживание счёта приостановлено.",
 		account=schemas.AccountResponse.model_validate(account),
@@ -52,7 +52,7 @@ async def resume_account(
 ):
 	"""Снимает приостановку со счёта (разморозка), если она была установлена пользователем."""
 	account = await service.unfreeze_account(uow, user_id, account_id)
-	
+
 	return schemas.AccountMessageResponse(
 		message="Обслуживание счёта возобновлено.",
 		account=schemas.AccountResponse.model_validate(account),

@@ -42,7 +42,7 @@ class TransactionQueryRepository(BaseQueryRepository):
 		if tx_type:
 			where_clauses.append("type = :tx_type")
 			params["tx_type"] = tx_type
-		
+
 		if direction:
 			where_clauses.append("direction = :direction")
 			params["direction"] = direction

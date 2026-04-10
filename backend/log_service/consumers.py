@@ -22,6 +22,7 @@ logger = logging.getLogger("log_service.consumers")
 
 MAX_RETRIES = 10
 RETRY_DELAY = 3
+_background_tasks = set()
 
 
 async def _init_history_db() -> None:
@@ -67,7 +68,7 @@ async def _background_cleanup(repo: PostgresHistoryRepository) -> None:
 				logger.info("Очистка не требуется: старых записей не обнаружено.")
 		except Exception as exc:
 			logger.error("Ошибка при выполнении очистки логов: %s", exc)
-		
+
 		# Спим 24 часа перед следующей очисткой
 		await asyncio.sleep(86400)
 
@@ -75,20 +76,22 @@ async def _background_cleanup(repo: PostgresHistoryRepository) -> None:
 async def run_consumers() -> None:
 	"""Запуск процесса потребления логов из RabbitMQ.
 
-	Инициализирует подключение к Postgres History и ClickHouse, 
-	создает репозитории и сервис обработки логов, затем начинает 
+	Инициализирует подключение к Postgres History и ClickHouse,
+	создает репозитории и сервис обработки логов, затем начинает
 	прослушивание очереди RabbitMQ.
 	"""
 	# 1. Инициализация хранилищ
 	await _init_history_db()
 	await init_clickhouse()
-	
+
 	postgres_repo = PostgresHistoryRepository()
 	clickhouse_repo = ClickHouseRepository()
 	service = LogService(postgres_repo, clickhouse_repo)
 
 	# 1.1 Запуск фоновой задачи очистки
-	asyncio.create_task(_background_cleanup(postgres_repo))
+	task = asyncio.create_task(_background_cleanup(postgres_repo))
+	_background_tasks.add(task)
+	task.add_done_callback(_background_tasks.discard)
 
 	# 2. Подключение к RabbitMQ
 	settings = get_container().settings

@@ -103,6 +103,7 @@ async def transfer(
 
 		if cross_currency:
 			from .. import currency_client
+
 			try:
 				rate = await currency_client.get_rate(from_acc.currency, to_acc.currency)
 				credited_amount = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -111,6 +112,7 @@ async def transfer(
 
 		# 4. Антифрод-проверка
 		from .. import security_client
+
 		is_safe, violations = await security_client.check_transaction(
 			from_account_id, "transfer", amount, from_acc.currency
 		)
@@ -120,21 +122,23 @@ async def transfer(
 			from_acc.frozen_by = "system"
 			from_acc.frozen_at = datetime.now(UTC)
 			from_acc.freeze_reason = f"AML: {reason}"
-			
-			uow.add_event(NotificationEvent(
-				type="security_freeze",
-				to="owner", 
-				variables={"account_number": from_acc.account_number, "rule": reason}
-			))
-			
-			await uow.commit() # Сохраняем блокировку даже при нарушении правил
-			
+
+			uow.add_event(
+				NotificationEvent(
+					type="security_freeze",
+					to="owner",
+					variables={"account_number": from_acc.account_number, "rule": reason},
+				)
+			)
+
+			await uow.commit()  # Сохраняем блокировку даже при нарушении правил
+
 			raise SecurityViolation(f"Операция отклонена безопасностью. Счёт заморожен: {reason}")
 
 		# 5. Выполнение проводок
 		now = datetime.now(UTC)
 		from_bal_before, to_bal_before = from_acc.balance, to_acc.balance
-		
+
 		from_acc.balance -= amount
 		to_acc.balance += credited_amount
 
@@ -179,42 +183,48 @@ async def transfer(
 		# Уведомление отправителю
 		contact = await uow.transactions.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="transaction_transfer",
-				to=contact.email,
-				variables={
-					"from_account": from_acc.account_number, 
-					"to_account": to_acc.account_number,
-					"amount": f"{amount} {from_acc.currency}", 
-					"balance_after": str(from_acc.balance)
-				}
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="transaction_transfer",
+					to=contact.email,
+					variables={
+						"from_account": from_acc.account_number,
+						"to_account": to_acc.account_number,
+						"amount": f"{amount} {from_acc.currency}",
+						"balance_after": str(from_acc.balance),
+					},
+				)
+			)
 
 		# Уведомление получателю (если это другой клиент)
 		if to_acc.client_id != user_id:
 			to_contact = await uow.transactions.get_owner_contact(to_acc.client_id)
 			if to_contact:
-				uow.add_event(NotificationEvent(
-					type="transaction_incoming",
-					to=to_contact.email,
-					variables={
-						"account_number": to_acc.account_number, 
-						"from_account": from_acc.account_number,
-						"amount": f"{credited_amount} {to_acc.currency}", 
-						"balance_after": str(to_acc.balance)
-					}
-				))
+				uow.add_event(
+					NotificationEvent(
+						type="transaction_incoming",
+						to=to_contact.email,
+						variables={
+							"account_number": to_acc.account_number,
+							"from_account": from_acc.account_number,
+							"amount": f"{credited_amount} {to_acc.currency}",
+							"balance_after": str(to_acc.balance),
+						},
+					)
+				)
 
 		# Бизнес-лог
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="transfer",
-			service="transaction_service",
-			details=f"Перевод {from_acc.account_number} -> {to_acc.account_number}",
-			entity_id=tx_out.id,
-			amount=float(amount),
-			currency=from_acc.currency,
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="transfer",
+				service="transaction_service",
+				details=f"Перевод {from_acc.account_number} -> {to_acc.account_number}",
+				entity_id=tx_out.id,
+				amount=float(amount),
+				currency=from_acc.currency,
+			)
+		)
 
 		try:
 			await uow.commit()
@@ -224,5 +234,3 @@ async def transfer(
 		await uow.transactions.refresh(tx_out)
 
 		return tx_out
-
-

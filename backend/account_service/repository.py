@@ -33,14 +33,11 @@ class AccountRepository(BaseRepository[models.BankAccount]):
 
 	async def count_open_by_type(self, user_id: UUID, acc_type: str, currency: str) -> int:
 		"""Считает количество открытых счетов конкретного типа и валюты."""
-		stmt = (
-			select(models.BankAccount)
-			.where(
-				models.BankAccount.client_id == user_id,
-				models.BankAccount.type == acc_type,
-				models.BankAccount.currency == currency,
-				models.BankAccount.status == "open",
-			)
+		stmt = select(models.BankAccount).where(
+			models.BankAccount.client_id == user_id,
+			models.BankAccount.type == acc_type,
+			models.BankAccount.currency == currency,
+			models.BankAccount.status == "open",
 		)
 		result = await self.session.execute(stmt)
 		return len(result.scalars().all())

@@ -23,7 +23,7 @@ from .rates.router import router as rates_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
 	await rmq_connect()
 	await exchange_client.connect()
 	yield
@@ -58,7 +58,6 @@ app = FastAPI(
 setup_exception_handlers(app)
 
 
-@app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
 	return {"status": "ok"}
 

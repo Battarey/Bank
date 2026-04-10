@@ -17,33 +17,36 @@ bootstrap(TransactionSettings)
 
 @pytest.fixture(autouse=True)
 def mock_bootstrap():
-    """Мокирует get_container для возврата настроек в тестах."""
-    mock_settings = MagicMock()
-    mock_settings.CURRENCY_SERVICE_URL = "http://currency:8001"
-    mock_settings.SECURITY_SERVICE_URL = "http://security:8002"
-    mock_settings.INTERNAL_API_KEY = "test-key"
-    
-    mock_container = MagicMock()
-    mock_container.settings = mock_settings
-    mock_container.session_factory = MagicMock()
-    
-    with patch("transaction_service.uow.get_container", return_value=mock_container), \
-         patch("transaction_service.currency_client.get_container", return_value=mock_container):
-        yield mock_container
+	"""Мокирует get_container для возврата настроек в тестах."""
+	mock_settings = MagicMock()
+	mock_settings.CURRENCY_SERVICE_URL = "http://currency:8001"
+	mock_settings.SECURITY_SERVICE_URL = "http://security:8002"
+	mock_settings.INTERNAL_API_KEY = "test-key"
+
+	mock_container = MagicMock()
+	mock_container.settings = mock_settings
+	mock_container.session_factory = MagicMock()
+
+	with (
+		patch("transaction_service.uow.get_container", return_value=mock_container),
+		patch("transaction_service.currency_client.get_container", return_value=mock_container),
+	):
+		yield mock_container
+
 
 @pytest.fixture
 def mock_uow():
-    """Фикстура-заглушка Unit of Work для Transaction Service."""
-    uow = MagicMock()
-    uow.transactions = AsyncMock()
-    uow.history_query = AsyncMock()
-    uow.session = AsyncMock()
-    
-    # Мок контекстного менеджера
-    uow.__aenter__ = AsyncMock(return_value=uow)
-    uow.__aexit__ = AsyncMock(return_value=None)
-    uow.commit = AsyncMock()
-    uow.rollback = AsyncMock()
-    uow.add_event = MagicMock()
-    
-    return uow
+	"""Фикстура-заглушка Unit of Work для Transaction Service."""
+	uow = MagicMock()
+	uow.transactions = AsyncMock()
+	uow.history_query = AsyncMock()
+	uow.session = AsyncMock()
+
+	# Мок контекстного менеджера
+	uow.__aenter__ = AsyncMock(return_value=uow)
+	uow.__aexit__ = AsyncMock(return_value=None)
+	uow.commit = AsyncMock()
+	uow.rollback = AsyncMock()
+	uow.add_event = MagicMock()
+
+	return uow

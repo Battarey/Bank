@@ -27,6 +27,7 @@ def _cooldown_key(phone: str) -> str:
 
 # ── Проверка ────────────────────────────────────────────────────────────
 
+
 async def check_cooldown(phone: str) -> int | None:
 	"""Проверить, действует ли кулдаун.
 
@@ -48,6 +49,7 @@ async def get_total_failures(phone: str) -> int:
 
 
 # ── Запись неудачи ──────────────────────────────────────────────────────
+
 
 async def record_failure(phone: str) -> tuple[int, bool, bool]:
 	"""Зафиксировать неудачную попытку ввода PIN.
@@ -81,6 +83,7 @@ async def record_failure(phone: str) -> tuple[int, bool, bool]:
 
 
 # ── Сброс ───────────────────────────────────────────────────────────────
+
 
 async def reset(phone: str) -> None:
 	"""Сбросить все счётчики (при успешном входе или разблокировке)."""

@@ -1,6 +1,6 @@
 """Фабрика для создания инфраструктурного контейнера на основе APP_ENV."""
 
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
 	from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -12,15 +12,15 @@ from ..config.rabbitmq import RabbitMQSettings
 TSettings = TypeVar("TSettings", bound=BaseAppSettings)
 
 
-class BootstrapContainer(Generic[TSettings]):
+class BootstrapContainer[TSettings: BaseAppSettings]:
 	"""Контейнер инфраструктуры, инициализируемый при старте сервиса.
-	
+
 	Хранит настройки, движок БД и другие общие ресурсы.
 	"""
 
 	def __init__(self, settings: TSettings):
 		self.settings = settings
-		
+
 		self._db_settings: DatabaseSettings | None = None
 		self._rmq_settings: RabbitMQSettings | None = None
 		self._engine: AsyncEngine | None = None
@@ -41,17 +41,18 @@ class BootstrapContainer(Generic[TSettings]):
 		return self._rmq_settings
 
 	@property
-	def engine(self) -> 'AsyncEngine':
+	def engine(self) -> "AsyncEngine":
 		"""Ленивая инициализация движка БД."""
 		if self._engine is None:
 			self._engine = self._create_engine()
 		return self._engine
 
 	@property
-	def session_factory(self) -> 'async_sessionmaker[AsyncSession]':
+	def session_factory(self) -> "async_sessionmaker[AsyncSession]":
 		"""Ленивая инициализация фабрики сессий."""
 		if self._session_factory is None:
 			from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 			self._session_factory = async_sessionmaker(
 				bind=self.engine,
 				autoflush=False,
@@ -60,9 +61,10 @@ class BootstrapContainer(Generic[TSettings]):
 			)
 		return self._session_factory
 
-	def _create_engine(self) -> 'AsyncEngine':
+	def _create_engine(self) -> "AsyncEngine":
 		"""Создает движок SQLAlchemy с учетом пула соединений."""
 		from sqlalchemy.ext.asyncio import create_async_engine
+
 		return create_async_engine(
 			self.db_settings.DATABASE_URL,
 			pool_size=self.db_settings.DB_POOL_SIZE,
@@ -81,15 +83,14 @@ class BootstrapContainer(Generic[TSettings]):
 _container: BootstrapContainer | None = None
 
 
-def bootstrap(settings_class: type[TSettings]) -> BootstrapContainer[TSettings]:
+def bootstrap[TSettings: BaseAppSettings](settings_class: type[TSettings]) -> BootstrapContainer[TSettings]:
 	"""Инициализирует глобальный контейнер настроек и ресурсов.
-	
+
 	Должен вызываться один раз при старте приложения (main.py).
 	"""
 	global _container
 	if _container is None:
 		settings = settings_class()
-		print(f"[bootstrap] Initializing infrastructure in {settings.APP_ENV.upper()} mode")
 		_container = BootstrapContainer(settings)
 	return _container
 

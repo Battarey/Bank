@@ -22,7 +22,7 @@ _client: httpx.AsyncClient | None = None
 
 async def connect() -> None:
 	"""Создаёт httpx-клиент для Currency Service."""
-	global _client  # noqa: PLW0603
+	global _client
 	settings = _get_settings()
 	_client = httpx.AsyncClient(base_url=settings.CURRENCY_SERVICE_URL, timeout=10.0)
 	logger.info("Currency client подключён: %s", settings.CURRENCY_SERVICE_URL)
@@ -30,7 +30,7 @@ async def connect() -> None:
 
 async def disconnect() -> None:
 	"""Закрывает httpx-клиент."""
-	global _client  # noqa: PLW0603
+	global _client
 	if _client is not None:
 		await _client.aclose()
 		_client = None

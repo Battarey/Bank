@@ -10,21 +10,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "bank_accounts",
-        sa.Column("frozen_by", sa.Text(), nullable=True),
-    )
-    op.add_column(
-        "bank_accounts",
-        sa.Column("frozen_at", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.add_column(
-        "bank_accounts",
-        sa.Column("freeze_reason", sa.Text(), nullable=True),
-    )
+	op.add_column(
+		"bank_accounts",
+		sa.Column("frozen_by", sa.Text(), nullable=True),
+	)
+	op.add_column(
+		"bank_accounts",
+		sa.Column("frozen_at", sa.DateTime(timezone=True), nullable=True),
+	)
+	op.add_column(
+		"bank_accounts",
+		sa.Column("freeze_reason", sa.Text(), nullable=True),
+	)
 
 
 def downgrade() -> None:
-    op.drop_column("bank_accounts", "freeze_reason")
-    op.drop_column("bank_accounts", "frozen_at")
-    op.drop_column("bank_accounts", "frozen_by")
+	op.drop_column("bank_accounts", "freeze_reason")
+	op.drop_column("bank_accounts", "frozen_at")
+	op.drop_column("bank_accounts", "frozen_by")

@@ -13,11 +13,13 @@ class IdentifiersPayload(BaseModel):
 
 	model_config = ConfigDict(extra="forbid")
 
+
 class IdentifiersResponse(IdentifiersPayload):
 	"""Идентификаторы клиента (ответ)."""
 
 	client_id: UUID = Field(description="UUID клиента")
 
 	model_config = ConfigDict(from_attributes=True)
+
 
 __all__ = ["IdentifiersPayload", "IdentifiersResponse"]

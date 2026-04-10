@@ -22,7 +22,7 @@ from .open_account.router import router as open_account_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
 	await rmq_connect()
 	yield
 	await rmq_disconnect()

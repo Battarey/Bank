@@ -65,9 +65,11 @@ async def exchange(
 
 		if not from_acc or from_acc.client_id != user_id:
 			from ..exceptions import AccountNotFound
+
 			raise AccountNotFound(f"Счёт списания {from_account_id} не найден.")
 		if not to_acc or to_acc.client_id != user_id:
 			from ..exceptions import AccountNotFound
+
 			raise AccountNotFound(f"Счёт зачисления {to_account_id} не найден.")
 
 		# 2. Проверка статусов и валют
@@ -80,9 +82,7 @@ async def exchange(
 			raise SameCurrencyExchange("Валюты совпадают — используйте обычный перевод.")
 
 		if from_acc.balance < amount:
-			raise InsufficientFunds(
-				f"Недостаточно средств. Доступно: {from_acc.balance} {from_acc.currency}."
-			)
+			raise InsufficientFunds(f"Недостаточно средств. Доступно: {from_acc.balance} {from_acc.currency}.")
 
 		# 3. Получение курса
 		try:
@@ -96,7 +96,7 @@ async def exchange(
 		# 5. Проводки
 		now = datetime.now(UTC)
 		from_bal_before, to_bal_before = from_acc.balance, to_acc.balance
-		
+
 		from_acc.balance -= amount
 		to_acc.balance += converted
 
@@ -137,30 +137,34 @@ async def exchange(
 		# 6. Регистрация событий в UoW
 		contact = await uow.accounts.get_owner_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="transaction_transfer",
-				to=contact.email,
-				variables={
-					"from_account": from_acc.account_number, 
-					"to_account": to_acc.account_number,
-					"amount": f"{amount} {from_acc.currency} → {converted} {to_acc.currency}",
-					"currency": from_acc.currency, 
-					"balance_after": str(from_acc.balance)
-				}
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="transaction_transfer",
+					to=contact.email,
+					variables={
+						"from_account": from_acc.account_number,
+						"to_account": to_acc.account_number,
+						"amount": f"{amount} {from_acc.currency} → {converted} {to_acc.currency}",
+						"currency": from_acc.currency,
+						"balance_after": str(from_acc.balance),
+					},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="currency_exchange",
-			service="currency_service",
-			details=f"Обмен {from_acc.currency} -> {to_acc.currency}",
-			entity_id=tx_out.id,
-			amount=float(amount),
-			currency=from_acc.currency,
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="currency_exchange",
+				service="currency_service",
+				details=f"Обмен {from_acc.currency} -> {to_acc.currency}",
+				entity_id=tx_out.id,
+				amount=float(amount),
+				currency=from_acc.currency,
+			)
+		)
 
 		try:
-			await uow.commit() # Выполняет коммит и публикует события
+			await uow.commit()  # Выполняет коммит и публикует события
 		except IntegrityError as exc:
 			raise RateUnavailable("Системная ошибка при сохранении транзакции.") from exc
 

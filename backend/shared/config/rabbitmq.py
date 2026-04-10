@@ -14,7 +14,7 @@ class RabbitMQSettings(BaseSettings):
 	)
 
 	URL: str = Field(..., alias="RABBITMQ_URL")
-	
+
 	# Каналы уведомлений и логов (Exchanges) (ОБЯЗАТЕЛЬНЫ к заполнению)
 	NOTIFICATIONS_EXCHANGE: str = Field(..., alias="NOTIFICATIONS_EXCHANGE")
 	LOGS_EXCHANGE: str = Field(..., alias="LOGS_EXCHANGE")

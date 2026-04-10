@@ -25,7 +25,7 @@ class TransactionRepository(BaseRepository[models.Transaction]):
 
 	async def lock_accounts(self, account_ids: list[UUID]) -> dict[UUID, models.BankAccount]:
 		"""Атомарно блокирует несколько счетов в БД (FOR UPDATE).
-		
+
 		Сортировка ID важна для исключения взаимных блокировок (Deadlocks).
 		"""
 		stmt = (
@@ -40,11 +40,7 @@ class TransactionRepository(BaseRepository[models.Transaction]):
 
 	async def get_account_for_update(self, account_id: UUID) -> models.BankAccount:
 		"""Возвращает счёт с блокировкой на уровне БД (FOR UPDATE)."""
-		stmt = (
-			select(models.BankAccount)
-			.where(models.BankAccount.id == account_id)
-			.with_for_update()
-		)
+		stmt = select(models.BankAccount).where(models.BankAccount.id == account_id).with_for_update()
 		result = await self.session.execute(stmt)
 		account = result.scalar_one_or_none()
 		if not account:

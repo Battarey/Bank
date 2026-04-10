@@ -12,6 +12,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class HistoryBase(DeclarativeBase):
 	"""Базовый класс для моделей postgres_history."""
+
 	pass
 
 
@@ -82,7 +83,4 @@ class UserAction(HistoryBase):
 	)
 
 	def __repr__(self) -> str:
-		return (
-			f"<UserAction(id={self.id}, user_id={self.user_id}, "
-			f"action={self.action!r}, status={self.status!r})>"
-		)
+		return f"<UserAction(id={self.id}, user_id={self.user_id}, action={self.action!r}, status={self.status!r})>"

@@ -33,4 +33,4 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 		yield session
 
 
-__all__ = ["AsyncSession", "engine", "get_session", "SessionLocal"]
+__all__ = ["AsyncSession", "SessionLocal", "engine", "get_session"]

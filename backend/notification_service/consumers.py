@@ -21,7 +21,7 @@ RETRY_DELAY = 3
 
 
 async def _process_message(
-	message: aio_pika.abc.AbstractIncomingMessage, 
+	message: aio_pika.abc.AbstractIncomingMessage,
 	service: NotificationService,
 ) -> None:
 	"""Обработка одного сообщения из очереди RabbitMQ.
@@ -47,7 +47,7 @@ async def _process_message(
 async def run_consumers() -> None:
 	"""Запуск процесса потребления сообщений из RabbitMQ.
 
-	Инициализирует подключение к MongoDB, создаёт репозиторий и сервис, 
+	Инициализирует подключение к MongoDB, создаёт репозиторий и сервис,
 	затем устанавливает соединение с очередью и начинает прослушивание.
 	"""
 	# 1. Инициализация слоев

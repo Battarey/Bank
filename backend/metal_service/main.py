@@ -20,7 +20,7 @@ from .rates.router import router as rates_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
 	await metal_client.connect()
 	yield
 	await metal_client.disconnect()

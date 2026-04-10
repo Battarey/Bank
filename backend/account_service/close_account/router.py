@@ -28,12 +28,12 @@ async def close_account(
 	uow: AccountUnitOfWork = Depends(get_uow),
 ):
 	"""Закрывает банковский счёт текущего пользователя (мягкое удаление).
-	
+
 	Счёт не удаляется физически, а переходит в статус 'closed'.
 	Для успешного закрытия баланс должен быть нулевым.
 	"""
 	account = await service.close_account(uow, user_id, account_id)
-	
+
 	return schemas.AccountMessageResponse(
 		message="Счёт успешно закрыт.",
 		account=schemas.AccountResponse.model_validate(account),

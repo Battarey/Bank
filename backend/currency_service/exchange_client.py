@@ -14,6 +14,7 @@ from shared.bootstrap import get_container
 
 logger = logging.getLogger(__name__)
 
+
 def _get_settings() -> Any:
 	"""Получает специфические настройки для сервиса валют."""
 	try:
@@ -21,6 +22,7 @@ def _get_settings() -> Any:
 	except Exception:
 		# fallback для тестов, если контейнер не инициализирован
 		from .config import CurrencySettings
+
 		return CurrencySettings()
 
 

@@ -29,7 +29,7 @@ class EmailTemplate:
 		"""
 		subject = self.subject_template.format_map(variables)
 		body_text = self.body_text_template.format_map(variables)
-		
+
 		html_body = None
 		if self.html_template_name:
 			template = env.get_template(self.html_template_name)
@@ -127,7 +127,9 @@ TRANSACTION_WITHDRAWAL = EmailTemplate(
 TRANSACTION_TRANSFER = EmailTemplate(
 	name="transaction_transfer",
 	subject_template="Nexus: Перевод выполнен",
-	body_text_template="Перевод на сумму {amount} {currency} со счёта {from_account} на счёт {to_account} успешно выполнен.",
+	body_text_template=(
+		"Перевод на сумму {amount} {currency} со счёта {from_account} на счёт {to_account} успешно выполнен."
+	),
 	html_template_name="transaction.html",
 )
 
@@ -175,27 +177,30 @@ ACCOUNT_DELETED = EmailTemplate(
 
 # ── Реестр ──────────────────────────────────────────────────────────────
 
-TEMPLATES: dict[str, EmailTemplate] = {t.name: t for t in (
-	VERIFICATION_CODE,
-	EMAIL_VERIFICATION,
-	WELCOME,
-	PIN_CHANGED,
-	LOGIN_ALERT,
-	ACCOUNT_LOCKED,
-	UNLOCK_CODE,
-	ACCOUNT_UNLOCKED,
-	ACCOUNT_OPENED,
-	ACCOUNT_CLOSED,
-	ACCOUNT_FROZEN,
-	ACCOUNT_UNFROZEN,
-	ACCOUNT_SELF_BLOCKED,
-	SECURITY_FREEZE,
-	ACCOUNT_DELETED,
-	TRANSACTION_DEPOSIT,
-	TRANSACTION_WITHDRAWAL,
-	TRANSACTION_TRANSFER,
-	TRANSACTION_INCOMING,
-)}
+TEMPLATES: dict[str, EmailTemplate] = {
+	t.name: t
+	for t in (
+		VERIFICATION_CODE,
+		EMAIL_VERIFICATION,
+		WELCOME,
+		PIN_CHANGED,
+		LOGIN_ALERT,
+		ACCOUNT_LOCKED,
+		UNLOCK_CODE,
+		ACCOUNT_UNLOCKED,
+		ACCOUNT_OPENED,
+		ACCOUNT_CLOSED,
+		ACCOUNT_FROZEN,
+		ACCOUNT_UNFROZEN,
+		ACCOUNT_SELF_BLOCKED,
+		SECURITY_FREEZE,
+		ACCOUNT_DELETED,
+		TRANSACTION_DEPOSIT,
+		TRANSACTION_WITHDRAWAL,
+		TRANSACTION_TRANSFER,
+		TRANSACTION_INCOMING,
+	)
+}
 
 
 def get_template(name: str) -> EmailTemplate:
@@ -207,7 +212,7 @@ def get_template(name: str) -> EmailTemplate:
 
 
 __all__ = [
-	"EmailTemplate",
 	"TEMPLATES",
+	"EmailTemplate",
 	"get_template",
 ]

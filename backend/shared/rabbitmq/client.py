@@ -34,7 +34,10 @@ async def connect() -> None:
 		except Exception as exc:
 			logger.warning(
 				"RabbitMQ connection attempt %d/%d failed: %s. Retry in %ds...",
-				attempt, MAX_RETRIES, exc, RETRY_DELAY,
+				attempt,
+				MAX_RETRIES,
+				exc,
+				RETRY_DELAY,
 			)
 			if attempt == MAX_RETRIES:
 				raise

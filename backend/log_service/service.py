@@ -13,8 +13,8 @@ class LogService:
 	"""Сервис для обработки логов."""
 
 	def __init__(
-		self, 
-		postgres_repo: PostgresHistoryRepository, 
+		self,
+		postgres_repo: PostgresHistoryRepository,
 		clickhouse_repo: ClickHouseRepository,
 	):
 		self.postgres_repo = postgres_repo
@@ -22,7 +22,7 @@ class LogService:
 
 	async def process_log(self, event: LogEvent) -> None:
 		"""Обрабатывает одно событие логирования.
-		
+
 		Записывает данные параллельно в Postgres (аудит) и Clickhouse (аналитика).
 		"""
 		msg_type = event.type
@@ -41,5 +41,7 @@ class LogService:
 				store_name = "postgres_history" if i == 0 else "ClickHouse"
 				logger.error(
 					"Ошибка записи в %s для type=%s: %s",
-					store_name, msg_type, result,
+					store_name,
+					msg_type,
+					result,
 				)

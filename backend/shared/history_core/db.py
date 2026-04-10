@@ -21,4 +21,4 @@ async def get_history_session() -> AsyncGenerator[AsyncSession, None]:
 		yield session
 
 
-__all__ = ["AsyncSession", "engine", "get_history_session", "HistorySessionLocal"]
+__all__ = ["AsyncSession", "HistorySessionLocal", "engine", "get_history_session"]

@@ -30,7 +30,7 @@ async def delete_account(uow: CustomerUnitOfWork, user_id: UUID) -> None:
 	"""
 	async with uow:
 		user = await uow.customers.get(user_id)
-		
+
 		if user is None:
 			raise AccountNotFound(f"Пользователь {user_id} не найден.")
 		if user.status == "deleted":
@@ -53,17 +53,21 @@ async def delete_account(uow: CustomerUnitOfWork, user_id: UUID) -> None:
 		# 3. Регистрация событий ДО коммита
 		contact = await uow.customers.get_contact(user_id)
 		if contact:
-			uow.add_event(NotificationEvent(
-				type="account_deleted",
-				to=contact.email,
-				variables={"user_id": str(user_id)},
-			))
+			uow.add_event(
+				NotificationEvent(
+					type="account_deleted",
+					to=contact.email,
+					variables={"user_id": str(user_id)},
+				)
+			)
 
-		uow.add_event(LogEvent(
-			user_id=user_id,
-			action="delete_account",
-			service="customer_service",
-			details="Soft delete аккаунта завершен",
-		))
+		uow.add_event(
+			LogEvent(
+				user_id=user_id,
+				action="delete_account",
+				service="customer_service",
+				details="Soft delete аккаунта завершен",
+			)
+		)
 
 		await uow.commit()

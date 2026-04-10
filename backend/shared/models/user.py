@@ -22,4 +22,5 @@ class User(Base):
 	is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 	pin_hash: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
+
 __all__ = ["User"]

@@ -12,7 +12,7 @@ SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 class BaseQueryRepository:
 	"""Инкапсулирует выполнение высокопроизводительных сырых SQL-запросов.
-	
+
 	Используется для CQRS Query Model (чтение данных без оверхеда ORM).
 	"""
 
