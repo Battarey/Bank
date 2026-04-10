@@ -14,23 +14,24 @@ from notification_service.templates.templates import (
 def test_render_substitutes_variables():
     tmpl = EmailTemplate(
         name="test",
-        subject="Привет, {name}!",
-        body="Ваш код: {code}",
+        subject_template="Привет, {name}!",
+        body_text_template="Ваш код: {code}",
     )
-    subject, body = tmpl.render({"name": "Иван", "code": "12345"})
+    subject, body, html = tmpl.render({"name": "Иван", "code": "12345"})
     assert subject == "Привет, Иван!"
     assert body == "Ваш код: 12345"
+    assert html is None
 
 
 def test_render_missing_variable():
-    tmpl = EmailTemplate(name="t", subject="{missing}", body="ok")
+    tmpl = EmailTemplate(name="t", subject_template="{missing}", body_text_template="ok")
     with pytest.raises(KeyError):
         tmpl.render({})
 
 
 def test_render_no_variables():
-    tmpl = EmailTemplate(name="t", subject="Добро пожаловать!", body="Текст")
-    subject, body = tmpl.render({})
+    tmpl = EmailTemplate(name="t", subject_template="Добро пожаловать!", body_text_template="Текст")
+    subject, body, _ = tmpl.render({})
     assert subject == "Добро пожаловать!"
     assert body == "Текст"
 
@@ -63,17 +64,18 @@ def test_all_templates_registered():
 # ── Конкретные шаблоны — рендеринг ────────────────────────────────────
 
 def test_verification_code_render():
-    s, b = VERIFICATION_CODE.render({"code": "999888"})
+    s, b, h = VERIFICATION_CODE.render({"code": "999888"})
     assert "999888" in b
+    assert h is not None  # У этого шаблона есть HTML версия
 
 
 def test_login_alert_render():
-    s, b = LOGIN_ALERT.render({"login_time": "2026-01-01 12:00"})
+    s, b, _ = LOGIN_ALERT.render({"login_time": "2026-01-01 12:00"})
     assert "2026-01-01 12:00" in b
 
 
 def test_transaction_deposit_render():
-    s, b = TRANSACTION_DEPOSIT.render({
+    s, b, _ = TRANSACTION_DEPOSIT.render({
         "account_number": "40817", "amount": "500",
         "currency": "RUB", "balance_after": "1500",
     })
@@ -82,7 +84,7 @@ def test_transaction_deposit_render():
 
 
 def test_transaction_transfer_render():
-    s, b = TRANSACTION_TRANSFER.render({
+    s, b, _ = TRANSACTION_TRANSFER.render({
         "amount": "1000", "currency": "RUB",
         "from_account": "ACC1", "to_account": "ACC2",
         "balance_after": "9000",
@@ -91,7 +93,7 @@ def test_transaction_transfer_render():
 
 
 def test_transaction_incoming_render():
-    s, b = TRANSACTION_INCOMING.render({
+    s, b, _ = TRANSACTION_INCOMING.render({
         "account_number": "ACC2", "amount": "1000",
         "currency": "RUB", "from_account": "ACC1", "balance_after": "2000",
     })
@@ -99,7 +101,7 @@ def test_transaction_incoming_render():
 
 
 def test_security_freeze_render():
-    s, b = SECURITY_FREEZE.render({
+    s, b, _ = SECURITY_FREEZE.render({
         "account_number": "ACC1", "rule": "rapid_fire",
         "details": "Слишком частые операции",
     })
@@ -107,7 +109,7 @@ def test_security_freeze_render():
 
 
 def test_account_opened_render():
-    s, b = ACCOUNT_OPENED.render({
+    s, b, _ = ACCOUNT_OPENED.render({
         "account_type": "дебетовый", "currency": "RUB",
         "account_number": "40817",
     })
@@ -115,7 +117,7 @@ def test_account_opened_render():
 
 
 def test_account_frozen_render():
-    s, b = ACCOUNT_FROZEN.render({
+    s, b, _ = ACCOUNT_FROZEN.render({
         "account_number": "40817", "frozen_by": "user",
         "reason": "self_block",
     })
@@ -123,7 +125,7 @@ def test_account_frozen_render():
 
 
 def test_unlock_code_render():
-    s, b = UNLOCK_CODE.render({"code": "654321"})
+    s, b, _ = UNLOCK_CODE.render({"code": "654321"})
     assert "654321" in b
 
 
@@ -134,7 +136,7 @@ def test_no_variable_templates():
                  ACCOUNT_DELETED):
         # Некоторые шаблоны не требуют переменных
         try:
-            subj, body = tmpl.render({
+            subj, body, _ = tmpl.render({
                 "account_number": "x",
                 "code": "1"
             })

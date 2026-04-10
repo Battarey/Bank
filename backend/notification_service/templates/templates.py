@@ -99,7 +99,7 @@ ACCOUNT_UNLOCKED = EmailTemplate(
 ACCOUNT_OPENED = EmailTemplate(
 	name="account_opened",
 	subject_template="Nexus: Счёт открыт",
-	body_text_template="Ваш {account_type} счёт в Nexus успешно открыт.",
+	body_text_template="Ваш {account_type} счёт {account_number} в Nexus успешно открыт.",
 	html_template_name="account_status.html",
 )
 
@@ -141,7 +141,7 @@ TRANSACTION_INCOMING = EmailTemplate(
 ACCOUNT_FROZEN = EmailTemplate(
 	name="account_frozen",
 	subject_template="Nexus: Счёт заморожен",
-	body_text_template="Ваш счёт {account_number} был заморожен по причине: {reason}.",
+	body_text_template="Ваш счёт {account_number} был заморожен (инициатор: {frozen_by}) по причине: {reason}.",
 	html_template_name="account_status.html",
 )
 

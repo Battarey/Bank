@@ -17,7 +17,7 @@ async def test_process_notification_success(mock_get_template, notification_serv
     )
     
     mock_template = MagicMock()
-    mock_template.render.return_value = ("Subject", "Body")
+    mock_template.render.return_value = ("Subject", "Body", None)
     mock_get_template.return_value = mock_template
     
     await notification_service.process_notification(task)
@@ -51,7 +51,7 @@ async def test_process_notification_error(mock_get_template, mock_send_email, no
     )
     
     mock_template = MagicMock()
-    mock_template.render.return_value = ("Subject", "Body")
+    mock_template.render.return_value = ("Subject", "Body", None)
     mock_get_template.return_value = mock_template
     
     # SMTP бросает исключение
