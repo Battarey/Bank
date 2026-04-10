@@ -1,6 +1,6 @@
 """Pydantic-схемы для Log Service."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -19,7 +19,7 @@ class LogPayload(BaseModel):
 	currency: Optional[str] = Field(None, description="Валюта")
 	status: str = Field("success", description="Статус операции")
 	ip_address: Optional[str] = Field(None, description="IP-адрес")
-	created_at: datetime = Field(default_factory=datetime.utcnow)
+	created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class LogEvent(BaseModel):

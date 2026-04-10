@@ -89,8 +89,11 @@ async def test_run_consumers_success(mock_event_cls, mock_container, mock_connec
     mock_event.wait = AsyncMock()
     mock_event_cls.return_value = mock_event
     
+    async def empty_coro(*args, **kwargs):
+        pass
+
     with patch("log_service.consumers.history_engine", AsyncMock()), \
-         patch("log_service.consumers.asyncio.create_task", MagicMock()):
+         patch("log_service.consumers._background_cleanup", side_effect=empty_coro):
         await run_consumers()
         
     mock_connect.assert_awaited_once()
