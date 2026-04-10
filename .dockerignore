@@ -8,6 +8,7 @@ __pycache__/
 *$py.class
 .venv/
 .pytest_cache/
+.ruff_cache
 
 # Node.js (Frontend future)
 node_modules/
