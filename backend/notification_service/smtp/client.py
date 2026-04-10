@@ -32,7 +32,7 @@ async def send_email(to: str, subject: str, body: str, html_body: str | None = N
 
 	msg = EmailMessage()
 	from email.utils import formataddr
-	msg["From"] = formataddr(("Nexus", settings.smtp_from_addr))
+	msg["From"] = formataddr(("Nexus Bank", settings.smtp_from_addr))
 	msg["To"] = to
 	msg["Subject"] = subject
 	msg.set_content(body)
