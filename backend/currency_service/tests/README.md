@@ -11,18 +11,6 @@
 - **EDA Check**: Убеждаемся, что уведомление об обмене формируется только после успешного коммита в БД.
 
 ## Запуск тестов
-
-### Локальный запуск
-```powershell
-pytest backend/currency_service/tests
-```
-
-### Запуск через Docker
 ```powershell
 docker compose run --rm -e APP_ENV=test currency_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest currency_service/tests/unit -v"
-```
-
-### Запуск только интеграционных тестов
-```powershell
-pytest backend/currency_service/tests/integration
 ```

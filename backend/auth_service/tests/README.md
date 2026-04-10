@@ -11,21 +11,6 @@
 - **Recovery flow**: Тестирование полной цепочки разблокировки от запроса кода до смены статуса.
 
 ## Запуск тестов
-
-### Локальный запуск
-```powershell
-pytest backend/auth_service/tests
-```
-
-### Запуск через Docker
 ```powershell
 docker compose run --rm -e APP_ENV=test auth_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest auth_service/tests/unit -v"
 ```
-
-### Запуск только тестов безопасности (разблокировка)
-```powershell
-pytest backend/auth_service/tests/unit/test_unlock_service.py
-```
-
-## Требования
-Для корректной работы тестов требуются установленные зависимости из `requirements-test.txt` и настроенное окружение (обычно через фикстуры в `conftest.py`).

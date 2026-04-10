@@ -8,21 +8,6 @@
 - **Repository Integration**: Проверка фактической записи в тестовые базы данных.
 
 ## Запуск тестов
-
-### Локальный запуск
-```powershell
-pytest backend/log_service/tests
-```
-
-### Запуск через Docker
 ```powershell
 docker compose run --rm -e APP_ENV=test log_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest log_service/tests/unit -v"
 ```
-
-### Проверка схемы валидации событий
-```powershell
-pytest backend/log_service/tests/test_schemas.py
-```
-
-## Требования
-Для тестов требуется наличие `shared` библиотеки в PYTHONPATH и установленные зависимости из `requirements-test.txt`.
