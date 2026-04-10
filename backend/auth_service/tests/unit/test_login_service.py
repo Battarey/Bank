@@ -108,8 +108,8 @@ async def test_login_pin_success(mock_bcrypt, mock_blind, mock_rate_limit, mock_
 @pytest.mark.asyncio
 async def test_set_pin_success(uow, user_data):
     """Успешная установка PIN-кода."""
-    user, _ = user_data
-    uow.users.get.return_value = user
+    user, contact = user_data
+    uow.users.get_user_with_contact.return_value = (user, contact)
     
     await set_pin(uow, user.id, "5678")
     
@@ -120,7 +120,7 @@ async def test_set_pin_success(uow, user_data):
 @pytest.mark.asyncio
 async def test_set_pin_not_found(uow):
     """Ошибка при установке PIN-кода несуществующему пользователю."""
-    uow.users.get.return_value = None
+    uow.users.get_user_with_contact.side_effect = AuthNotFound("User not found")
     
     with pytest.raises(AuthNotFound):
         await set_pin(uow, uuid4(), "1111")
