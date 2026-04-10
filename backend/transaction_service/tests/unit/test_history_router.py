@@ -1,6 +1,8 @@
-import pytest
+from unittest.mock import patch
 from uuid import uuid4
-from unittest.mock import patch, MagicMock, AsyncMock
+
+import pytest
+
 from transaction_service.history.router import list_transactions
 
 

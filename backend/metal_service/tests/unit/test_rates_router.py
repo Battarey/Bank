@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import patch, AsyncMock
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, UTC
+from unittest.mock import patch
+
+import pytest
 from fastapi import HTTPException
 
 from metal_service.exceptions import RateUnavailable

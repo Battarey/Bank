@@ -1,7 +1,9 @@
 """Кастомные типы данных SQLAlchemy."""
 
 from typing import Any
+
 from sqlalchemy import Text, TypeDecorator
+
 from shared.utils.security import decrypt_data, encrypt_data
 
 

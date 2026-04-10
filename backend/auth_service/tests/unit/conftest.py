@@ -1,6 +1,7 @@
 import os
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 os.environ.setdefault("RABBITMQ_HOST", "localhost")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")

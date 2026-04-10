@@ -1,14 +1,14 @@
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from datetime import datetime, UTC
 
-from auth_service.login.service import login_pin, set_pin
+import pytest
+
 from auth_service.exceptions import (
     AuthCooldown,
     AuthForbidden,
     AuthNotFound,
 )
+from auth_service.login.service import login_pin, set_pin
 from shared import models
 
 # --- Тесты login_pin ---

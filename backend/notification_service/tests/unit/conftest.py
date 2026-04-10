@@ -1,8 +1,9 @@
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from notification_service.service import NotificationService
-from notification_service import repository
 
 # Устанавливаем переменные окружения
 os.environ.setdefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")

@@ -1,13 +1,14 @@
-import pytest
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from datetime import UTC, datetime, date
+
+import pytest
 
 from customer_service.update_user_data.router import (
-    update_personal_data,
+    get_my_profile,
     replace_passport,
     update_contacts,
-    get_my_profile,
+    update_personal_data,
 )
 from shared import schemas
 

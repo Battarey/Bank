@@ -1,18 +1,21 @@
 """Бизнес-логика входа по PIN-коду и первичной аутентификации."""
 
-import bcrypt
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
+import bcrypt
+
 from shared.events.base import LogEvent, NotificationEvent
+from shared.redis_sessions import rate_limit
+from shared.redis_sessions import tokens as session_tokens
 from shared.utils.security import get_blind_index
-from shared.redis_sessions import rate_limit, tokens as session_tokens
-from ..uow import AuthUnitOfWork
+
 from ..exceptions import (
 	AuthCooldown,
 	AuthForbidden,
 	AuthNotFound,
 )
+from ..uow import AuthUnitOfWork
 
 
 async def login_pin(

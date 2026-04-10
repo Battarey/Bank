@@ -1,22 +1,24 @@
 """Account Service — управление банковскими счетами: открытие, просмотр, блокировка и закрытие."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
-from shared.config import BaseAppSettings
 from shared.bootstrap import bootstrap, get_container
+from shared.config import BaseAppSettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
 bootstrap(BaseAppSettings)
 container = get_container()
 
 from shared.internal_auth import verify_internal_key
-from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+from shared.rabbitmq.client import connect as rmq_connect
+from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .open_account.router import router as open_account_router
 from .close_account.router import router as close_account_router
 from .freeze_account.router import router as freeze_account_router
+from .open_account.router import router as open_account_router
 
 
 @asynccontextmanager

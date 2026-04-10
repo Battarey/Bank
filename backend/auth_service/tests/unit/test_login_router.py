@@ -1,13 +1,15 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
 
-from auth_service.login.router import login, set_pin
+import pytest
+
 from auth_service.exceptions import (
     AuthForbidden,
     AuthNotFound,
 )
+from auth_service.login.router import login, set_pin
 from shared.schemas import LoginPinRequest, SetPinRequest
+
 
 @pytest.mark.asyncio
 @patch("auth_service.login.router.service.login_pin")

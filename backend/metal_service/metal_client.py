@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
 import httpx
+
 from shared.bootstrap import get_container
+
 from .config import MetalSettings
 
 logger = logging.getLogger("metal_service.client")
@@ -90,7 +91,7 @@ async def _fetch_prices(currency: str) -> tuple[dict[str, Decimal], datetime]:
 	try:
 		last_updated = datetime.fromisoformat(timestamp_str)
 	except (ValueError, TypeError):
-		last_updated = datetime.now(timezone.utc)
+		last_updated = datetime.now(UTC)
 
 	return prices, last_updated
 

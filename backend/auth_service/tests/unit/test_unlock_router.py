@@ -1,13 +1,14 @@
-import pytest
 from unittest.mock import patch
 
-from auth_service.unlock.router import request_unlock, confirm_unlock
+import pytest
+
 from auth_service.exceptions import (
     AuthInvalidCode,
     AuthNotBlocked,
-    AuthNotFound,
 )
+from auth_service.unlock.router import confirm_unlock, request_unlock
 from shared.schemas import RequestUnlockRequest, UnlockRequest
+
 
 @pytest.mark.asyncio
 @patch("auth_service.unlock.router.service.request_unlock")

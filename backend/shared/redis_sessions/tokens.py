@@ -3,6 +3,7 @@
 from datetime import timedelta
 from typing import Any
 from uuid import UUID
+
 from .client import get_client
 
 DEFAULT_SESSION_TTL = timedelta(minutes=30)

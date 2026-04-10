@@ -1,14 +1,14 @@
 import os
-from pathlib import Path
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from pathlib import Path
+
 from alembic import context
-from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
+
+from shared.bootstrap import bootstrap, get_container
 
 # Interpret the config file for Python logging.
 from shared.config import BaseAppSettings
-from shared.bootstrap import bootstrap, get_container
 
 # Инициализируем настройки для миграций
 bootstrap(BaseAppSettings)
@@ -19,6 +19,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 import sys
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(os.path.abspath(os.path.join(BASE_DIR, '..')))
 from shared import models

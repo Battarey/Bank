@@ -1,11 +1,10 @@
-import pytest
-import time
-from unittest.mock import patch, AsyncMock, MagicMock
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, UTC
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from metal_service import metal_client
-
 
 # Фикстура сброса в conftest.py работает превосходно
 

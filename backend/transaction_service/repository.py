@@ -1,13 +1,13 @@
 """Репозиторий для выполнения банковских операций и работы с историей транзакций."""
 
-from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.database_core.base_repository import BaseRepository
+
 from .exceptions import AccountNotFound
 
 

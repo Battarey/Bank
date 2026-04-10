@@ -3,10 +3,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import schemas
 from shared.internal_auth import require_user_id
+
 from ..uow import TransactionUnitOfWork, get_uow
 from . import service
 

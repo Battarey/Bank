@@ -3,6 +3,7 @@
 import os
 from typing import Final
 
+
 def _resolve_database_url() -> str:
 	"""Возвращает URL-адрес базы данных """
 

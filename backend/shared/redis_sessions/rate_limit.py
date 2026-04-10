@@ -8,7 +8,6 @@
 """
 
 from datetime import timedelta
-from uuid import UUID
 
 from .client import get_client
 

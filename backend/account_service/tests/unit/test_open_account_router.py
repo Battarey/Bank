@@ -1,19 +1,16 @@
+from datetime import UTC, datetime
 from decimal import Decimal
-import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from uuid import uuid4
-from fastapi import HTTPException
-from datetime import datetime, UTC
 
-from account_service.open_account.router import open_account, list_accounts, get_account
+import pytest
+
 from account_service.exceptions import (
-    AccountConflict,
-    AccountError,
-    AccountLimitReached,
     AccountNotFound,
     AccountOwnerNotFound,
 )
-from shared import schemas, models
+from account_service.open_account.router import get_account, list_accounts, open_account
+from shared import models, schemas
 
 
 @pytest.mark.asyncio

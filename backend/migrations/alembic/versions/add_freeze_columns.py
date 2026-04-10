@@ -1,7 +1,7 @@
 """Add frozen_by, frozen_at, freeze_reason columns to bank_accounts"""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "add_freeze_columns"
 down_revision = "add_transactions_account_id_idx"

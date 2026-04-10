@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 
 from shared import schemas
 from shared.internal_auth import require_user_id
+
 from ..uow import AccountUnitOfWork, get_uow
 from . import service
 

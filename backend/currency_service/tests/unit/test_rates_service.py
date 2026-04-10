@@ -1,17 +1,19 @@
-import pytest
-from unittest.mock import patch, AsyncMock
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
+from unittest.mock import patch
 
-from currency_service.exceptions import RateUnavailable, CurrencyNotAvailable
+import pytest
+
+from currency_service.exceptions import CurrencyNotAvailable, RateUnavailable
 from currency_service.rates.service import get_all_rates, get_pair_rate
+
 
 @pytest.mark.asyncio
 @patch("currency_service.rates.service.exchange_client.get_rates")
 async def test_get_all_rates_success(mock_get):
     """Успешное получение всех курсов."""
     rates = {"USD": Decimal("0.011"), "EUR": Decimal("0.010")}
-    updated = datetime.now(timezone.utc)
+    updated = datetime.now(UTC)
     mock_get.return_value = (rates, updated)
 
     result_rates, result_updated = await get_all_rates("RUB")
@@ -32,7 +34,7 @@ async def test_get_all_rates_error(mock_get):
 async def test_get_pair_rate_success(mock_get):
     """Успешное получение курса конкретной пары."""
     rates = {"USD": Decimal("0.011"), "EUR": Decimal("0.010")}
-    updated = datetime.now(timezone.utc)
+    updated = datetime.now(UTC)
     mock_get.return_value = (rates, updated)
 
     rate, _ = await get_pair_rate("RUB", "USD")
@@ -42,7 +44,7 @@ async def test_get_pair_rate_success(mock_get):
 @patch("currency_service.rates.service.exchange_client.get_rates")
 async def test_get_pair_rate_not_found(mock_get):
     """Ошибка: целевая валюта не поддерживается."""
-    mock_get.return_value = ({"USD": Decimal("0.011")}, datetime.now(timezone.utc))
+    mock_get.return_value = ({"USD": Decimal("0.011")}, datetime.now(UTC))
     with pytest.raises(CurrencyNotAvailable):
         await get_pair_rate("RUB", "XYZ")
 

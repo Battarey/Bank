@@ -3,7 +3,6 @@ from .templates import (
 	ACCOUNT_LOCKED,
 	ACCOUNT_OPENED,
 	ACCOUNT_UNLOCKED,
-	EmailTemplate,
 	LOGIN_ALERT,
 	PIN_CHANGED,
 	TEMPLATES,
@@ -14,6 +13,7 @@ from .templates import (
 	UNLOCK_CODE,
 	VERIFICATION_CODE,
 	WELCOME,
+	EmailTemplate,
 	get_template,
 )
 

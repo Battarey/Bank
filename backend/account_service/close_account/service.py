@@ -4,15 +4,16 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
+
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
-from ..uow import AccountUnitOfWork
 from ..exceptions import (
 	AccountConflict,
 	AccountNonZeroBalance,
 	AccountNotOpen,
 )
+from ..uow import AccountUnitOfWork
 
 
 async def close_account(

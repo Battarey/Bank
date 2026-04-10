@@ -7,7 +7,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Типы ───────────────────────────────────────────────────────────────
 
 AccountType = Literal["checking", "savings", "credit", "deposit"]

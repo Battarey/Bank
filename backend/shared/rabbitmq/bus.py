@@ -1,15 +1,14 @@
 """Message Bus для трансляции Domain Events в RabbitMQ."""
 
 import logging
-from typing import List
 
 from shared.events.base import BaseEvent, LogEvent, NotificationEvent
-from shared.rabbitmq.helpers import send_log, send_notification
 from shared.rabbitmq.constants import (
-	LOG_AUTH_KEY,
 	LOG_ACCOUNT_KEY,
+	LOG_AUTH_KEY,
 	LOG_TRANSACTION_KEY,
 )
+from shared.rabbitmq.helpers import send_log, send_notification
 
 logger = logging.getLogger("shared.events")
 
@@ -18,7 +17,7 @@ class MessageBus:
 	"""Шина событий, отвечающая за публикацию событий в RabbitMQ."""
 
 	@staticmethod
-	async def handle(events: List[BaseEvent]) -> None:
+	async def handle(events: list[BaseEvent]) -> None:
 		"""Обрабатывает список событий, отправляя их в RabbitMQ."""
 		for event in events:
 			try:

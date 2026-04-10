@@ -1,9 +1,11 @@
-import pytest
-from uuid import uuid4
 from decimal import Decimal
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
+
+import pytest
+
+from shared import models, schemas
 from transaction_service.transactions.router import create_transaction
-from shared import schemas, models
 
 
 def mock_tx(tx_type="deposit"):

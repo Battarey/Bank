@@ -1,16 +1,16 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from datetime import datetime, UTC
 
+import pytest
+
+from auth_service.exceptions import (
+    AuthAlreadyBlocked,
+    AuthNotFound,
+)
 from auth_service.session.service import (
     logout,
     logout_all,
     self_block,
-)
-from auth_service.exceptions import (
-    AuthAlreadyBlocked,
-    AuthNotFound,
 )
 from shared import models
 

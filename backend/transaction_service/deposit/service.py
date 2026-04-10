@@ -1,15 +1,17 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
+
 from sqlalchemy.exc import IntegrityError
 
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
-from ..uow import TransactionUnitOfWork
+
 from ..exceptions import (
 	AccountNotOpen,
 	TransactionConflict,
 )
+from ..uow import TransactionUnitOfWork
 
 # Мягкая заморозка: пополнение разрешено на open и frozen счетах
 _DEPOSIT_ALLOWED_STATUSES = {"open", "frozen"}

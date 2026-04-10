@@ -1,9 +1,9 @@
-from typing import Sequence
 from uuid import UUID
 
 from shared import models, schemas
-from ..uow import TransactionUnitOfWork
+
 from ..repository import TransactionRepository
+from ..uow import TransactionUnitOfWork
 
 
 async def list_transactions(

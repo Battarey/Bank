@@ -1,18 +1,20 @@
 import os
+import socket
 import subprocess
 import sys
-import socket
 import time
 from pathlib import Path
-from sqlalchemy.engine.url import make_url
+
 from psycopg import connect
+from sqlalchemy.engine.url import make_url
 
 # Добавляем путь к корню backend, чтобы импортировать shared
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.append(os.path.abspath(os.path.join(BASE_DIR, '..')))
 
-from shared.config import BaseAppSettings
 from shared.bootstrap import bootstrap, get_container
+from shared.config import BaseAppSettings
+
 
 def wait_for_host(host: str, port: int, timeout: int = 30) -> None:
     """Ожидает доступности хоста по TCP."""
@@ -23,7 +25,7 @@ def wait_for_host(host: str, port: int, timeout: int = 30) -> None:
             with socket.create_connection((host, port), timeout=1):
                 print(f"[migrations] {host}:{port} is available!", flush=True)
                 return
-        except (socket.timeout, ConnectionRefusedError, socket.gaierror):
+        except (TimeoutError, ConnectionRefusedError, socket.gaierror):
             if time.time() - start_time > timeout:
                 print(f"[migrations] Timeout waiting for {host}:{port}", flush=True)
                 raise TimeoutError(f"Could not connect to {host}:{port}")

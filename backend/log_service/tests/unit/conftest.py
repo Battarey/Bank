@@ -1,6 +1,8 @@
 import os
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+
 from log_service.service import LogService
 
 # Устанавливаем переменные окружения

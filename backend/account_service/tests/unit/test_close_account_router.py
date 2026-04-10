@@ -1,17 +1,13 @@
-import pytest
-from unittest.mock import AsyncMock, patch
-from uuid import uuid4
+from datetime import UTC, datetime
 from decimal import Decimal
-from fastapi import HTTPException
-from datetime import datetime, UTC
+from unittest.mock import patch
+from uuid import uuid4
+
+import pytest
 
 from account_service.close_account.router import close_account
 from account_service.exceptions import (
-    AccountConflict,
-    AccountError,
     AccountNonZeroBalance,
-    AccountNotFound,
-    AccountNotOpen,
 )
 from shared import models
 

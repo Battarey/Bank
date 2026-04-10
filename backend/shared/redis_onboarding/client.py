@@ -1,7 +1,7 @@
 """Асинхронный Redis-клиент для хранения черновиков онбординга."""
 
 import os
-from typing import Final
+
 from redis.asyncio import Redis
 
 

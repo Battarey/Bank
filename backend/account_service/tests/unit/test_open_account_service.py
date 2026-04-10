@@ -1,23 +1,22 @@
-import pytest
-from uuid import uuid4
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-from account_service.open_account.service import (
-    open_account,
-    list_accounts,
-    get_account,
-    MAX_ACCOUNTS_PER_TYPE_CURRENCY,
-)
+import pytest
+
 from account_service.exceptions import (
-    AccountConflict,
     AccountLimitReached,
     AccountNotFound,
     AccountOwnerNotFound,
 )
+from account_service.open_account.service import (
+    MAX_ACCOUNTS_PER_TYPE_CURRENCY,
+    get_account,
+    list_accounts,
+    open_account,
+)
 from shared import models, schemas
-from shared.events.base import NotificationEvent, LogEvent
+from shared.events.base import LogEvent, NotificationEvent
 
 # --- Тесты open_account ---
 

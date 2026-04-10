@@ -1,9 +1,11 @@
 """Metal Service — получение актуальных котировок драгоценных металлов."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
 from shared.bootstrap import bootstrap, get_container
+
 from .config import MetalSettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)

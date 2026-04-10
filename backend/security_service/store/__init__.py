@@ -1,3 +1,3 @@
 """MongoDB-журнал событий безопасности."""
 
-from .client import init_mongo, close_mongo, save_event
+from .client import close_mongo, init_mongo, save_event

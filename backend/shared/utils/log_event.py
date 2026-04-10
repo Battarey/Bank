@@ -1,6 +1,7 @@
 """Модуль для логирования событий (обратная совместимость)."""
 
 from typing import Any
+
 from ..rabbitmq.client import publish
 from ..rabbitmq.constants import LOGS_EXCHANGE
 

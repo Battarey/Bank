@@ -1,23 +1,20 @@
-import pytest
 from uuid import uuid4
-from datetime import UTC, datetime
 
-from unittest.mock import AsyncMock, MagicMock
+import pytest
 
-from account_service.freeze_account.service import (
-    freeze_account,
-    unfreeze_account,
-    cascade_freeze,
-    cascade_unfreeze,
-)
 from account_service.exceptions import (
     AccountAlreadyFrozen,
     AccountNotFrozen,
-    AccountNotOpen,
     UnfreezeNotAllowed,
 )
+from account_service.freeze_account.service import (
+    cascade_freeze,
+    cascade_unfreeze,
+    freeze_account,
+    unfreeze_account,
+)
 from shared import models
-from shared.events.base import NotificationEvent, LogEvent
+from shared.events.base import LogEvent, NotificationEvent
 
 # --- Тесты freeze_account ---
 

@@ -1,11 +1,12 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
+
 from sqlalchemy.exc import IntegrityError
 
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
-from ..uow import TransactionUnitOfWork
+
 from ..exceptions import (
 	AccountFrozen,
 	AccountNotOpen,
@@ -13,6 +14,7 @@ from ..exceptions import (
 	SecurityViolation,
 	TransactionConflict,
 )
+from ..uow import TransactionUnitOfWork
 
 
 async def withdraw(

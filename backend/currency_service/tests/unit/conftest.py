@@ -1,6 +1,7 @@
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from shared.database_core.uow import AbstractUnitOfWork
 

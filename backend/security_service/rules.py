@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 
-
 # ── Конфигурация (env → defaults) ──────────────────────────────────────
 
 LARGE_TX_THRESHOLD = Decimal(os.getenv("LARGE_TX_THRESHOLD", "600000"))

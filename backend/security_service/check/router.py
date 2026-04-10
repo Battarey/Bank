@@ -1,17 +1,16 @@
 """Роутер для проведения AML / антифрод-проверок транзакций."""
 
-from decimal import Decimal
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
+
 from shared.schemas import (
 	SecurityCheckRequest,
 	SecurityCheckResponse,
 	ViolationItem,
 )
+
 from ..uow import SecurityUnitOfWork, get_uow
 from . import service
-
 
 # ── Эндпоинты ──────────────────────────────────────────────────────────
 

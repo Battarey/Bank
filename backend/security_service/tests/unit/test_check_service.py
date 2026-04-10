@@ -1,7 +1,9 @@
-import pytest
 from decimal import Decimal
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from unittest.mock import patch, AsyncMock, MagicMock
+
+import pytest
+
 from security_service.check.service import check_transaction
 from security_service.rules import Violation
 

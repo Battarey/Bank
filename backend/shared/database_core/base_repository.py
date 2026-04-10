@@ -1,6 +1,7 @@
 """Базовый класс репозитория для работы с SQLAlchemy."""
 
-from typing import Generic, Sequence, TypeVar, Any
+from collections.abc import Sequence
+from typing import Any, Generic, TypeVar
 from uuid import UUID
 
 from sqlalchemy import delete, select

@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import patch, AsyncMock
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, UTC
+from unittest.mock import patch
 
-from metal_service.rates.service import get_all_prices
+import pytest
+
 from metal_service.exceptions import RateUnavailable
+from metal_service.rates.service import get_all_prices
 
 
 @pytest.mark.asyncio

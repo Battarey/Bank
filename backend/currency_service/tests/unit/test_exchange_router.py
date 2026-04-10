@@ -1,10 +1,12 @@
-import pytest
-from unittest.mock import patch, AsyncMock
 from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+
 from currency_service.exchange.router import convert_currency
-from shared import schemas, models
+from shared import models, schemas
+
 
 @pytest.fixture
 def exchange_payload():

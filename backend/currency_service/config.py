@@ -1,6 +1,7 @@
 """Настройки Currency Service."""
 
 from pydantic import Field
+
 from shared.config import BaseAppSettings
 
 

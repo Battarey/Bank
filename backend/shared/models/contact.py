@@ -1,11 +1,14 @@
 """ORM-модель контактных данных (телефон, email)."""
 
 from uuid import UUID
+
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
+
 from .base import Base
 from .types import EncryptedString
+
 
 class Contact(Base):
 	"""Контактные данные клиента."""

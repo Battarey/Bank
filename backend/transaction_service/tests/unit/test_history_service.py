@@ -1,6 +1,8 @@
-import pytest
+from unittest.mock import MagicMock
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from transaction_service.history.service import list_transactions
 
 

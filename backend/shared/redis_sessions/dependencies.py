@@ -1,15 +1,16 @@
 """Зависимости FastAPI для работы с сессионными токенами в Redis."""
 
-from typing import Annotated, Dict
+from typing import Annotated
 from uuid import UUID
-from fastapi import Header, HTTPException, status
-from . import tokens as session_tokens
 
+from fastapi import Header, HTTPException, status
+
+from . import tokens as session_tokens
 
 SessionTokenHeader = Annotated[str, Header(..., alias="X-Session-Token")]
 
 
-async def authenticate_token(token: str | None) -> Dict[str, str]:
+async def authenticate_token(token: str | None) -> dict[str, str]:
 	"""Проверяет наличие и валидность токена. Возвращает данные сессии.
 
 	Используется в gateway-middleware для аутентификации запроса.
@@ -41,7 +42,7 @@ async def authenticate_token(token: str | None) -> Dict[str, str]:
 async def verify_session_token(
 	user_id: UUID,
 	session_token: SessionTokenHeader,
-) -> Dict[str, str]:
+) -> dict[str, str]:
 	"""Проверяет валидность токена и соответствие его идентификатору пользователя.
 
 	Используется как FastAPI Depends() в эндпоинтах внутренних сервисов.

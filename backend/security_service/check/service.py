@@ -5,6 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from shared.events.base import LogEvent
+
 from ..rules import ALL_RULES, Violation
 from ..store import save_event
 from ..uow import SecurityUnitOfWork

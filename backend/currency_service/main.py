@@ -1,9 +1,11 @@
 """Currency Service — управление курсами валют и конверсионными операциями."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
 from shared.bootstrap import bootstrap, get_container
+
 from .config import CurrencySettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
@@ -11,12 +13,13 @@ bootstrap(CurrencySettings)
 container = get_container()
 
 from shared.internal_auth import verify_internal_key
-from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+from shared.rabbitmq.client import connect as rmq_connect
+from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
 from . import exchange_client
-from .rates.router import router as rates_router
 from .exchange.router import router as exchange_router
+from .rates.router import router as rates_router
 
 
 @asynccontextmanager

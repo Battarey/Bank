@@ -6,13 +6,13 @@ from uuid import UUID
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
-from ..uow import AccountUnitOfWork
 from ..exceptions import (
 	AccountAlreadyFrozen,
 	AccountNotFrozen,
 	AccountNotOpen,
 	UnfreezeNotAllowed,
 )
+from ..uow import AccountUnitOfWork
 
 
 async def freeze_account(

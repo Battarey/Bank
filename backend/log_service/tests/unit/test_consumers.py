@@ -1,9 +1,10 @@
-import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from log_service.consumers import _process_message, _background_cleanup, run_consumers
+import pytest
+
+from log_service.consumers import _background_cleanup, _process_message, run_consumers
 from log_service.schemas import LogEvent
 
 

@@ -1,8 +1,10 @@
 """Помощники для хранения черновиков онбординга в Redis."""
 
+from collections.abc import Sequence
 from datetime import timedelta
-from typing import Any, Literal, Sequence, TypedDict
+from typing import Any, Literal, TypedDict
 from uuid import UUID
+
 from .client import get_client
 
 DEFAULT_DRAFT_TTL = timedelta(hours=24)

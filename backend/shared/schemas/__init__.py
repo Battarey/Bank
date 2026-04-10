@@ -13,13 +13,13 @@ from .bank_account import (
 	OpenAccountRequest,
 )
 from .contacts import ContactsPayload, ContactsResponse, ContactsUpdate, EmailVerifyPayload
-from .customer import FullProfileResponse
 from .currency import (
 	ExchangeRatePairResponse,
 	ExchangeRatesResponse,
 	ExchangeRequest,
 	ExchangeResponse,
 )
+from .customer import FullProfileResponse
 from .email_verification import EmailCodeResponse, SendEmailCodeRequest, VerifyEmailCodeRequest
 from .identifiers import IdentifiersPayload, IdentifiersResponse
 from .metal import (

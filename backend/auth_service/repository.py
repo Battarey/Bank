@@ -1,6 +1,6 @@
 """Репозиторий для проверки учётных данных и управления статусом аккаунта."""
 
-from typing import Sequence
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import select
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.database_core.base_repository import BaseRepository
+
 from .exceptions import AuthNotFound
 
 

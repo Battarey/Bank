@@ -1,14 +1,15 @@
 """Бизнес-логика разблокировки аккаунта по Email-коду."""
 
 from shared.events.base import LogEvent, NotificationEvent
+from shared.redis_sessions import rate_limit, unlock_codes
 from shared.utils.security import get_blind_index
-from shared.redis_sessions import unlock_codes, rate_limit
-from ..uow import AuthUnitOfWork
+
 from ..exceptions import (
 	AuthInvalidCode,
 	AuthNotBlocked,
 	AuthNotFound,
 )
+from ..uow import AuthUnitOfWork
 
 
 async def request_unlock(uow: AuthUnitOfWork, email: str) -> None:

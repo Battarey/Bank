@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import Any, Type, AsyncGenerator
 
-from shared.database_core.uow import SqlAlchemyUnitOfWork
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from shared.bootstrap import get_container
+from shared.database_core.uow import SqlAlchemyUnitOfWork
+
 from .repository import SecurityRepository
 
 # Получаем инфраструктурный контейнер
@@ -34,7 +37,7 @@ class SecurityUnitOfWork(SqlAlchemyUnitOfWork):
 
 	async def __aexit__(
 		self, 
-		exc_type: Type[BaseException] | None, 
+		exc_type: type[BaseException] | None, 
 		exc_val: BaseException | None, 
 		exc_tb: Any | None
 	) -> None:

@@ -1,6 +1,7 @@
-import pytest
 from uuid import uuid4
-from datetime import datetime, UTC
+
+import pytest
+
 from log_service.schemas import LogEvent, LogPayload
 
 

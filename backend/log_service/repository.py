@@ -3,12 +3,14 @@
 import logging
 from uuid import uuid4
 
+from sqlalchemy import delete
+
 from shared.clickhouse_core import insert_log_event
 from shared.history_core import (
 	HistorySessionLocal,
 	UserAction,
 )
-from sqlalchemy import delete
+
 from .schemas import LogPayload
 
 logger = logging.getLogger("log_service")
@@ -48,7 +50,7 @@ class PostgresHistoryRepository:
 		
 		Модель UserAction имеет поле created_at.
 		"""
-		from datetime import datetime, timedelta, UTC
+		from datetime import UTC, datetime, timedelta
 		cutoff = datetime.now(UTC) - timedelta(days=days)
 		
 		stmt = delete(UserAction).where(UserAction.created_at < cutoff)

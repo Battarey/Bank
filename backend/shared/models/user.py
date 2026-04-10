@@ -2,10 +2,13 @@
 
 from datetime import datetime
 from uuid import UUID
+
 from sqlalchemy import Boolean, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
+
 from .base import Base
+
 
 class User(Base):
 	"""Запись клиента банковского сервиса."""

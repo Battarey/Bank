@@ -1,6 +1,7 @@
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Устанавливаем переменные окружения
 os.environ.setdefault("CURRENCY_SERVICE_URL", "http://currency:8001")
@@ -10,9 +11,9 @@ os.environ.setdefault("INTERNAL_API_KEY", "test-key")
 # Вызываем bootstrap ПЕРЕД импортом UoW
 from shared.bootstrap import bootstrap
 from transaction_service.config import TransactionSettings
+
 bootstrap(TransactionSettings)
 
-from transaction_service.uow import TransactionUnitOfWork
 
 @pytest.fixture(autouse=True)
 def mock_bootstrap():

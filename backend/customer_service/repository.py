@@ -1,6 +1,7 @@
 """Репозиторий для работы с данными клиентов (профили, документы, контакты)."""
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import or_, select
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared import models
 from shared.database_core.base_repository import BaseRepository
+
 from .exceptions import UpdateDataConflict, UpdateDataNotFound
 
 

@@ -1,15 +1,13 @@
-import pytest
+from datetime import date
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from datetime import UTC, datetime, date
+
+import pytest
 
 from customer_service.create_account.router import (
+    complete_onboarding,
     start_onboarding,
     store_personal_data,
-    store_passport_data,
-    store_identifiers,
-    store_contacts,
-    complete_onboarding,
 )
 from shared import schemas
 

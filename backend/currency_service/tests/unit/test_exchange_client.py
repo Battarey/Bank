@@ -1,8 +1,9 @@
-import pytest
 import time
-from unittest.mock import patch, AsyncMock, MagicMock
+from datetime import datetime
 from decimal import Decimal
-from datetime import datetime, timezone, UTC
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from currency_service import exchange_client
 

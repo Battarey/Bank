@@ -1,30 +1,31 @@
 """Бизнес-логика онбординга — сохранение шагов, валидация, финализация."""
 
 from datetime import UTC, datetime
-from typing import Dict, Any
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
+
 from shared import models, schemas
 from shared.events.base import LogEvent, NotificationEvent
 from shared.redis_onboarding import drafts as onboarding_drafts
 from shared.redis_onboarding.email_codes import (
-	clear_email_verification, 
-	is_email_verified, 
-	generate_code, 
-	save_email_code, 
-	verify_email_code,
+	clear_email_verification,
+	generate_code,
 	get_remaining_cooldown,
-	set_send_cooldown
+	is_email_verified,
+	save_email_code,
+	set_send_cooldown,
+	verify_email_code,
 )
 from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
 
-from ..uow import CustomerUnitOfWork
 from ..exceptions import (
 	OnboardingConflict,
 	OnboardingError,
 )
+from ..uow import CustomerUnitOfWork
 
 
 async def start_onboarding(uow: CustomerUnitOfWork) -> UUID:
@@ -298,7 +299,7 @@ async def persist_onboarding_data(uow: CustomerUnitOfWork, user_id: UUID) -> Non
 	"""
 	async with uow:
 		# 1. Сбор и валидация черновиков
-		drafts: Dict[str, Any] = {}
+		drafts: dict[str, Any] = {}
 		missing = []
 		steps = [
 			("personal_data", schemas.PersonalDataPayload),

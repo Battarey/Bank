@@ -1,10 +1,11 @@
 """Роутер для получения актуальных курсов валют."""
 
-from fastapi import APIRouter, Query, status, HTTPException
+from fastapi import APIRouter, HTTPException, Query, status
 
 from shared import schemas
+
+from ..exceptions import CurrencyNotAvailable, RateUnavailable
 from . import service
-from ..exceptions import RateUnavailable, CurrencyNotAvailable
 
 router = APIRouter(
 	prefix="/rates",

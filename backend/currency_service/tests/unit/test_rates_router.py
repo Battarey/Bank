@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import patch, AsyncMock
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
+from unittest.mock import patch
 
-from currency_service.exceptions import RateUnavailable, CurrencyNotAvailable
-from currency_service.rates.router import get_rates, get_pair_rate
+import pytest
+
+from currency_service.exceptions import CurrencyNotAvailable, RateUnavailable
+from currency_service.rates.router import get_pair_rate, get_rates
 
 
 @pytest.mark.asyncio
@@ -12,7 +13,7 @@ from currency_service.rates.router import get_rates, get_pair_rate
 async def test_get_rates_success(mock_svc):
     """Успешное получение списка курсов обмена через роутер."""
     rates = {"USD": Decimal("0.011"), "EUR": Decimal("0.010")}
-    mock_svc.return_value = (rates, datetime.now(timezone.utc))
+    mock_svc.return_value = (rates, datetime.now(UTC))
 
     res = await get_rates(base="RUB")
     assert res.base == "RUB"
@@ -35,7 +36,7 @@ async def test_get_rates_error(mock_svc):
 @patch("currency_service.rates.router.service.get_pair_rate")
 async def test_get_pair_rate_success(mock_svc):
     """Успешное получение курса валютной пары через роутер."""
-    mock_svc.return_value = (Decimal("0.011"), datetime.now(timezone.utc))
+    mock_svc.return_value = (Decimal("0.011"), datetime.now(UTC))
     res = await get_pair_rate(base="RUB", target="USD")
     assert res.rate == Decimal("0.011")
     assert res.base == "RUB"

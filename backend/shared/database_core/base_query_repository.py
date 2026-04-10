@@ -1,10 +1,11 @@
 """Базовый класс для Read-репозиториев (CQRS Query Layer)."""
 
-from typing import Any, Sequence, TypeVar, Type
-from sqlalchemy import text, RowMapping
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+from collections.abc import Sequence
+from typing import Any, TypeVar
 
+from pydantic import BaseModel
+from sqlalchemy import RowMapping, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -33,10 +34,10 @@ class BaseQueryRepository:
 		result = await self.session.execute(text(query), params or {})
 		return result.scalar_one()
 
-	def _map_to_schema(self, row: RowMapping, schema: Type[SchemaT]) -> SchemaT:
+	def _map_to_schema(self, row: RowMapping, schema: type[SchemaT]) -> SchemaT:
 		"""Мапит RowMapping в Pydantic-схему."""
 		return schema.model_validate(row, from_attributes=True)
 
-	def _map_to_schemas(self, rows: Sequence[RowMapping], schema: Type[SchemaT]) -> list[SchemaT]:
+	def _map_to_schemas(self, rows: Sequence[RowMapping], schema: type[SchemaT]) -> list[SchemaT]:
 		"""Мапит список RowMapping в список Pydantic-схем."""
 		return [self._map_to_schema(row, schema) for row in rows]

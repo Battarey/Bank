@@ -1,7 +1,9 @@
-import pytest
 from decimal import Decimal
-from unittest.mock import patch, MagicMock, AsyncMock
-from transaction_service.currency_client import get_rate, connect, disconnect
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from transaction_service.currency_client import connect, disconnect, get_rate
 
 
 @pytest.mark.asyncio

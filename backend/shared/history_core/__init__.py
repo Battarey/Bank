@@ -1,6 +1,7 @@
 """Подключение к PostgreSQL History — база аудит-лога действий пользователя."""
 
-from .db import engine as history_engine, get_history_session, HistorySessionLocal
+from .db import HistorySessionLocal, get_history_session
+from .db import engine as history_engine
 from .models import HistoryBase, UserAction
 
 __all__ = [

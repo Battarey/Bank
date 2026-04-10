@@ -1,6 +1,7 @@
 """Настройки Log Service."""
 
 from pydantic import Field
+
 from shared.config import BaseAppSettings
 
 

@@ -1,9 +1,11 @@
 """Роутер для просмотра текущих цен на драгоценные металлы."""
 
-from fastapi import APIRouter, Query, status, HTTPException
+from fastapi import APIRouter, HTTPException, Query, status
+
 from shared import schemas
-from . import service
+
 from ..exceptions import RateUnavailable
+from . import service
 
 router = APIRouter(
 	prefix="/metals/rates",

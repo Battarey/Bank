@@ -1,6 +1,8 @@
 import os
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from metal_service import metal_client
 
 # Устанавливаем переменные окружения

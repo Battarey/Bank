@@ -1,17 +1,19 @@
 """Auth Service — аутентификация: PIN + сессии + разблокировка."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
-from shared.config import BaseAppSettings
 from shared.bootstrap import bootstrap, get_container
+from shared.config import BaseAppSettings
 
 # Инициализация инфраструктуры
 bootstrap(BaseAppSettings)
 container = get_container()
 
 from shared.internal_auth import verify_internal_key
-from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+from shared.rabbitmq.client import connect as rmq_connect
+from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.redis_sessions import client as redis_client
 from shared.utils.exceptions_handler import setup_exception_handlers
 

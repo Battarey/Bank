@@ -1,21 +1,16 @@
-import pytest
-from uuid import uuid4
-from datetime import UTC, datetime, date
-from decimal import Decimal
+from datetime import date
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
+import pytest
 
 from customer_service.create_account.service import (
+    persist_onboarding_data,
     start_onboarding,
     store_personal_data,
-    store_passport_data,
-    store_identifiers,
-    store_contacts,
-    persist_onboarding_data,
 )
 from customer_service.exceptions import (
     OnboardingError,
-    OnboardingConflict,
-    OnboardingNotFound,
 )
 from shared import models, schemas
 

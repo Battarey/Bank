@@ -1,7 +1,6 @@
 """HTTP-клиент для получения курса валют из Currency Service."""
 
 import logging
-import os
 from decimal import Decimal
 
 import httpx
@@ -9,7 +8,9 @@ import httpx
 logger = logging.getLogger("transaction_service")
 
 from shared.bootstrap import get_container
+
 from .config import TransactionSettings
+
 
 def _get_settings() -> TransactionSettings:
 	"""Получает специфические настройки для сервиса транзакций."""

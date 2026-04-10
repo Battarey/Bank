@@ -4,7 +4,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-
 # ── Общие типы ─────────────────────────────────────────────────────────
 
 Phone = Annotated[str, Field(pattern=r"^\+7\d{10}$", description="Номер телефона в формате +7XXXXXXXXXX")]

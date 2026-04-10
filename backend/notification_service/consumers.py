@@ -3,11 +3,12 @@
 import asyncio
 import json
 import logging
-import os
 import signal
+
 import aio_pika
 
 from shared.bootstrap import get_container
+
 from .repository import NotificationRepository
 from .schemas import NotificationTask
 from .service import NotificationService

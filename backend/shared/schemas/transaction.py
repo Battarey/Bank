@@ -7,7 +7,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Типы ───────────────────────────────────────────────────────────────
 
 TransactionType = Literal["deposit", "withdrawal", "transfer", "exchange"]
@@ -55,6 +54,7 @@ class TransferRequest(BaseModel):
 
 
 import typing as t
+
 TransactionCreateRequest = t.Union[DepositRequest, WithdrawalRequest, TransferRequest]
 
 

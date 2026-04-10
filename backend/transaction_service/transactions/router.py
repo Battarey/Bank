@@ -1,14 +1,16 @@
 """Унифицированный роутер для всех типов транзакций (пополнение, снятие, перевод)."""
 
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, status
 
 from shared import schemas
 from shared.internal_auth import require_user_id
-from ..uow import TransactionUnitOfWork, get_uow
+
 from ..deposit import service as deposit_service
-from ..withdrawal import service as withdrawal_service
 from ..transfer import service as transfer_service
+from ..uow import TransactionUnitOfWork, get_uow
+from ..withdrawal import service as withdrawal_service
 
 router = APIRouter(
 	prefix="/transactions",

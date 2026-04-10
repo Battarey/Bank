@@ -1,8 +1,9 @@
 """Асинхронный Redis-клиент для хранения сессий и токенов."""
 
 import os
-from typing import Final
+
 from redis.asyncio import Redis
+
 
 def _resolve_redis_url() -> str:
 	"""Определяет URL для сессионного Redis из окружения или Bootstrap-контейнера."""

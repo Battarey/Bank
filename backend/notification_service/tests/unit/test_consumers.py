@@ -1,6 +1,7 @@
-import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from notification_service.consumers import _process_message, run_consumers
 from notification_service.schemas import NotificationTask

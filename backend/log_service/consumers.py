@@ -3,21 +3,20 @@
 import asyncio
 import json
 import logging
-import os
 import signal
-from datetime import timedelta
+
 import aio_pika
 
 from shared.bootstrap import get_container
-from .repository import PostgresHistoryRepository, ClickHouseRepository
-from .schemas import LogEvent
-from .service import LogService
-
 from shared.clickhouse_core import close_clickhouse, init_clickhouse
 from shared.history_core import (
 	history_engine,
 )
 from shared.history_core.models import HistoryBase
+
+from .repository import ClickHouseRepository, PostgresHistoryRepository
+from .schemas import LogEvent
+from .service import LogService
 
 logger = logging.getLogger("log_service.consumers")
 

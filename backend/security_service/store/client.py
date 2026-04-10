@@ -7,12 +7,13 @@
 from __future__ import annotations
 
 import logging
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
 from shared.bootstrap import get_container
+
 from ..config import SecuritySettings
 
 logger = logging.getLogger("security_service")
@@ -92,7 +93,7 @@ async def save_event(
 		"action": action,
 		"threshold": threshold,
 		"actual": actual,
-		"created_at": datetime.now(timezone.utc),
+		"created_at": datetime.now(UTC),
 	}
 	await db[settings.SECURITY_COLLECTION].insert_one(doc)
 	logger.info("Security event: rule=%s, account=%s, action=%s", rule, account_id, action)

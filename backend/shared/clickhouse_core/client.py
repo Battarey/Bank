@@ -8,9 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Any
-from uuid import UUID
+from datetime import UTC, datetime
 
 import clickhouse_connect
 from clickhouse_connect.driver.asyncclient import AsyncClient
@@ -117,7 +115,7 @@ async def insert_log_event(
 		logger.warning("ClickHouse не подключён. Событие не записано.")
 		return
 
-	ts = created_at or datetime.now(timezone.utc).isoformat()
+	ts = created_at or datetime.now(UTC).isoformat()
 
 	row = [
 		[

@@ -1,9 +1,11 @@
 """Security Service — антифрод-мониторинг и AML-анализ банковских операций."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
 from shared.bootstrap import bootstrap, get_container
+
 from .config import SecuritySettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
@@ -11,11 +13,12 @@ bootstrap(SecuritySettings)
 container = get_container()
 
 from shared.internal_auth import verify_internal_key
-from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+from shared.rabbitmq.client import connect as rmq_connect
+from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
 from .check.router import router as check_router
-from .store import init_mongo, close_mongo
+from .store import close_mongo, init_mongo
 
 
 @asynccontextmanager

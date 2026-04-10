@@ -1,9 +1,11 @@
 """Transaction Service — операции по банковским счетам: пополнение, снятие, переводы и история."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
 from shared.bootstrap import bootstrap, get_container
+
 from .config import TransactionSettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
@@ -11,13 +13,13 @@ bootstrap(TransactionSettings)
 container = get_container()
 
 from shared.internal_auth import verify_internal_key
-from shared.rabbitmq.client import connect as rmq_connect, disconnect as rmq_disconnect
+from shared.rabbitmq.client import connect as rmq_connect
+from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .transactions.router import router as transactions_router
+from . import currency_client, security_client
 from .history.router import router as history_router
-from . import security_client
-from . import currency_client
+from .transactions.router import router as transactions_router
 
 
 @asynccontextmanager

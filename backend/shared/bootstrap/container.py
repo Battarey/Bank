@@ -1,8 +1,9 @@
 """Фабрика для создания инфраструктурного контейнера на основе APP_ENV."""
 
-from typing import Type, TypeVar, Generic, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
+
 if TYPE_CHECKING:
-	from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, AsyncEngine
+	from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from ..config.base import BaseAppSettings
 from ..config.database import DatabaseSettings
@@ -22,8 +23,8 @@ class BootstrapContainer(Generic[TSettings]):
 		
 		self._db_settings: DatabaseSettings | None = None
 		self._rmq_settings: RabbitMQSettings | None = None
-		self._engine: 'AsyncEngine | None' = None
-		self._session_factory: 'async_sessionmaker[AsyncSession] | None' = None
+		self._engine: AsyncEngine | None = None
+		self._session_factory: async_sessionmaker[AsyncSession] | None = None
 
 	@property
 	def db_settings(self) -> DatabaseSettings:
@@ -50,7 +51,7 @@ class BootstrapContainer(Generic[TSettings]):
 	def session_factory(self) -> 'async_sessionmaker[AsyncSession]':
 		"""Ленивая инициализация фабрики сессий."""
 		if self._session_factory is None:
-			from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+			from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 			self._session_factory = async_sessionmaker(
 				bind=self.engine,
 				autoflush=False,
@@ -80,7 +81,7 @@ class BootstrapContainer(Generic[TSettings]):
 _container: BootstrapContainer | None = None
 
 
-def bootstrap(settings_class: Type[TSettings]) -> BootstrapContainer[TSettings]:
+def bootstrap(settings_class: type[TSettings]) -> BootstrapContainer[TSettings]:
 	"""Инициализирует глобальный контейнер настроек и ресурсов.
 	
 	Должен вызываться один раз при старте приложения (main.py).

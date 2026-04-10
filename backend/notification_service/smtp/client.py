@@ -1,10 +1,7 @@
 """Асинхронная отправка email через SMTP (Gmail / Yandex / другие)."""
 
 import logging
-import os
-import ssl
 from email.message import EmailMessage
-from typing import Final
 
 import aiosmtplib
 

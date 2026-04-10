@@ -1,12 +1,13 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
 
-from auth_service.session.router import logout, logout_all, self_block
+import pytest
+
 from auth_service.exceptions import (
     AuthAlreadyBlocked,
-    AuthNotFound,
 )
+from auth_service.session.router import logout, logout_all, self_block
+
 
 @pytest.mark.asyncio
 @patch("auth_service.session.router.service.logout")

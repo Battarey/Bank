@@ -1,21 +1,21 @@
 """Бизнес-логика обновления данных пользователя (ФИО, паспорт, контакты)."""
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
+
 from shared import models, schemas
 from shared.events.base import LogEvent
 from shared.utils.normalize import normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
 
-from ..uow import CustomerUnitOfWork
 from ..exceptions import (
 	UpdateDataConflict,
 	UpdateDataEmpty,
 	UpdateDataError,
 	UpdateDataNotFound,
 )
+from ..uow import CustomerUnitOfWork
 
 
 async def _get_active_user(uow: CustomerUnitOfWork, user_id: UUID) -> models.User:

@@ -4,8 +4,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from shared.schemas import LoginPinRequest, LoginPinResponse, MessageResponse, SetPinRequest
 from shared.internal_auth import require_user_id
+from shared.schemas import LoginPinRequest, LoginPinResponse, MessageResponse, SetPinRequest
+
 from ..uow import AuthUnitOfWork, get_uow
 from . import service
 

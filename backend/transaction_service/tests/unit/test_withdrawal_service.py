@@ -1,9 +1,11 @@
-import pytest
 from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from unittest.mock import patch, AsyncMock, MagicMock
-from transaction_service.withdrawal.service import withdraw
+
+import pytest
+
 from shared import models
+from transaction_service.withdrawal.service import withdraw
 
 
 @pytest.mark.asyncio

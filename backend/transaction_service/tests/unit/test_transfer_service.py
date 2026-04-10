@@ -1,9 +1,11 @@
-import pytest
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
-from unittest.mock import patch, AsyncMock, MagicMock
-from transaction_service.transfer.service import transfer
+
+import pytest
+
 from shared import models
+from transaction_service.transfer.service import transfer
 
 
 @pytest.mark.asyncio

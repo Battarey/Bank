@@ -1,6 +1,6 @@
 """Базовые классы исключений для реализации единой обработки ошибок."""
 
-from typing import Any, Dict
+from typing import Any
 
 
 class BaseBusinessError(Exception):
@@ -13,7 +13,7 @@ class BaseBusinessError(Exception):
 	status_code: int = 400
 	title: str = "Ошибка бизнес-логики"
 
-	def __init__(self, message: str, details: Dict[str, Any] | None = None):
+	def __init__(self, message: str, details: dict[str, Any] | None = None):
 		super().__init__(message)
 		self.message = message
 		self.details = details or {}

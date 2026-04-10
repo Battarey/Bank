@@ -1,15 +1,16 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
-from auth_service.unlock.service import (
-    request_unlock,
-    confirm_unlock,
-)
+import pytest
+
 from auth_service.exceptions import (
     AuthInvalidCode,
     AuthNotBlocked,
     AuthNotFound,
+)
+from auth_service.unlock.service import (
+    confirm_unlock,
+    request_unlock,
 )
 from shared import models
 

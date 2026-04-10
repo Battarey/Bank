@@ -1,7 +1,7 @@
 """Add index on transactions (account_id, created_at DESC)"""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "add_transactions_acc_created_idx"
 down_revision = "add_currency_and_metal"

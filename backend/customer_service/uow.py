@@ -1,12 +1,16 @@
 from __future__ import annotations
+
 """Unit of Work для Customer Service."""
 
-from typing import Any, Type, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
-from shared.database_core.uow import SqlAlchemyUnitOfWork
 from shared.bootstrap import get_container
-from .repository import CustomerRepository
+from shared.database_core.uow import SqlAlchemyUnitOfWork
+
 from .queries.repository import CustomerQueryRepository
+from .repository import CustomerRepository
+
 
 class CustomerUnitOfWork(SqlAlchemyUnitOfWork):
 	"""UoW для Customer Service, предоставляющий доступ к репозиторию клиентов."""
@@ -26,7 +30,7 @@ class CustomerUnitOfWork(SqlAlchemyUnitOfWork):
 			self.customer_queries = CustomerQueryRepository(self._session)
 		return uow
 
-	async def __aexit__(self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
+	async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 		self.customers = None
 		self.customer_queries = None

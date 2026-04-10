@@ -1,21 +1,21 @@
-import pytest
+from datetime import UTC, date, datetime
+from unittest.mock import AsyncMock
 from uuid import uuid4
-from datetime import UTC, datetime, date
-from unittest.mock import AsyncMock, patch
+
+import pytest
 from sqlalchemy.exc import IntegrityError
 
+from customer_service.exceptions import (
+    UpdateDataConflict,
+    UpdateDataError,
+    UpdateDataNotFound,
+)
 from customer_service.update_user_data.service import (
     _get_active_user,
-    update_personal_data,
+    get_full_profile,
     replace_passport,
     update_contacts,
-    get_full_profile,
-)
-from customer_service.exceptions import (
-    UpdateDataNotFound,
-    UpdateDataError,
-    UpdateDataEmpty,
-    UpdateDataConflict,
+    update_personal_data,
 )
 from shared import models, schemas
 

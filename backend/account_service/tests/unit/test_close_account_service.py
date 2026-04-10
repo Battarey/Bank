@@ -1,10 +1,9 @@
-import pytest
-from uuid import uuid4
 from decimal import Decimal
-from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+from uuid import uuid4
 
+import pytest
 from sqlalchemy.exc import IntegrityError
-from unittest.mock import AsyncMock, MagicMock
 
 from account_service.close_account.service import close_account
 from account_service.exceptions import (
@@ -13,7 +12,7 @@ from account_service.exceptions import (
     AccountNotOpen,
 )
 from shared import models
-from shared.events.base import NotificationEvent, LogEvent
+from shared.events.base import LogEvent, NotificationEvent
 
 # --- Тесты ---
 

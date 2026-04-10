@@ -1,7 +1,6 @@
 """Сервис для управления бизнес-логикой уведомлений."""
 
 import logging
-from typing import Any
 
 from .repository import NotificationRepository
 from .schemas import NotificationTask

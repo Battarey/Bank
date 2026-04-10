@@ -1,11 +1,10 @@
 import os
-from unittest.mock import AsyncMock, patch, MagicMock
-from typing import AsyncGenerator
-import asyncio
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from shared.database_core.uow import AbstractUnitOfWork
 
@@ -67,6 +66,7 @@ def mock_session():
 
 # Настройки для FastAPI/HTTPLX (если нужны для unit/интеграционных тестов)
 from customer_service.main import app
+
 
 @pytest_asyncio.fixture()
 async def async_client() -> AsyncGenerator[AsyncClient, None]:

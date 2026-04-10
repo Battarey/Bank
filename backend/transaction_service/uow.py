@@ -1,10 +1,13 @@
 from __future__ import annotations
-from typing import Any, Type, AsyncGenerator
 
-from shared.database_core.uow import SqlAlchemyUnitOfWork
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from shared.bootstrap import get_container
-from .repository import TransactionRepository
+from shared.database_core.uow import SqlAlchemyUnitOfWork
+
 from .history.repository import TransactionQueryRepository
+from .repository import TransactionRepository
 
 # Получаем инфраструктурный контейнер
 container = get_container()
@@ -26,7 +29,7 @@ class TransactionUnitOfWork(SqlAlchemyUnitOfWork):
 			self.history_query = TransactionQueryRepository(self._session)
 		return uow
 
-	async def __aexit__(self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
+	async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 		self.transactions = None
 		self.history_query = None

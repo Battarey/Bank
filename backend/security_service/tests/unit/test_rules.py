@@ -1,14 +1,16 @@
-import pytest
 from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from unittest.mock import MagicMock, AsyncMock
+
+import pytest
+
 from security_service.rules import (
-    check_large_single_tx, 
-    check_daily_amount, 
-    check_daily_count, 
-    check_rapid_fire, 
-    check_structuring, 
-    check_round_amount
+    check_daily_amount,
+    check_daily_count,
+    check_large_single_tx,
+    check_rapid_fire,
+    check_round_amount,
+    check_structuring,
 )
 
 

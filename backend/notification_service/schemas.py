@@ -1,13 +1,14 @@
 """Pydantic-схемы для Notification Service."""
 
-from typing import Any, Dict
-from pydantic import BaseModel, Field, EmailStr
+from typing import Any
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class NotificationPayload(BaseModel):
 	"""Полезная нагрузка уведомления."""
 	to: EmailStr = Field(..., description="Email получателя")
-	variables: Dict[str, Any] = Field(default_factory=dict, description="Переменные для шаблона")
+	variables: dict[str, Any] = Field(default_factory=dict, description="Переменные для шаблона")
 
 
 class NotificationTask(BaseModel):

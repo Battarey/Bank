@@ -4,6 +4,7 @@ import calendar
 from datetime import date
 from typing import Literal
 from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, constr, field_validator
 
 # Минимальный возраст для обслуживания в банке (лет)

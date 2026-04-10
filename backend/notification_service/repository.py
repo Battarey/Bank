@@ -1,7 +1,7 @@
 """Репозиторий для хранения уведомлений в MongoDB."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .store.client import COLLECTION_NAME, get_mongo
@@ -37,7 +37,7 @@ class NotificationRepository:
 			"variables": variables,
 			"status": status,
 			"error": error,
-			"created_at": datetime.now(timezone.utc),
+			"created_at": datetime.now(UTC),
 		}
 
 		try:

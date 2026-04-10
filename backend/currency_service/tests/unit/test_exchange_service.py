@@ -1,14 +1,20 @@
-import pytest
-from unittest.mock import AsyncMock, patch
 from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
-from shared import models
-from currency_service.exchange.service import exchange
+import pytest
+
 from currency_service.exceptions import (
-    SameAccountExchange, AccountNotFound, AccountNotOpen,
-    SameCurrencyExchange, InsufficientFunds, RateUnavailable,
+    AccountNotFound,
+    AccountNotOpen,
+    InsufficientFunds,
+    RateUnavailable,
+    SameAccountExchange,
+    SameCurrencyExchange,
 )
+from currency_service.exchange.service import exchange
+from shared import models
+
 
 def _make_account(status="open", balance=Decimal("1000"), currency="RUB", client_id=None):
     acc = models.BankAccount()

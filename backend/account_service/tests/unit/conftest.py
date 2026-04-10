@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 
 class FakeAccountUnitOfWork:
     """Универсальная имитация Unit of Work для всех тестов Account Service."""

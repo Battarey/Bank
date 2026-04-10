@@ -1,19 +1,15 @@
-import pytest
-from unittest.mock import AsyncMock, patch
-from uuid import uuid4
-from fastapi import HTTPException
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, UTC
+from unittest.mock import patch
+from uuid import uuid4
 
-from account_service.freeze_account.router import suspend_account, resume_account
+import pytest
+
 from account_service.exceptions import (
     AccountAlreadyFrozen,
-    AccountError,
-    AccountNotFound,
-    AccountNotFrozen,
-    AccountNotOpen,
     UnfreezeNotAllowed,
 )
+from account_service.freeze_account.router import resume_account, suspend_account
 from shared import models
 
 

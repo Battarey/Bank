@@ -1,12 +1,16 @@
 from __future__ import annotations
+
 """Unit of Work для Account Service."""
 
-from typing import Any, Type, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
-from shared.database_core.uow import SqlAlchemyUnitOfWork
 from shared.bootstrap import get_container
-from .repository import AccountRepository
+from shared.database_core.uow import SqlAlchemyUnitOfWork
+
 from .queries.repository import AccountQueryRepository
+from .repository import AccountRepository
+
 
 class AccountUnitOfWork(SqlAlchemyUnitOfWork):
 	"""UoW для Account Service, предоставляющий доступ к репозиторию счетов."""
@@ -25,7 +29,7 @@ class AccountUnitOfWork(SqlAlchemyUnitOfWork):
 			self.account_queries = AccountQueryRepository(self._session)
 		return uow
 
-	async def __aexit__(self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
+	async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: Any | None) -> None:
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 		self.accounts = None
 		self.account_queries = None

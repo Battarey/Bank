@@ -3,7 +3,6 @@
 import secrets
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
@@ -11,12 +10,12 @@ from sqlalchemy.exc import IntegrityError
 from shared import models, schemas
 from shared.events.base import LogEvent, NotificationEvent
 
-from ..uow import AccountUnitOfWork
 from ..exceptions import (
 	AccountConflict,
 	AccountError,
 	AccountLimitReached,
 )
+from ..uow import AccountUnitOfWork
 
 # ── Константы ──────────────────────────────────────────────────────────
 

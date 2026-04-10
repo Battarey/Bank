@@ -1,6 +1,7 @@
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Устанавливаем переменные окружения
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
@@ -8,11 +9,11 @@ os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("INTERNAL_API_KEY", "test-key")
 
 # Вызываем bootstrap ПЕРЕД импортом UoW, так как там идет обращение к контейнеру на уровне модуля
-from shared.bootstrap import bootstrap
 from security_service.config import SecuritySettings
+from shared.bootstrap import bootstrap
+
 bootstrap(SecuritySettings)
 
-from security_service.uow import SecurityUnitOfWork
 
 @pytest.fixture(autouse=True)
 def mock_bootstrap():

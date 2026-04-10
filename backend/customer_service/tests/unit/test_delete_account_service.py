@@ -1,9 +1,10 @@
-import pytest
-from uuid import uuid4
 from unittest.mock import AsyncMock
+from uuid import uuid4
+
+import pytest
 
 from customer_service.delete_account.service import delete_account
-from customer_service.exceptions import AccountNotFound, AccountAlreadyDeleted
+from customer_service.exceptions import AccountAlreadyDeleted, AccountNotFound
 from shared import models
 
 

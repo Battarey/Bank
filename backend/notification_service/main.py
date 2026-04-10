@@ -1,6 +1,8 @@
 import asyncio
 import logging
+
 from shared.bootstrap import bootstrap
+
 from .config import NotificationSettings
 from .consumers import run_consumers
 

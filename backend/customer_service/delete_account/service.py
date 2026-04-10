@@ -3,14 +3,13 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
-from ..uow import CustomerUnitOfWork
 from ..exceptions import (
 	AccountAlreadyDeleted,
 	AccountNotFound,
 )
+from ..uow import CustomerUnitOfWork
 
 
 async def delete_account(uow: CustomerUnitOfWork, user_id: UUID) -> None:

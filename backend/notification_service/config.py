@@ -1,6 +1,7 @@
 """Конфигурация Notification Service через Pydantic Settings."""
 
 from pydantic import Field
+
 from shared.config import BaseAppSettings
 
 
