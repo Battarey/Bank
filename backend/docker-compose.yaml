@@ -569,6 +569,24 @@ services:
       - data
 
 
+##########  Аудит  ##########
+
+  audit:
+    image: python:3.12-slim
+    container_name: audit
+    volumes:
+      - .:/app
+      - ../infra/audit:/infra_audit
+    working_dir: /app
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/app
+    command: ["sh", "/infra_audit/audit.sh"]
+    networks:
+      - backend
+      - data
+
+
 ##########  Сети  ##########
 
 networks:
