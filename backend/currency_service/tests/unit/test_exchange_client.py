@@ -31,7 +31,7 @@ async def test_connect(mock_cls):
 
 @pytest.mark.asyncio
 @patch("currency_service.exchange_client.httpx.AsyncClient")
-async def test_disconnect(_mock_cls):
+async def test_disconnect(mock_cls):  # noqa: ARG001
 	mock_instance = AsyncMock()
 	exchange_client._client = mock_instance
 	await exchange_client.disconnect()

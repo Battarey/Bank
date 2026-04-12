@@ -41,7 +41,7 @@ async def test_login_pin_cooldown(mock_rate_limit, uow):
 @pytest.mark.asyncio
 @patch("auth_service.login.service.rate_limit")
 @patch("auth_service.login.service.get_blind_index")
-async def test_login_pin_user_not_found(_mock_blind, mock_rate_limit, uow):
+async def test_login_pin_user_not_found(mock_blind, mock_rate_limit, uow):  # noqa: ARG001
 	"""Проверка ошибки, если пользователь не найден."""
 	mock_rate_limit.check = AsyncMock(return_value=(False, 0, 0))
 	uow.users.get_by_phone.return_value = None
@@ -53,7 +53,7 @@ async def test_login_pin_user_not_found(_mock_blind, mock_rate_limit, uow):
 @pytest.mark.asyncio
 @patch("auth_service.login.service.rate_limit")
 @patch("auth_service.login.service.get_blind_index")
-async def test_login_pin_blocked(_mock_blind, mock_rate_limit, uow, user_data):
+async def test_login_pin_blocked(mock_blind, mock_rate_limit, uow, user_data):  # noqa: ARG001
 	"""Проверка ошибки, если аккаунт заблокирован."""
 	user, contact = user_data
 	user.status = "blocked"
@@ -67,7 +67,7 @@ async def test_login_pin_blocked(_mock_blind, mock_rate_limit, uow, user_data):
 @pytest.mark.asyncio
 @patch("auth_service.login.service.rate_limit")
 @patch("auth_service.login.service.get_blind_index")
-async def test_login_pin_wrong_pin(_mock_blind, mock_rate_limit, uow, user_data):
+async def test_login_pin_wrong_pin(mock_blind, mock_rate_limit, uow, user_data):  # noqa: ARG001
 	"""Проверка ошибки при неверном PIN-коде и регистрации события."""
 	user, contact = user_data
 	mock_rate_limit.check = AsyncMock(return_value=(False, 0, 4))  # 4 предыдущих неудачи
@@ -88,7 +88,7 @@ async def test_login_pin_wrong_pin(_mock_blind, mock_rate_limit, uow, user_data)
 @patch("auth_service.login.service.rate_limit")
 @patch("auth_service.login.service.get_blind_index")
 @patch("auth_service.login.service.bcrypt")
-async def test_login_pin_success(mock_bcrypt, _mock_blind, mock_rate_limit, mock_tokens, uow, user_data):
+async def test_login_pin_success(mock_bcrypt, mock_blind, mock_rate_limit, mock_tokens, uow, user_data):  # noqa: ARG001
 	"""Успешный вход с генерацией токена и событием."""
 	user, contact = user_data
 	mock_rate_limit.check = AsyncMock(return_value=(False, 0, 0))

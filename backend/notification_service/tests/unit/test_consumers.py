@@ -52,7 +52,7 @@ async def test_process_message_invalid_json(notification_service):
 @patch("notification_service.consumers.aio_pika.connect_robust")
 @patch("notification_service.consumers.get_container")
 @patch("asyncio.Event")
-async def test_run_consumers_success(mock_event_cls, mock_container, mock_connect, _mock_repo_cls, mock_aio_pika):
+async def test_run_consumers_success(mock_event_cls, mock_container, mock_connect, mock_repo_cls, mock_aio_pika):  # noqa: ARG001
 	"""Тест запуска потребителей (run_consumers)."""
 	# Setup RabbitMQ mocks
 	mock_connect.return_value = mock_aio_pika["connection"]

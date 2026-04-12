@@ -9,7 +9,7 @@ from transaction_service.currency_client import connect, disconnect, get_rate
 
 @pytest.mark.asyncio
 @patch("transaction_service.currency_client.httpx.AsyncClient")
-async def test_get_rate_success(mock_client_cls, _mock_bootstrap):
+async def test_get_rate_success(mock_client_cls, mock_bootstrap):  # noqa: ARG001
 	"""Успешное получение курса валют."""
 	mock_client = AsyncMock()
 	mock_client_cls.return_value = mock_client
@@ -32,14 +32,17 @@ async def test_get_rate_success(mock_client_cls, _mock_bootstrap):
 
 @pytest.mark.asyncio
 @patch("transaction_service.currency_client.httpx.AsyncClient")
-async def test_get_rate_error(mock_client_cls, _mock_bootstrap):
+async def test_get_rate_error(mock_client_cls, mock_bootstrap):  # noqa: ARG001
 	"""Ошибка (напр. 500) от Currency Service."""
 	mock_client = AsyncMock()
 	mock_client_cls.return_value = mock_client
 
-	mock_res = MagicMock()
+	mock_res = MagicMock(spec=httpx.Response)
 	mock_res.status_code = 500
-	mock_res.raise_for_status.side_effect = Exception("500 error")
+	mock_res.request = MagicMock(spec=httpx.Request)
+	mock_res.raise_for_status.side_effect = httpx.HTTPStatusError(
+		"500 error", request=mock_res.request, response=mock_res
+	)
 	mock_client.get.return_value = mock_res
 
 	await connect()
