@@ -14,6 +14,32 @@
 // @name X-Session-Token
 // @description Сессионный токен, полученный при авторизации
 
+// @securityDefinitions.apikey OnboardingToken
+// @in header
+// @name X-Onboarding-Token
+// @description Токен регистрации, полученный на Шаге 0 (Start Onboarding)
+
+// @tag.name sessions
+// @tag.description Управление сессиями пользователя: вход, выход, завершение всех сессий.
+
+// @tag.name onboarding
+// @tag.description Пошаговая регистрация новых клиентов: анкета, паспорт, Email-верификация.
+
+// @tag.name customers
+// @tag.description Управление профилем пользователя и персональными данными.
+
+// @tag.name accounts
+// @tag.description Банковские счета: открытие, просмотр списка, детальная информация и блокировка.
+
+// @tag.name transactions
+// @tag.description Финансовые операции: пополнения, снятия, переводы между счетами и история.
+
+// @tag.name currencies
+// @tag.description Валютные котировки и безопасный межвалютный обмен.
+
+// @tag.name metals
+// @tag.description Котировки драгоценных металлов (золото, серебро и др.).
+
 package main
 
 import (

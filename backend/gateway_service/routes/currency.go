@@ -29,11 +29,13 @@ func (h *CurrencyHandler) RegisterCurrencyRoutes(e *echo.Echo) {
 
 // GetRates godoc
 // @Summary     Все курсы валют
-// @Description Возвращает котировки всех валют относительно базовой (RUB по умолчанию).
+// @Description Возвращает котировки всех поддерживаемых валют относительно базовой (RUB по умолчанию).
+// @Description Кэшируется на стороне сервиса на 5 минут.
 // @Tags        currencies
 // @Produce     json
-// @Param       base query string false "Базовая валюта (ISO 4217)"
-// @Success     200 {object} map[string]interface{}
+// @Param       base query string false "Базовая валюта (ISO 4217)" default(RUB)
+// @Success     200 {object} schemas.ExchangeRatesResponse "Таблица курсов"
+// @Failure     502 {object} schemas.ErrorResponse "Внешний API котировок недоступен"
 // @Router      /api/v1/currencies/rates [get]
 func (h *CurrencyHandler) GetRates(c echo.Context) error {
 	base := c.QueryParam("base")
@@ -46,12 +48,13 @@ func (h *CurrencyHandler) GetRates(c echo.Context) error {
 
 // GetPairRate godoc
 // @Summary     Курс валютной пары
-// @Description Возвращает точный курс обмена между двумя валютами.
+// @Description Возвращает точный курс обмена между двумя конкретными валютами (например, RUB/USD).
 // @Tags        currencies
 // @Produce     json
-// @Param       base path string true "Базовая валюта"
-// @Param       target path string true "Целевая валюта"
-// @Success     200 {object} map[string]interface{}
+// @Param       base path string true "Базовая валюта (откуда)" example(RUB)
+// @Param       target path string true "Целевая валюта (куда)" example(USD)
+// @Success     200 {object} schemas.ExchangeRatePairResponse "Точный курс пары"
+// @Failure     404 {object} schemas.ErrorResponse "Валюта не поддерживается"
 // @Router      /api/v1/currencies/rates/{base}/{target} [get]
 func (h *CurrencyHandler) GetPairRate(c echo.Context) error {
 	base := c.Param("base")
@@ -61,14 +64,17 @@ func (h *CurrencyHandler) GetPairRate(c echo.Context) error {
 }
 
 // Convert godoc
-// @Summary     Конвертировать валюту
-// @Description Конвертирует средства между двумя валютными счетами текущего пользователя.
+// @Summary     Конвертировать валюту (Обмен)
+// @Description Безопасно переводит средства между двумя валютными счетами одного владельца.
+// @Description Типы счетов должны совпадать (например, с текущего RUB на текущий USD).
 // @Tags        currencies
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.ExchangeRequest true "Данные конвертации"
-// @Success     200 {object} map[string]interface{}
+// @Param       payload body schemas.ExchangeRequest true "Параметры обмена"
+// @Success     200 {object} schemas.TransactionDTO "Обмен успешно выполнен"
+// @Failure     400 {object} schemas.ErrorResponse "Недостаточно средств или неверные счета"
+// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
 // @Router      /api/v1/currency-conversions [post]
 func (h *CurrencyHandler) Convert(c echo.Context) error {
 	body, _ := ReadBody(c)

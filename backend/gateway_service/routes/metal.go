@@ -23,12 +23,14 @@ func (h *MetalHandler) RegisterMetalRoutes(e *echo.Echo) {
 }
 
 // GetMetalRates godoc
-// @Summary     Котировки металлов
-// @Description Возвращает текущие банковские цены на драгоценные металлы (за грамм).
+// @Summary     Котировки драгоценных металлов
+// @Description Возвращает текущие банковские цены на золото (XAU), серебро (XAG), платину (XPT) и палладий (XPD).
+// @Description Цены указаны за 1 грамм в выбранной валюте.
 // @Tags        metals
 // @Produce     json
-// @Param       base query string false "Валюта цены (RUB по умолчанию)"
-// @Success     200 {object} map[string]interface{}
+// @Param       base query string false "Валюта цены (ISO 4217)" default(RUB)
+// @Success     200 {object} schemas.MetalRatesResponse "Список актуальных котировок"
+// @Failure     502 {object} schemas.ErrorResponse "Внешний источник цен недоступен"
 // @Router      /api/v1/metals/rates [get]
 func (h *MetalHandler) GetMetalRates(c echo.Context) error {
 	base := c.QueryParam("base")

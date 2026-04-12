@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API Gateway банковского приложения. Полный список всех доступных маршрутов с примерами.",
+        "description": "API Gateway банковского приложения. Единая точка входа для клиентских запросов.",
         "title": "Gateway Service API",
         "contact": {},
         "version": "1.0"
@@ -9,410 +9,2276 @@
     "host": "localhost:8000",
     "basePath": "/",
     "paths": {
-        "/api/v1/sessions": {
-            "post": {
-                "description": "Аутентификация по номеру телефона и PIN-коду.",
-                "consumes": ["application/json"],
-                "tags": ["sessions"],
-                "summary": "Вход",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.LoginPinRequest" } }
-                ],
-                "responses": { "201": { "description": "Created" } }
-            },
-            "delete": {
-                "security": [{"SessionToken": []}],
-                "tags": ["sessions"],
-                "summary": "Выход (все устройства)",
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/sessions/current": {
-            "delete": {
-                "security": [{"SessionToken": []}],
-                "tags": ["sessions"],
-                "summary": "Выход (текущая сессия)",
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/auth/pins": {
-            "put": {
-                "security": [{"SessionToken": []}],
-                "tags": ["auth"],
-                "summary": "Сменить PIN-код",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "pin": { "type": "string", "example": "4321" } } } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/auth/unlock-codes": {
-            "post": {
-                "tags": ["auth"],
-                "summary": "Запросить код разблокировки",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "email": { "type": "string", "example": "test@example.com" } } } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/auth/unlock-codes/verifications": {
-            "post": {
-                "tags": ["auth"],
-                "summary": "Подтвердить разблокировку",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "email": { "type": "string", "example": "test@example.com" }, "code": { "type": "string", "example": "123456" } } } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/auth/self-block": {
-            "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["auth"],
-                "summary": "Самоблокировка",
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/onboarding": {
-            "post": {
-                "tags": ["onboarding"],
-                "summary": "Начать регистрацию",
-                "responses": { "201": { "description": "Created" } }
-            }
-        },
-        "/api/v1/onboarding/personal-data": {
-            "post": {
-                "security": [{"OnboardingToken": []}],
-                "tags": ["onboarding"],
-                "summary": "Шаг 1: ФИО",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.PersonalDataPayload" } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/onboarding/passport": {
-            "post": {
-                "security": [{"OnboardingToken": []}],
-                "tags": ["onboarding"],
-                "summary": "Шаг 2: Паспорт",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.PassportPayload" } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/onboarding/identifiers": {
-            "post": {
-                "security": [{"OnboardingToken": []}],
-                "tags": ["onboarding"],
-                "summary": "Шаг 3: ИНН/СНИЛС",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.IdentifiersPayload" } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/onboarding/contacts": {
-            "post": {
-                "security": [{"OnboardingToken": []}],
-                "tags": ["onboarding"],
-                "summary": "Шаг 4: Контакты",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.ContactsPayload" } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/onboarding/email/send": {
-            "post": {
-                "security": [{"OnboardingToken": []}],
-                "tags": ["onboarding"],
-                "summary": "Отправить код на Email",
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/onboarding/email/verify": {
-            "post": {
-                "security": [{"OnboardingToken": []}],
-                "tags": ["onboarding"],
-                "summary": "Подтвердить Email кодом",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "code": { "type": "string", "example": "123456" } } } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/onboarding/completion": {
-            "post": {
-                "security": [{"OnboardingToken": []}],
-                "tags": ["onboarding"],
-                "summary": "Завершить регистрацию",
-                "responses": { "200": { "description": "OK", "schema": { "type": "object", "properties": { "status": { "type": "string" }, "message": { "type": "string" }, "session_token": { "type": "string" } } } } }
-            }
-        },
-        "/api/v1/customers/me/personal-data": {
-            "patch": {
-                "security": [{"SessionToken": []}],
-                "tags": ["customers"],
-                "summary": "Обновить ФИО",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "last_name": { "type": "string", "example": "НоваяФамилия" } } } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/customers/me/passport": {
-            "put": {
-                "security": [{"SessionToken": []}],
-                "tags": ["customers"],
-                "summary": "Сменить паспорт",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.PassportPayload" } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/customers/me/contacts": {
-            "patch": {
-                "security": [{"SessionToken": []}],
-                "tags": ["customers"],
-                "summary": "Обновить контакты",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.ContactsPayload" } }
-                ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/customers/me": {
-            "delete": {
-                "security": [{"SessionToken": []}],
-                "tags": ["customers"],
-                "summary": "Удалить аккаунт",
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
         "/api/v1/accounts": {
             "get": {
-                "security": [{"SessionToken": []}],
-                "tags": ["accounts"],
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Возвращает список всех активных, замороженных и архивных счетов текущего пользователя.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
                 "summary": "Список счетов",
-                "responses": { "200": { "description": "OK" } }
+                "responses": {
+                    "200": {
+                        "description": "Список счетов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/schemas.AccountDTO"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             },
             "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["accounts"],
-                "summary": "Открыть счет",
-                "description": "Создаёт новый банковский счёт. Доступные типы: checking (расчётный), savings (накопительный), credit, deposit (вклад).",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.OpenAccountRequest" } }
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
                 ],
-                "responses": { "201": { "description": "Created" } }
+                "description": "Создаёт новый банковский счёт для текущего пользователя (RUB, USD, EUR).\nДоступные типы: checking, savings, credit, deposit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Открыть счёт",
+                "parameters": [
+                    {
+                        "description": "Тип счёта и валюта",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OpenAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Счёт успешно создан",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AccountDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные параметры (валюта или тип)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/accounts/{account_id}": {
             "get": {
-                "security": [{"SessionToken": []}],
-                "tags": ["accounts"],
-                "summary": "Детали счета",
-                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
-                "responses": { "200": { "description": "OK" } }
-            },
-            "delete": {
-                "security": [{"SessionToken": []}],
-                "tags": ["accounts"],
-                "summary": "Закрыть счет",
-                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/accounts/{account_id}/suspensions": {
-            "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["accounts"],
-                "summary": "Заморозить счет",
-                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
-                "responses": { "200": { "description": "OK" } }
-            },
-            "delete": {
-                "security": [{"SessionToken": []}],
-                "tags": ["accounts"],
-                "summary": "Разморозить счет",
-                "parameters": [{ "name": "account_id", "in": "path", "required": true, "type": "string" }],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/transactions": {
-            "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["transactions"],
-                "summary": "Новая транзакция",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "$ref": "#/definitions/schemas.TransactionCreateRequest" } }
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
                 ],
-                "responses": { "200": { "description": "OK" } }
+                "description": "Возвращает подробную информацию о конкретном банковском счёте, включая баланс и статус.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Детали счёта",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID счёта",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Информация о счёте",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AccountDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Счёт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Переводит счёт в статус 'closed'. Проводки по нему становятся невозможны.\nСчёт может быть закрыт только при нулевом балансе.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Закрыть счёт",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID счёта",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Счёт успешно закрыт",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Нельзя закрыть счёт с ненулевым балансом",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Счёт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/accounts/{account_id}/deposit": {
             "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["transactions"],
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Вносит средства на указанный счёт. Поддерживается только для RUB.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
                 "summary": "Пополнение счёта",
                 "parameters": [
-                    { "name": "account_id", "in": "path", "required": true, "type": "string" },
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "amount": { "type": "number", "example": 1000.0 }, "description": { "type": "string", "example": "Пополнение через кассу" } } } }
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID счёта",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Сумма пополнения",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AmountPayload"
+                        }
+                    }
                 ],
-                "responses": { "200": { "description": "OK" } }
+                "responses": {
+                    "200": {
+                        "description": "Транзакция пополнения создана",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверная сумма или валюта",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
-        "/api/v1/accounts/{account_id}/withdraw": {
+        "/api/v1/accounts/{account_id}/suspensions": {
             "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["transactions"],
-                "summary": "Снятие со счёта",
-                "parameters": [
-                    { "name": "account_id", "in": "path", "required": true, "type": "string" },
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "amount": { "type": "number", "example": 500.0 }, "description": { "type": "string", "example": "Снятие в банкомате" } } } }
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
                 ],
-                "responses": { "200": { "description": "OK" } }
-            }
-        },
-        "/api/v1/transfers": {
-            "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["transactions"],
-                "summary": "Перевод средств",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "from_account_id": { "type": "string" }, "to_account_id": { "type": "string" }, "amount": { "type": "number", "example": 200.0 }, "description": { "type": "string", "example": "Перевод другу" } } } }
+                "description": "Временно блокирует любые расходные операции по счёту.",
+                "produces": [
+                    "application/json"
                 ],
-                "responses": { "200": { "description": "OK" } }
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Приостановить обслуживание (Заморозка)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID счёта",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Счёт успешно заморожен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Счёт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Снимает временную блокировку со счёта, восстанавливая возможность проведения операций.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Возобновить обслуживание (Разморозка)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID счёта",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Счёт успешно разморожен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав на разморозку (если заморожен системой)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/accounts/{account_id}/transactions": {
             "get": {
-                "security": [{"SessionToken": []}],
-                "tags": ["transactions"],
-                "summary": "История транзакций",
-                "parameters": [
-                    { "name": "account_id", "in": "path", "required": true, "type": "string" },
-                    { "name": "type", "in": "query", "type": "string", "description": "deposit|withdrawal|transfer" }
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
                 ],
-                "responses": { "200": { "description": "OK" } }
+                "description": "Возвращает список всех операций по конкретному счёту с поддержкой фильтрации по типу.\nРезультаты отсортированы по убыванию даты (сначала новые).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "История транзакций по счёту",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID счёта",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Фильтр по типу (deposit|withdrawal|transfer|exchange)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Максимальное количество записей",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список транзакций",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/schemas.TransactionDTO"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{account_id}/withdraw": {
+            "post": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Списывает средства с указанного счёта.\nПроверяет наличие достаточного баланса и лимиты.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Снятие средств",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID счёта",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Сумма снятия",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AmountPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Транзакция снятия создана",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Недостаточно средств",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/pins": {
+            "put": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Устанавливает новый или изменяет существующий 4-значный PIN-код.\nОперация доступна только аутентифицированным пользователям.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Обновить PIN-код",
+                "parameters": [
+                    {
+                        "description": "Новый 4-значный PIN",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SetPinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PIN успешно изменен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Сессия невалидна или отсутствует токен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/self-block": {
+            "post": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Полностью блокирует доступ к аккаунту и замораживает все счета.\nВНИМАНИЕ: Для разблокировки потребуется обращение в поддержку или использование email-кода.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Самоблокировка клиента",
+                "responses": {
+                    "200": {
+                        "description": "Аккаунт успешно заблокирован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Необходима авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/unlock-codes": {
+            "post": {
+                "description": "Отправляет 6-значный одноразовый код на привязанный Email пользователя.\nКод необходим для сброса блокировки после неверного ввода PIN.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth-unlock"
+                ],
+                "summary": "Запросить код разблокировки",
+                "parameters": [
+                    {
+                        "description": "Email, привязанный к аккаунту",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.RequestUnlockRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Код успешно отправлен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный Email",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Пользователь с таким Email не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/unlock-codes/verifications": {
+            "post": {
+                "description": "Проверяет код из письма и разблокирует учетную запись пользователя.\nПосле разблокировки пользователь сможет снова войти по своему PIN.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth-unlock"
+                ],
+                "summary": "Подтвердить разблокировку",
+                "parameters": [
+                    {
+                        "description": "Email и 6-значный код",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.UnlockRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Аккаунт успешно разблокирован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный или просроченный код",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/currencies/rates": {
             "get": {
-                "tags": ["currencies"],
+                "description": "Возвращает котировки всех поддерживаемых валют относительно базовой (RUB по умолчанию).\nКэшируется на стороне сервиса на 5 минут.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "currencies"
+                ],
                 "summary": "Все курсы валют",
-                "parameters": [{ "name": "base", "in": "query", "type": "string", "default": "RUB" }],
-                "responses": { "200": { "description": "OK" } }
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "RUB",
+                        "description": "Базовая валюта (ISO 4217)",
+                        "name": "base",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Таблица курсов",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ExchangeRatesResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Внешний API котировок недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/currencies/rates/{base}/{target}": {
             "get": {
-                "tags": ["currencies"],
-                "summary": "Курс пары",
-                "parameters": [
-                    { "name": "base", "in": "path", "required": true, "type": "string" },
-                    { "name": "target", "in": "path", "required": true, "type": "string" }
+                "description": "Возвращает точный курс обмена между двумя конкретными валютами (например, RUB/USD).",
+                "produces": [
+                    "application/json"
                 ],
-                "responses": { "200": { "description": "OK" } }
+                "tags": [
+                    "currencies"
+                ],
+                "summary": "Курс валютной пары",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "RUB",
+                        "description": "Базовая валюта (откуда)",
+                        "name": "base",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "USD",
+                        "description": "Целевая валюта (куда)",
+                        "name": "target",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Точный курс пары",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ExchangeRatePairResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Валюта не поддерживается",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/currency-conversions": {
             "post": {
-                "security": [{"SessionToken": []}],
-                "tags": ["currencies"],
-                "summary": "Обмен валюты",
-                "parameters": [
-                    { "name": "payload", "in": "body", "required": true, "schema": { "type": "object", "properties": { "from_account_id": { "type": "string" }, "to_account_id": { "type": "string" }, "amount": { "type": "number" } } } }
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
                 ],
-                "responses": { "200": { "description": "OK" } }
+                "description": "Безопасно переводит средства между двумя валютными счетами одного владельца.\nТипы счетов должны совпадать (например, с текущего RUB на текущий USD).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "currencies"
+                ],
+                "summary": "Конвертировать валюту (Обмен)",
+                "parameters": [
+                    {
+                        "description": "Параметры обмена",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ExchangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обмен успешно выполнен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Недостаточно средств или неверные счета",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/customers/me": {
+            "get": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Возвращает полную агрегированную информацию о текущем пользователе (ФИО, Паспорт, Контакты и т.д.).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "customers"
+                ],
+                "summary": "Получить профиль клиента",
+                "responses": {
+                    "200": {
+                        "description": "Полный профиль пользователя",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CustomerProfileDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Помечает профиль как удалённый (Soft Delete) и завершает все активные сессии.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "customers"
+                ],
+                "summary": "Удалить профиль клиента",
+                "responses": {
+                    "200": {
+                        "description": "Профиль успешно удален",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/customers/me/contacts": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Позволяет обновить Email или номер телефона.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "customers"
+                ],
+                "summary": "Смена контактных данных",
+                "parameters": [
+                    {
+                        "description": "Новые контакты",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ContactsUpdate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Контакты успешно обновлены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/customers/me/passport": {
+            "put": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Обновляет паспортные данные пользователя (например, при замене документа).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "customers"
+                ],
+                "summary": "Смена паспорта",
+                "parameters": [
+                    {
+                        "description": "Новые паспортные данные",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.PassportPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Паспорт успешно обновлен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/customers/me/personal-data": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Позволяет изменить имя, фамилию или отчество.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "customers"
+                ],
+                "summary": "Обновить ФИО",
+                "parameters": [
+                    {
+                        "description": "Новые анкетные данные",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.PersonalDataUpdate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные успешно обновлены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/metals/rates": {
             "get": {
-                "tags": ["metals"],
-                "summary": "Цены на металлы",
-                "parameters": [{ "name": "base", "in": "query", "type": "string", "default": "RUB" }],
-                "responses": { "200": { "description": "OK" } }
+                "description": "Возвращает текущие банковские цены на золото (XAU), серебро (XAG), платину (XPT) и палладий (XPD).\nЦены указаны за 1 грамм в выбранной валюте.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metals"
+                ],
+                "summary": "Котировки драгоценных металлов",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "RUB",
+                        "description": "Валюта цены (ISO 4217)",
+                        "name": "base",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список актуальных котировок",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.MetalRatesResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Внешний источник цен недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding": {
+            "post": {
+                "description": "Инициирует процесс создания нового клиента.\nСоздаёт временный профиль и выдаёт X-Onboarding-Token для прохождения последующих шагов.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Начать регистрацию (Шаг 0)",
+                "responses": {
+                    "201": {
+                        "description": "Регистрация начата",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingStartResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервиса",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/completion": {
+            "post": {
+                "security": [
+                    {
+                        "OnboardingToken": []
+                    }
+                ],
+                "description": "Переносит данные из временного хранилища в основной профиль и активирует аккаунт.\nВ ответе возвращается сессионный токен для немедленного входа.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Завершение регистрации",
+                "responses": {
+                    "200": {
+                        "description": "Регистрация успешно завершена",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Не все шаги пройдены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/contacts": {
+            "post": {
+                "security": [
+                    {
+                        "OnboardingToken": []
+                    }
+                ],
+                "description": "Сохраняет контактные данные для связи и уведомлений.\nТребует заголовок X-Onboarding-Token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Шаг 4: Контакты (Email/Телефон)",
+                "parameters": [
+                    {
+                        "description": "Email и Телефон",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ContactsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Контактные данные сохранены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/email/send": {
+            "post": {
+                "security": [
+                    {
+                        "OnboardingToken": []
+                    }
+                ],
+                "description": "Отправляет проверочный код на Email, указанный на предыдущем шаге.\nТребует заголовок X-Onboarding-Token.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Запросить Email-подтверждение",
+                "responses": {
+                    "200": {
+                        "description": "Код успешно отправлен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/email/verify": {
+            "post": {
+                "security": [
+                    {
+                        "OnboardingToken": []
+                    }
+                ],
+                "description": "Проверяет 6-значный код, отправленный на почту.\nТребует заголовок X-Onboarding-Token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Подтвердить Email",
+                "parameters": [
+                    {
+                        "description": "Код подтверждения",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.VerifyEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email подтвержден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный или просроченный код",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/identifiers": {
+            "post": {
+                "security": [
+                    {
+                        "OnboardingToken": []
+                    }
+                ],
+                "description": "Сохраняет государственные идентификаторы.\nТребует заголовок X-Onboarding-Token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Шаг 3: ИНН и СНИЛС",
+                "parameters": [
+                    {
+                        "description": "ИНН и СНИЛС",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.IdentifiersPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные сохранены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка валидации (дубликат или формат)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/passport": {
+            "post": {
+                "security": [
+                    {
+                        "OnboardingToken": []
+                    }
+                ],
+                "description": "Сохраняет данные паспорта РФ.\nТребует заголовок X-Onboarding-Token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Шаг 2: Паспортные данные",
+                "parameters": [
+                    {
+                        "description": "Данные паспорта",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.PassportPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные сохранены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Невалидный токен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/personal-data": {
+            "post": {
+                "security": [
+                    {
+                        "OnboardingToken": []
+                    }
+                ],
+                "description": "Сохраняет базовые анкетные данные во временный профиль.\nТребует заголовок X-Onboarding-Token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Шаг 1: ФИО и дата рождения",
+                "parameters": [
+                    {
+                        "description": "Анкетные данные",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.PersonalDataPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные сохранены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка валидации данных",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Невалидный токен онбординга",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sessions": {
+            "post": {
+                "description": "Аутентификация по номеру телефона и PIN-коду.\nВ случае успеха возвращает сессионный токен, который нужно передавать в заголовке X-Session-Token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Вход в приложение",
+                "parameters": [
+                    {
+                        "description": "Номер телефона (+7...) и 4-значный PIN",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.LoginPinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешная авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный формат входных данных",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверный телефон или PIN-код",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    },
+                    "423": {
+                        "description": "Аккаунт временно заблокирован из-за перебора PIN",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Аннулирует ВСЕ активные сессии текущего пользователя.\nПолезно в случае компрометации одного из устройств.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Выход со всех устройств",
+                "responses": {
+                    "200": {
+                        "description": "Все сессии завершены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Необходима авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sessions/current": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Удаляет текущий сессионный токен из хранилища Redis.\nПосле этого токен станет недействительным для всех последующих запросов.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Выход (текущая сессия)",
+                "responses": {
+                    "200": {
+                        "description": "Выход успешно выполнен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Токен уже недействителен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions": {
+            "post": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Унифицированный эндпоинт для любого типа транзакций (deposit, withdrawal, transfer).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Универсальная финансовая операция",
+                "parameters": [
+                    {
+                        "description": "Детали операции",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CreateTransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Операция успешно создана",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидные данные запроса",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transfers": {
+            "post": {
+                "security": [
+                    {
+                        "SessionToken": []
+                    }
+                ],
+                "description": "Перевод между двумя счетами (своими или другим клиентам).\nПри межвалютном переводе используется курс из currency_service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Перевод средств",
+                "parameters": [
+                    {
+                        "description": "Отправитель, получатель, сумма",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransferRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Перевод успешно инициирован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка перевода (недостаточно средств или неверный счет)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Возвращает статус 'ok', если Gateway запущен и готов принимать запросы.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Проверка состояния системы",
+                "responses": {
+                    "200": {
+                        "description": "Система работает нормально",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.HealthResponse"
+                        }
+                    }
+                }
             }
         }
     },
     "definitions": {
-        "schemas.LoginPinRequest": {
+        "schemas.AccountDTO": {
             "type": "object",
-            "required": ["phone", "pin"],
             "properties": {
-                "phone": { "type": "string", "example": "+79001112233" },
-                "pin": { "type": "string", "example": "1234" }
+                "balance": {
+                    "description": "Доступный остаток средств",
+                    "type": "number",
+                    "example": 15000.5
+                },
+                "created_at": {
+                    "description": "Дата и время открытия счета (ISO 8601)",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-10-27T10:00:00Z"
+                },
+                "currency": {
+                    "description": "Валюта (ISO 4217)",
+                    "type": "string",
+                    "enum": [
+                        "RUB",
+                        "USD",
+                        "EUR"
+                    ],
+                    "example": "RUB"
+                },
+                "id": {
+                    "description": "Уникальный идентификатор счёта (UUID)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "status": {
+                    "description": "Текущее состояние счёта",
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "frozen",
+                        "closed"
+                    ],
+                    "example": "active"
+                },
+                "type": {
+                    "description": "Тип продукта",
+                    "type": "string",
+                    "enum": [
+                        "checking",
+                        "savings",
+                        "credit",
+                        "deposit"
+                    ],
+                    "example": "checking"
+                },
+                "user_id": {
+                    "description": "ID владельца счёта",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "user-uuid"
+                }
             }
         },
-        "schemas.OpenAccountRequest": {
+        "schemas.AmountPayload": {
             "type": "object",
-            "required": ["type", "currency"],
+            "required": [
+                "amount"
+            ],
             "properties": {
-                "type": { "type": "string", "enum": ["checking", "savings", "credit", "deposit"], "example": "checking" },
-                "currency": { "type": "string", "enum": ["RUB", "USD", "EUR"], "example": "RUB" }
-            }
-        },
-        "schemas.PersonalDataPayload": {
-            "type": "object",
-            "required": ["last_name", "first_name", "birth_date", "gender"],
-            "properties": {
-                "last_name": { "type": "string", "example": "Иванов" },
-                "first_name": { "type": "string", "example": "Иван" },
-                "middle_name": { "type": "string", "example": "Иванович" },
-                "birth_date": { "type": "string", "format": "date", "example": "1990-01-01" },
-                "gender": { "type": "string", "enum": ["M", "F"], "example": "M" }
-            }
-        },
-        "schemas.PassportPayload": {
-            "type": "object",
-            "required": ["series", "number", "division_code", "issued_by", "issued_at", "expiration_date", "registration_address"],
-            "properties": {
-                "series": { "type": "string", "example": "1234" },
-                "number": { "type": "string", "example": "567890" },
-                "division_code": { "type": "string", "example": "111-222" },
-                "issued_by": { "type": "string", "example": "УВД г. Москвы" },
-                "issued_at": { "type": "string", "format": "date", "example": "2010-05-15" },
-                "expiration_date": { "type": "string", "format": "date", "example": "2030-05-15" },
-                "registration_address": { "type": "string", "example": "г. Москва, ул. Ленина, д. 1" }
-            }
-        },
-        "schemas.IdentifiersPayload": {
-            "type": "object",
-            "required": ["inn", "snils"],
-            "properties": {
-                "inn": { "type": "string", "example": "123456789012" },
-                "snils": { "type": "string", "example": "12345678901" }
+                "amount": {
+                    "description": "Сумма операции (положительное число)",
+                    "type": "number",
+                    "minimum": 0.01,
+                    "example": 1000.5
+                }
             }
         },
         "schemas.ContactsPayload": {
             "type": "object",
-            "required": ["email", "phone"],
+            "required": [
+                "email",
+                "phone"
+            ],
             "properties": {
-                "email": { "type": "string", "example": "ivanov@example.com" },
-                "phone": { "type": "string", "example": "+79001112233" }
+                "email": {
+                    "description": "Основной Email",
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                },
+                "phone": {
+                    "description": "Номер телефона",
+                    "type": "string",
+                    "format": "phone",
+                    "example": "+79991234567"
+                }
             }
         },
-        "schemas.TransactionCreateRequest": {
+        "schemas.ContactsUpdate": {
             "type": "object",
-            "required": ["type", "amount"],
             "properties": {
-                "type": { "type": "string", "enum": ["deposit", "withdrawal", "transfer"], "example": "deposit" },
-                "amount": { "type": "number", "example": 1000.0 },
-                "account_id": { "type": "string", "example": "uuid-ваш-счет" },
-                "from_account_id": { "type": "string", "example": "uuid-отправитель" },
-                "to_account_id": { "type": "string", "example": "uuid-получатель" },
-                "description": { "type": "string", "example": "Пополнение счета" },
-                "idempotency_key": { "type": "string", "example": "unique-id-123" }
+                "email": {
+                    "description": "Новый Email",
+                    "type": "string",
+                    "format": "email",
+                    "example": "new@example.com"
+                },
+                "phone": {
+                    "description": "Новый номер телефона",
+                    "type": "string",
+                    "format": "phone",
+                    "example": "+79990001122"
+                }
+            }
+        },
+        "schemas.CreateTransactionRequest": {
+            "type": "object",
+            "required": [
+                "account_id",
+                "amount",
+                "type"
+            ],
+            "properties": {
+                "account_id": {
+                    "description": "ID основного счёта (UUID)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "amount": {
+                    "description": "Сумма операции",
+                    "type": "number",
+                    "minimum": 0.01,
+                    "example": 1000
+                },
+                "description": {
+                    "description": "Описание/комментарий",
+                    "type": "string",
+                    "example": "Пополнение через банкомат"
+                },
+                "to_account_id": {
+                    "description": "ID счёта получателя (только для переводов)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "550e8400-e29b-41d4-a716-446655440002"
+                },
+                "type": {
+                    "description": "Вид операции",
+                    "type": "string",
+                    "enum": [
+                        "deposit",
+                        "withdrawal",
+                        "transfer"
+                    ],
+                    "example": "deposit"
+                }
+            }
+        },
+        "schemas.CustomerProfileDTO": {
+            "type": "object",
+            "properties": {
+                "contacts": {
+                    "description": "Контактные данные",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.ContactsPayload"
+                        }
+                    ]
+                },
+                "id": {
+                    "description": "Уникальный идентификатор пользователя (UUID)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "user-uuid"
+                },
+                "identifiers": {
+                    "description": "ИНН и СНИЛС",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.IdentifiersPayload"
+                        }
+                    ]
+                },
+                "passport": {
+                    "description": "Паспортные данные",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.PassportPayload"
+                        }
+                    ]
+                },
+                "personal_data": {
+                    "description": "Анкетные данные (ФИО, ДР, Пол)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.PersonalDataPayload"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "Статус учетной записи",
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "blocked",
+                        "deleted"
+                    ],
+                    "example": "active"
+                }
+            }
+        },
+        "schemas.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "description": "Подробное сообщение об ошибке для разработчика и пользователя",
+                    "type": "string",
+                    "example": "Неверный PIN-код или формат данных"
+                }
+            }
+        },
+        "schemas.ExchangeRatePairResponse": {
+            "type": "object",
+            "properties": {
+                "base": {
+                    "description": "Валюта, которую отдаем",
+                    "type": "string",
+                    "example": "RUB"
+                },
+                "last_updated": {
+                    "description": "Время обновления",
+                    "type": "string",
+                    "example": "2023-10-27T10:00:00Z"
+                },
+                "rate": {
+                    "description": "Значение курса (сколько target дают за 1 base)",
+                    "type": "number",
+                    "example": 0.0108
+                },
+                "target": {
+                    "description": "Валюта, которую получаем",
+                    "type": "string",
+                    "example": "USD"
+                }
+            }
+        },
+        "schemas.ExchangeRatesResponse": {
+            "type": "object",
+            "properties": {
+                "base": {
+                    "description": "Базовая валюта, относительно которой считаются курсы",
+                    "type": "string",
+                    "example": "RUB"
+                },
+                "last_updated": {
+                    "description": "Время последнего обновления котировок (ISO 8601)",
+                    "type": "string",
+                    "example": "2023-10-27T10:00:00Z"
+                },
+                "rates": {
+                    "description": "Таблица курсов (Ключ - код валюты, значение - цена за 1 ед. базы)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    },
+                    "example": {
+                        "EUR": 0.0102,
+                        "USD": 0.0108
+                    }
+                }
+            }
+        },
+        "schemas.ExchangeRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "from_account_id",
+                "to_account_id"
+            ],
+            "properties": {
+                "amount": {
+                    "description": "Сумма в валюте списания",
+                    "type": "number",
+                    "minimum": 0.01,
+                    "example": 100
+                },
+                "from_account_id": {
+                    "description": "ID счёта списания (UUID)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "to_account_id": {
+                    "description": "ID счёта зачисления (UUID)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "550e8400-e29b-41d4-a716-446655440002"
+                }
+            }
+        },
+        "schemas.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "Статус доступности ('ok')",
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
+        "schemas.IdentifiersPayload": {
+            "type": "object",
+            "required": [
+                "inn",
+                "snils"
+            ],
+            "properties": {
+                "inn": {
+                    "description": "ИНН (12 цифр для физлиц)",
+                    "type": "string",
+                    "maxLength": 12,
+                    "minLength": 12,
+                    "example": "123456789012"
+                },
+                "snils": {
+                    "description": "СНИЛС (11 цифр)",
+                    "type": "string",
+                    "maxLength": 11,
+                    "minLength": 11,
+                    "example": "12345678900"
+                }
+            }
+        },
+        "schemas.LoginPinRequest": {
+            "type": "object",
+            "required": [
+                "phone",
+                "pin"
+            ],
+            "properties": {
+                "phone": {
+                    "description": "Номер телефона в международном формате (+7...)",
+                    "type": "string",
+                    "format": "phone",
+                    "example": "+79991234567"
+                },
+                "pin": {
+                    "description": "Секретный 4-значный код доступа",
+                    "type": "string",
+                    "maxLength": 4,
+                    "minLength": 4,
+                    "example": "1234"
+                }
+            }
+        },
+        "schemas.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "has_pin": {
+                    "description": "Признак наличия установленного PIN-кода (false - если нужно установить впервые)",
+                    "type": "boolean",
+                    "example": true
+                },
+                "session_token": {
+                    "description": "Сессионный токен (JWT), необходим для авторизации последующих запросов",
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "status": {
+                    "description": "Текущий статус аккаунта в системе",
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "schemas.MetalPriceDTO": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "description": "Валюта стоимости",
+                    "type": "string",
+                    "example": "RUB"
+                },
+                "metal": {
+                    "description": "Код металла (XAU - золото, XAG - серебро, XPT - платина, XPD - палладий)",
+                    "type": "string",
+                    "enum": [
+                        "XAU",
+                        "XAG",
+                        "XPT",
+                        "XPD"
+                    ],
+                    "example": "XAU"
+                },
+                "price": {
+                    "description": "Текущая стоимость за единицу (грамм)",
+                    "type": "number",
+                    "example": 5850.4
+                },
+                "unit": {
+                    "description": "Единица измерения (всегда 'gram')",
+                    "type": "string",
+                    "example": "gram"
+                }
+            }
+        },
+        "schemas.MetalRatesResponse": {
+            "type": "object",
+            "properties": {
+                "base": {
+                    "description": "Валюта оценки",
+                    "type": "string",
+                    "example": "RUB"
+                },
+                "rates": {
+                    "description": "Список цен на поддерживаемые металлы",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.MetalPriceDTO"
+                    }
+                },
+                "timestamp": {
+                    "description": "Время формирования котировок",
+                    "type": "string",
+                    "example": "2023-10-27T10:00:00Z"
+                }
+            }
+        },
+        "schemas.OnboardingStartResponse": {
+            "type": "object",
+            "properties": {
+                "onboarding_token": {
+                    "description": "Токен процесса регистрации, передается в заголовке X-Onboarding-Token",
+                    "type": "string",
+                    "example": "onb_550e8400-e29b-41d4-a716-446655440000"
+                },
+                "status": {
+                    "description": "Текущий статус онбординга",
+                    "type": "string",
+                    "example": "started"
+                }
+            }
+        },
+        "schemas.OpenAccountRequest": {
+            "type": "object",
+            "required": [
+                "currency",
+                "type"
+            ],
+            "properties": {
+                "currency": {
+                    "description": "Валюта счёта (ISO 4217)",
+                    "type": "string",
+                    "enum": [
+                        "RUB",
+                        "USD",
+                        "EUR"
+                    ],
+                    "example": "RUB"
+                },
+                "type": {
+                    "description": "Тип счёта: checking (расчётный), savings (накопительный), credit (кредитный), deposit (вклад)",
+                    "type": "string",
+                    "enum": [
+                        "checking",
+                        "savings",
+                        "credit",
+                        "deposit"
+                    ],
+                    "example": "checking"
+                }
+            }
+        },
+        "schemas.PassportPayload": {
+            "type": "object",
+            "required": [
+                "division_code",
+                "issued_at",
+                "issued_by",
+                "number",
+                "registration_address",
+                "series"
+            ],
+            "properties": {
+                "division_code": {
+                    "description": "Код подразделения (000-000)",
+                    "type": "string",
+                    "example": "123-456"
+                },
+                "expiration_date": {
+                    "description": "Дата окончания действия (если применимо)",
+                    "type": "string",
+                    "format": "date",
+                    "example": "2030-01-01"
+                },
+                "issued_at": {
+                    "description": "Дата выдачи",
+                    "type": "string",
+                    "format": "date",
+                    "example": "2010-01-01"
+                },
+                "issued_by": {
+                    "description": "Кем выдан документ",
+                    "type": "string",
+                    "example": "ГУ МВД России"
+                },
+                "number": {
+                    "description": "Номер паспорта (6 цифр)",
+                    "type": "string",
+                    "maxLength": 6,
+                    "minLength": 6,
+                    "example": "567890"
+                },
+                "registration_address": {
+                    "description": "Адрес постоянной регистрации",
+                    "type": "string",
+                    "example": "г. Москва, ул. Пушкина"
+                },
+                "series": {
+                    "description": "Серия паспорта (4 цифры)",
+                    "type": "string",
+                    "maxLength": 4,
+                    "minLength": 4,
+                    "example": "1234"
+                }
+            }
+        },
+        "schemas.PersonalDataPayload": {
+            "type": "object",
+            "required": [
+                "birth_date",
+                "first_name",
+                "gender",
+                "last_name"
+            ],
+            "properties": {
+                "birth_date": {
+                    "description": "Дата рождения в формате ГГГГ-ММ-ДД",
+                    "type": "string",
+                    "format": "date",
+                    "example": "1990-01-01"
+                },
+                "first_name": {
+                    "description": "Имя клиента",
+                    "type": "string",
+                    "example": "Иван"
+                },
+                "gender": {
+                    "description": "Пол клиента (M - мужской, F - женский)",
+                    "type": "string",
+                    "enum": [
+                        "M",
+                        "F"
+                    ],
+                    "example": "M"
+                },
+                "last_name": {
+                    "description": "Фамилия клиента",
+                    "type": "string",
+                    "example": "Иванов"
+                },
+                "middle_name": {
+                    "description": "Отчество клиента (при наличии)",
+                    "type": "string",
+                    "example": "Иванович"
+                }
+            }
+        },
+        "schemas.PersonalDataUpdate": {
+            "type": "object",
+            "properties": {
+                "first_name": {
+                    "description": "Новое имя",
+                    "type": "string",
+                    "example": "Петр"
+                },
+                "last_name": {
+                    "description": "Новая фамилия",
+                    "type": "string",
+                    "example": "Петров"
+                },
+                "middle_name": {
+                    "description": "Новое отчество",
+                    "type": "string",
+                    "example": "Петрович"
+                }
+            }
+        },
+        "schemas.RequestUnlockRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "description": "Email, привязанный к профилю клиента",
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                }
+            }
+        },
+        "schemas.SetPinRequest": {
+            "type": "object",
+            "required": [
+                "pin"
+            ],
+            "properties": {
+                "pin": {
+                    "description": "Новый 4-значный секретный код",
+                    "type": "string",
+                    "maxLength": 4,
+                    "minLength": 4,
+                    "example": "1234"
+                }
+            }
+        },
+        "schemas.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "Статус успеха (обычно 'success')",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "schemas.TransactionDTO": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "description": "ID счёта, по которому прошла операция",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "acc-uuid"
+                },
+                "amount": {
+                    "description": "Сумма операции",
+                    "type": "number",
+                    "example": 500
+                },
+                "currency": {
+                    "description": "Валюта операции",
+                    "type": "string",
+                    "example": "RUB"
+                },
+                "description": {
+                    "description": "Назначение платежа или техническое описание",
+                    "type": "string",
+                    "example": "Перевод другу"
+                },
+                "id": {
+                    "description": "Уникальный идентификатор операции (UUID)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "tx-uuid"
+                },
+                "status": {
+                    "description": "Текущий статус проводки",
+                    "type": "string",
+                    "enum": [
+                        "pending",
+                        "completed",
+                        "failed",
+                        "blocked"
+                    ],
+                    "example": "completed"
+                },
+                "timestamp": {
+                    "description": "Точное время совершения операции (ISO 8601)",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-10-27T10:05:00Z"
+                },
+                "to_account_id": {
+                    "description": "ID счёта контр-агента (только для переводов и обмена)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "target-acc-uuid"
+                },
+                "type": {
+                    "description": "Тип финансового действия",
+                    "type": "string",
+                    "enum": [
+                        "deposit",
+                        "withdrawal",
+                        "transfer",
+                        "exchange"
+                    ],
+                    "example": "transfer"
+                }
+            }
+        },
+        "schemas.TransferRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "to_account_id"
+            ],
+            "properties": {
+                "amount": {
+                    "description": "Сумма перевода",
+                    "type": "number",
+                    "minimum": 0.01,
+                    "example": 500
+                },
+                "description": {
+                    "description": "Назначение платежа (комментарий для получателя)",
+                    "type": "string",
+                    "example": "Перевод другу"
+                },
+                "to_account_id": {
+                    "description": "ID счёта получателя (UUID)",
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "schemas.UnlockRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "email"
+            ],
+            "properties": {
+                "code": {
+                    "description": "6-значный код подтверждения из Email-письма",
+                    "type": "string",
+                    "maxLength": 6,
+                    "minLength": 6,
+                    "example": "123456"
+                },
+                "email": {
+                    "description": "Email, привязанный к профилю клиента",
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                }
+            }
+        },
+        "schemas.VerifyEmailRequest": {
+            "type": "object",
+            "required": [
+                "code"
+            ],
+            "properties": {
+                "code": {
+                    "description": "6-значный одноразовый код подтверждения",
+                    "type": "string",
+                    "maxLength": 6,
+                    "minLength": 6,
+                    "example": "123456"
+                }
             }
         }
     },
     "securityDefinitions": {
-        "OnboardingToken": { "type": "apiKey", "name": "X-Onboarding-Token", "in": "header" },
-        "SessionToken": { "type": "apiKey", "name": "X-Session-Token", "in": "header" }
-    }
+        "OnboardingToken": {
+            "description": "Токен регистрации, полученный на Шаге 0 (Start Onboarding)",
+            "type": "apiKey",
+            "name": "X-Onboarding-Token",
+            "in": "header"
+        },
+        "SessionToken": {
+            "description": "Сессионный токен, полученный при авторизации",
+            "type": "apiKey",
+            "name": "X-Session-Token",
+            "in": "header"
+        }
+    },
+    "tags": [
+        {
+            "description": "Управление сессиями пользователя: вход, выход, завершение всех сессий.",
+            "name": "sessions"
+        },
+        {
+            "description": "Пошаговая регистрация новых клиентов: анкета, паспорт, Email-верификация.",
+            "name": "onboarding"
+        },
+        {
+            "description": "Управление профилем пользователя и персональными данными.",
+            "name": "customers"
+        },
+        {
+            "description": "Банковские счета: открытие, просмотр списка, детальная информация и блокировка.",
+            "name": "accounts"
+        },
+        {
+            "description": "Финансовые операции: пополнения, снятия, переводы между счетами и история.",
+            "name": "transactions"
+        },
+        {
+            "description": "Валютные котировки и безопасный межвалютный обмен.",
+            "name": "currencies"
+        },
+        {
+            "description": "Котировки драгоценных металлов (золото, серебро и др.).",
+            "name": "metals"
+        }
+    ]
 }

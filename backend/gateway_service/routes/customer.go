@@ -66,12 +66,14 @@ func (h *CustomerHandler) resolveOnboarding(c echo.Context) (string, error) {
 // ── Онбординг ──────────────────────────────────────────────────────────
 
 // StartOnboarding godoc
-// @Summary     Начать регистрацию
-// @Description Создаёт временный профиль и выдаёт X-Onboarding-Token для прохождения шагов.
+// @Summary     Начать регистрацию (Шаг 0)
+// @Description Инициирует процесс создания нового клиента.
+// @Description Создаёт временный профиль и выдаёт X-Onboarding-Token для прохождения последующих шагов.
 // @Tags        onboarding
 // @Accept      json
 // @Produce     json
-// @Success     201 {object} map[string]interface{}
+// @Success     201 {object} schemas.OnboardingStartResponse "Регистрация начата"
+// @Failure     500 {object} schemas.ErrorResponse "Внутренняя ошибка сервиса"
 // @Router      /api/v1/onboarding [post]
 func (h *CustomerHandler) StartOnboarding(c echo.Context) error {
 	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPost, "/onboarding", nil, "customer", h.APIKey)
@@ -111,48 +113,93 @@ func (h *CustomerHandler) OnboardingStep(c echo.Context, subPath string) error {
 }
 
 // SubmitPersonalData godoc
-// @Summary     Шаг 1: ФИО
+// @Summary     Шаг 1: ФИО и дата рождения
+// @Description Сохраняет базовые анкетные данные во временный профиль.
+// @Description Требует заголовок X-Onboarding-Token.
 // @Tags        onboarding
+// @Security    OnboardingToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.PersonalDataPayload true "Анкетные данные"
+// @Success     200 {object} schemas.SuccessResponse "Данные сохранены"
+// @Failure     400 {object} schemas.ErrorResponse "Ошибка валидации данных"
+// @Failure     401 {object} schemas.ErrorResponse "Невалидный токен онбординга"
 // @Router      /api/v1/onboarding/personal-data [post]
 func (h *CustomerHandler) SubmitPersonalData(c echo.Context) error {
 	return h.OnboardingStep(c, "personal-data")
 }
 
 // SubmitPassport godoc
-// @Summary     Шаг 2: Паспорт
+// @Summary     Шаг 2: Паспортные данные
+// @Description Сохраняет данные паспорта РФ.
+// @Description Требует заголовок X-Onboarding-Token.
 // @Tags        onboarding
+// @Security    OnboardingToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.PassportPayload true "Данные паспорта"
+// @Success     200 {object} schemas.SuccessResponse "Данные сохранены"
+// @Failure     401 {object} schemas.ErrorResponse "Невалидный токен"
 // @Router      /api/v1/onboarding/passport [post]
 func (h *CustomerHandler) SubmitPassport(c echo.Context) error {
 	return h.OnboardingStep(c, "passport")
 }
 
 // SubmitIdentifiers godoc
-// @Summary     Шаг 3: ИНН/СНИЛС
+// @Summary     Шаг 3: ИНН и СНИЛС
+// @Description Сохраняет государственные идентификаторы.
+// @Description Требует заголовок X-Onboarding-Token.
 // @Tags        onboarding
+// @Security    OnboardingToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.IdentifiersPayload true "ИНН и СНИЛС"
+// @Success     200 {object} schemas.SuccessResponse "Данные сохранены"
+// @Failure     400 {object} schemas.ErrorResponse "Ошибка валидации (дубликат или формат)"
 // @Router      /api/v1/onboarding/identifiers [post]
 func (h *CustomerHandler) SubmitIdentifiers(c echo.Context) error {
 	return h.OnboardingStep(c, "identifiers")
 }
 
 // SubmitContacts godoc
-// @Summary     Шаг 4: Контакты
+// @Summary     Шаг 4: Контакты (Email/Телефон)
+// @Description Сохраняет контактные данные для связи и уведомлений.
+// @Description Требует заголовок X-Onboarding-Token.
 // @Tags        onboarding
+// @Security    OnboardingToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.ContactsPayload true "Email и Телефон"
+// @Success     200 {object} schemas.SuccessResponse "Контактные данные сохранены"
 // @Router      /api/v1/onboarding/contacts [post]
 func (h *CustomerHandler) SubmitContacts(c echo.Context) error {
 	return h.OnboardingStep(c, "contacts")
 }
 
 // SendEmailCode godoc
-// @Summary     Отправить код на Email
+// @Summary     Запросить Email-подтверждение
+// @Description Отправляет проверочный код на Email, указанный на предыдущем шаге.
+// @Description Требует заголовок X-Onboarding-Token.
 // @Tags        onboarding
+// @Security    OnboardingToken
+// @Produce     json
+// @Success     200 {object} schemas.SuccessResponse "Код успешно отправлен"
 // @Router      /api/v1/onboarding/email/send [post]
 func (h *CustomerHandler) SendEmailCode(c echo.Context) error {
 	return h.OnboardingStep(c, "email/send")
 }
 
 // VerifyEmailCode godoc
-// @Summary     Подтвердить Email кодом
+// @Summary     Подтвердить Email
+// @Description Проверяет 6-значный код, отправленный на почту.
+// @Description Требует заголовок X-Onboarding-Token.
 // @Tags        onboarding
+// @Security    OnboardingToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.VerifyEmailRequest true "Код подтверждения"
+// @Success     200 {object} schemas.SuccessResponse "Email подтвержден"
+// @Failure     400 {object} schemas.ErrorResponse "Неверный или просроченный код"
 // @Router      /api/v1/onboarding/email/verify [post]
 func (h *CustomerHandler) VerifyEmailCode(c echo.Context) error {
 	return h.OnboardingStep(c, "email/verify")
@@ -160,8 +207,13 @@ func (h *CustomerHandler) VerifyEmailCode(c echo.Context) error {
 
 // CompleteOnboarding godoc
 // @Summary     Завершение регистрации
-// @Description Переносит данные из черновиков в основной профиль и активирует аккаунт.
+// @Description Переносит данные из временного хранилища в основной профиль и активирует аккаунт.
+// @Description В ответе возвращается сессионный токен для немедленного входа.
 // @Tags        onboarding
+// @Security    OnboardingToken
+// @Produce     json
+// @Success     200 {object} schemas.LoginResponse "Регистрация успешно завершена"
+// @Failure     400 {object} schemas.ErrorResponse "Не все шаги пройдены"
 // @Router      /api/v1/onboarding/completion [post]
 func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 	userID, err := h.resolveOnboarding(c)
@@ -199,12 +251,13 @@ func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 // ── Профиль пользователя ───────────────────────────────────────────────
 //
 // GetProfile godoc
-// @Summary     Получить профиль
-// @Description Возвращает полную информацию о текущем пользователе.
+// @Summary     Получить профиль клиента
+// @Description Возвращает полную агрегированную информацию о текущем пользователе (ФИО, Паспорт, Контакты и т.д.).
 // @Tags        customers
 // @Security    SessionToken
 // @Produce     json
-// @Success     200 {object} map[string]interface{}
+// @Success     200 {object} schemas.CustomerProfileDTO "Полный профиль пользователя"
+// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
 // @Router      /api/v1/customers/me [get]
 func (h *CustomerHandler) GetProfile(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodGet, "/users/me", nil, "customer", h.APIKey)
@@ -212,8 +265,14 @@ func (h *CustomerHandler) GetProfile(c echo.Context) error {
 
 // UpdatePersonalData godoc
 // @Summary     Обновить ФИО
+// @Description Позволяет изменить имя, фамилию или отчество.
 // @Tags        customers
 // @Security    SessionToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.PersonalDataUpdate true "Новые анкетные данные"
+// @Success     200 {object} schemas.SuccessResponse "Данные успешно обновлены"
+// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
 // @Router      /api/v1/customers/me/personal-data [patch]
 func (h *CustomerHandler) UpdatePersonalData(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -221,9 +280,14 @@ func (h *CustomerHandler) UpdatePersonalData(c echo.Context) error {
 }
 
 // ReplacePassport godoc
-// @Summary     Сменить паспорт
+// @Summary     Смена паспорта
+// @Description Обновляет паспортные данные пользователя (например, при замене документа).
 // @Tags        customers
 // @Security    SessionToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.PassportPayload true "Новые паспортные данные"
+// @Success     200 {object} schemas.SuccessResponse "Паспорт успешно обновлен"
 // @Router      /api/v1/customers/me/passport [put]
 func (h *CustomerHandler) ReplacePassport(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -231,9 +295,14 @@ func (h *CustomerHandler) ReplacePassport(c echo.Context) error {
 }
 
 // UpdateContacts godoc
-// @Summary     Сменить контакты
+// @Summary     Смена контактных данных
+// @Description Позволяет обновить Email или номер телефона.
 // @Tags        customers
 // @Security    SessionToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.ContactsUpdate true "Новые контакты"
+// @Success     200 {object} schemas.SuccessResponse "Контакты успешно обновлены"
 // @Router      /api/v1/customers/me/contacts [patch]
 func (h *CustomerHandler) UpdateContacts(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -241,10 +310,13 @@ func (h *CustomerHandler) UpdateContacts(c echo.Context) error {
 }
 
 // DeleteAccount godoc
-// @Summary     Удалить профиль
-// @Description Помечает профиль как удалённый и завершает все активные сессии.
+// @Summary     Удалить профиль клиента
+// @Description Помечает профиль как удалённый (Soft Delete) и завершает все активные сессии.
 // @Tags        customers
 // @Security    SessionToken
+// @Produce     json
+// @Success     200 {object} schemas.SuccessResponse "Профиль успешно удален"
+// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
 // @Router      /api/v1/customers/me [delete]
 func (h *CustomerHandler) DeleteAccount(c echo.Context) error {
 	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodDelete, "/users/me", nil, "customer", h.APIKey)

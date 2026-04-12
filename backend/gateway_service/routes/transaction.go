@@ -33,29 +33,34 @@ func (h *TransactionHandler) RegisterTransactionRoutes(e *echo.Echo) {
 
 // Deposit godoc
 // @Summary     Пополнение счёта
-// @Description Вносит средства на указанный счёт.
+// @Description Вносит средства на указанный счёт. Поддерживается только для RUB.
 // @Tags        transactions
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       account_id path string true "UUID счёта"
-// @Param       payload body map[string]interface{} true "Сумма и описание"
-// @Success     200 {object} map[string]interface{}
+// @Param       account_id path string true "UUID счёта" format(uuid)
+// @Param       payload body schemas.AmountPayload true "Сумма пополнения"
+// @Success     200 {object} schemas.TransactionDTO "Транзакция пополнения создана"
+// @Failure     400 {object} schemas.ErrorResponse "Неверная сумма или валюта"
+// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
 // @Router      /api/v1/accounts/{account_id}/deposit [post]
 func (h *TransactionHandler) Deposit(c echo.Context) error {
 	return h.forwardWithPayload(c, "deposit")
 }
 
 // Withdraw godoc
-// @Summary     Снятие наличных/со счёта
+// @Summary     Снятие средств
 // @Description Списывает средства с указанного счёта.
+// @Description Проверяет наличие достаточного баланса и лимиты.
 // @Tags        transactions
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       account_id path string true "UUID счёта"
-// @Param       payload body map[string]interface{} true "Сумма и описание"
-// @Success     200 {object} map[string]interface{}
+// @Param       account_id path string true "UUID счёта" format(uuid)
+// @Param       payload body schemas.AmountPayload true "Сумма снятия"
+// @Success     200 {object} schemas.TransactionDTO "Транзакция снятия создана"
+// @Failure     400 {object} schemas.ErrorResponse "Недостаточно средств"
+// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
 // @Router      /api/v1/accounts/{account_id}/withdraw [post]
 func (h *TransactionHandler) Withdraw(c echo.Context) error {
 	return h.forwardWithPayload(c, "withdrawal")
@@ -64,12 +69,14 @@ func (h *TransactionHandler) Withdraw(c echo.Context) error {
 // Transfer godoc
 // @Summary     Перевод средств
 // @Description Перевод между двумя счетами (своими или другим клиентам).
+// @Description При межвалютном переводе используется курс из currency_service.
 // @Tags        transactions
 // @Security    SessionToken
 // @Accept      json
 // @Produce     json
-// @Param       payload body map[string]interface{} true "Отправитель, получатель, сумма"
-// @Success     200 {object} map[string]interface{}
+// @Param       payload body schemas.TransferRequest true "Отправитель, получатель, сумма"
+// @Success     200 {object} schemas.TransactionDTO "Перевод успешно инициирован"
+// @Failure     400 {object} schemas.ErrorResponse "Ошибка перевода (недостаточно средств или неверный счет)"
 // @Router      /api/v1/transfers [post]
 func (h *TransactionHandler) Transfer(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -98,8 +105,14 @@ func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) e
 
 // CreateTransaction godoc
 // @Summary     Универсальная финансовая операция
+// @Description Унифицированный эндпоинт для любого типа транзакций (deposit, withdrawal, transfer).
 // @Tags        transactions
 // @Security    SessionToken
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.CreateTransactionRequest true "Детали операции"
+// @Success     200 {object} schemas.TransactionDTO "Операция успешно создана"
+// @Failure     400 {object} schemas.ErrorResponse "Невалидные данные запроса"
 // @Router      /api/v1/transactions [post]
 func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -107,15 +120,17 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 }
 
 // TransactionHistory godoc
-// @Summary     История транзакций
-// @Description Возвращает список всех операций по конкретному счёту с поддержкой фильтрации.
+// @Summary     История транзакций по счёту
+// @Description Возвращает список всех операций по конкретному счёту с поддержкой фильтрации по типу.
+// @Description Результаты отсортированы по убыванию даты (сначала новые).
 // @Tags        transactions
 // @Security    SessionToken
 // @Produce     json
-// @Param       account_id path string true "UUID счёта"
-// @Param       type query string false "Тип (deposit|withdrawal|transfer|exchange)"
-// @Param       limit query int false "Количество записей"
-// @Success     200 {object} []map[string]interface{}
+// @Param       account_id path string true "UUID счёта" format(uuid)
+// @Param       type query string false "Фильтр по типу (deposit|withdrawal|transfer|exchange)"
+// @Param       limit query int false "Максимальное количество записей" default(20)
+// @Success     200 {object} []schemas.TransactionDTO "Список транзакций"
+// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
 // @Router      /api/v1/accounts/{account_id}/transactions [get]
 func (h *TransactionHandler) TransactionHistory(c echo.Context) error {
 	accountID := c.Param("account_id")
