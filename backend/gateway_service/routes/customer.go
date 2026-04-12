@@ -35,6 +35,7 @@ func (h *CustomerHandler) RegisterCustomerRoutes(e *echo.Echo) {
 	v1.POST("/onboarding/completion", h.CompleteOnboarding)       // Завершение
 
 	// Управление профилем (Требуется сессия X-Session-Token)
+	v1.GET("/customers/me", h.GetProfile)                         // Получить профиль
 	v1.PATCH("/customers/me/personal-data", h.UpdatePersonalData) // Смена ФИО
 	v1.PUT("/customers/me/passport", h.ReplacePassport)           // Новый паспорт
 	v1.PATCH("/customers/me/contacts", h.UpdateContacts)           // Смена Email/тел
@@ -196,6 +197,18 @@ func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 }
 
 // ── Профиль пользователя ───────────────────────────────────────────────
+//
+// GetProfile godoc
+// @Summary     Получить профиль
+// @Description Возвращает полную информацию о текущем пользователе.
+// @Tags        customers
+// @Security    SessionToken
+// @Produce     json
+// @Success     200 {object} map[string]interface{}
+// @Router      /api/v1/customers/me [get]
+func (h *CustomerHandler) GetProfile(c echo.Context) error {
+	return h.Proxy.ForwardRaw(c, http.MethodGet, "/users/me", nil, "customer", h.APIKey)
+}
 
 // UpdatePersonalData godoc
 // @Summary     Обновить ФИО
