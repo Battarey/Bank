@@ -1,0 +1,41 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# Включаем стандартный набор правил:
+# E (Error), F (Pyflakes), B (flake8-bugbear), I (isort), UP (pyupgrade), 
+# N (pep8-naming), A (flake8-builtins), C4 (flake8-comprehensions), 
+# T20 (flake8-print), ARG (flake8-unused-arguments), ERA (eradicate/commented-out code)
+select = ["E", "F", "B", "I", "UP", "N", "A", "C4", "T20", "ARG", "ERA", "PLE", "PLW", "RUF"]
+ignore = [
+    "RUF001", "RUF002", "RUF003", # Кириллица в строках
+    "ERA001",                     # Закомментированный код (часто ловит русские комменты)
+    "B008",                       # Depends() в аргументах FastAPI
+    "N818",                       # Требование суффикса Error в названиях исключений
+    "E402",                       # Импорты не в начале файла (из-за bootstrap)
+    "PLW0603",                    # Использование global (допустимо для простых клиентов)
+    "F403",                       # Использование star-import (в моделях/схемах)
+    "A002",                       # Переопределение встроенных имен в аргументах (id, type)
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# Разрешаем вызовы в аргументах для FastAPI
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Header", "fastapi.Security"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["shared", "account_service", "auth_service", "gateway_service", "transaction_service", "customer_service", "log_service", "notification_service", "security_service", "metal_service", "currency_service"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+docstring-code-format = true
+
+[tool.vulture]
+exclude = ["*migrations*", "tests"]
+min_confidence = 80
+paths = ["."]
+ignore_names = ["cls"]
+
+[tool.deptry]
+exclude = ["shared", "migrations", "tests", "scripts"]
