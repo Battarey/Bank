@@ -58,6 +58,7 @@ app = FastAPI(
 setup_exception_handlers(app)
 
 
+@app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
 	return {"status": "ok"}
 
