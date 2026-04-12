@@ -34,6 +34,7 @@ auth_service/
 | POST   | `/sessions/me/block`         | Самоблокировка аккаунта                   |
 | POST   | `/unlock-codes`              | Запросить 6-значный код для разблокировки |
 | POST   | `/unlock-codes/verifications`| Подтвердить разблокировку по коду         |
+| GET    | `/health`                    | Проверка состояния сервиса                |
 
 ---
 
