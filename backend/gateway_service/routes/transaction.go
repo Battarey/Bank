@@ -107,6 +107,12 @@ func (h *TransactionHandler) Transfer(c echo.Context) error {
 // Вспомогательный метод для инъекции типа и account_id
 func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) error {
 	accountID := c.Param("account_id")
+	if !ValidateUUID(accountID) {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат Идентификатора счёта (должен быть UUID).",
+		})
+	}
+
 	body, err := ReadBody(c)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
@@ -115,6 +121,9 @@ func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) e
 	}
 
 	data, _ := JSONToMap(body)
+	if data == nil {
+		data = make(map[string]interface{})
+	}
 	data["type"] = txType
 	data["account_id"] = accountID
 	body, _ = MapToJSON(data)
@@ -161,6 +170,11 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 // @Router      /api/v1/accounts/{account_id}/transactions [get]
 func (h *TransactionHandler) TransactionHistory(c echo.Context) error {
 	accountID := c.Param("account_id")
+	if !ValidateUUID(accountID) {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат Идентификатора счёта (должен быть UUID).",
+		})
+	}
 
 	queryString := c.QueryString()
 	path := fmt.Sprintf("/accounts/%s/transactions", accountID)

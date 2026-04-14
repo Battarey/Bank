@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"regexp"
 	"gateway_service/proxy"
 )
 
@@ -88,4 +89,12 @@ func JSONToMap(data []byte) (map[string]interface{}, error) {
 // MapToJSON конвертирует map обратно в []byte.
 func MapToJSON(m map[string]interface{}) ([]byte, error) {
 	return json.Marshal(m)
+}
+
+// uuidRegex — регулярное выражение для проверки формата UUID v4 (и других).
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// ValidateUUID проверяет, является ли строка корректным UUID.
+func ValidateUUID(id string) bool {
+	return uuidRegex.MatchString(id)
 }

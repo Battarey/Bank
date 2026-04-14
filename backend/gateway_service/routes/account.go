@@ -80,6 +80,11 @@ func (h *AccountHandler) ListAccounts(c echo.Context) error {
 // @Router      /api/v1/accounts/{account_id} [get]
 func (h *AccountHandler) GetAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
+	if !ValidateUUID(accountID) {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат Идентификатора счёта (должен быть UUID).",
+		})
+	}
 	path := fmt.Sprintf("/accounts/%s", accountID)
 	return h.Proxy.ForwardRaw(c, http.MethodGet, path, nil, "account", h.APIKey)
 }
@@ -99,6 +104,11 @@ func (h *AccountHandler) GetAccount(c echo.Context) error {
 // @Router      /api/v1/accounts/{account_id} [delete]
 func (h *AccountHandler) CloseAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
+	if !ValidateUUID(accountID) {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат Идентификатора счёта (должен быть UUID).",
+		})
+	}
 	path := fmt.Sprintf("/accounts/%s", accountID)
 	return h.Proxy.ForwardRaw(c, http.MethodDelete, path, nil, "account", h.APIKey)
 }
@@ -117,6 +127,11 @@ func (h *AccountHandler) CloseAccount(c echo.Context) error {
 // @Router      /api/v1/accounts/{account_id}/suspensions [post]
 func (h *AccountHandler) SuspendAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
+	if !ValidateUUID(accountID) {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат Идентификатора счёта (должен быть UUID).",
+		})
+	}
 	path := fmt.Sprintf("/accounts/%s/suspensions", accountID)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, path, nil, "account", h.APIKey)
 }
@@ -135,6 +150,11 @@ func (h *AccountHandler) SuspendAccount(c echo.Context) error {
 // @Router      /api/v1/accounts/{account_id}/suspensions [delete]
 func (h *AccountHandler) ResumeAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
+	if !ValidateUUID(accountID) {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат Идентификатора счёта (должен быть UUID).",
+		})
+	}
 	path := fmt.Sprintf("/accounts/%s/suspensions", accountID)
 	return h.Proxy.ForwardRaw(c, http.MethodDelete, path, nil, "account", h.APIKey)
 }
