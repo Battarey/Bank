@@ -1165,6 +1165,12 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "Данные сохранены",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
                     "400": {
                         "description": "Ошибка валидации контактов",
                         "schema": {

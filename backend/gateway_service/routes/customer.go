@@ -189,6 +189,7 @@ func (h *CustomerHandler) SubmitIdentifiers(c echo.Context) error {
 // @Accept      json
 // @Produce     json
 // @Param       payload body schemas.ContactsPayload true "Email и Телефон"
+// @Success     200 {object} schemas.SuccessResponse "Данные сохранены"
 // @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка валидации контактов"
 // @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена"
 // @Failure     409 {object} schemas.OnboardingConflictErrorResponse "Email или телефон уже используются (OnboardingConflict)"
