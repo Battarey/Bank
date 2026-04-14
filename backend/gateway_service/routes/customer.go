@@ -91,7 +91,10 @@ func (h *CustomerHandler) StartOnboarding(c echo.Context) error {
 		// Если по какой-то причине ID нет, логируем и возвращаем ошибку
 		return echo.NewHTTPError(http.StatusInternalServerError, "ID пользователя отсутствует в ответе сервиса.")
 	}
-	token, _ := redisClient.GenerateToken()
+	token, err := redisClient.GenerateToken()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Ошибка генерации токена регистрации.")
+	}
 
 	_ = h.Onboarding.SaveOnboardingToken(c.Request().Context(), token, userID, redisClient.DefaultOnboardingTTL)
 
@@ -254,7 +257,10 @@ func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 	}
 
 	// Генерируем сессию, чтобы пользователь сразу был залогинен
-	sessionToken, _ := redisClient.GenerateToken()
+	sessionToken, err := redisClient.GenerateToken()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Ошибка генерации сессионного токена.")
+	}
 	_ = h.Sessions.SaveToken(c.Request().Context(), sessionToken, userID, nil, redisClient.DefaultSessionTTL)
 
 	// Добавляем токен в ответ
