@@ -45,7 +45,12 @@ func (h *AccountHandler) RegisterAccountRoutes(e *echo.Echo) {
 // @Failure     403 {object} schemas.AccountLimitReachedError "Лимит счетов превышен"
 // @Router      /api/v1/accounts [post]
 func (h *AccountHandler) OpenAccount(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/accounts", body, "account", h.APIKey)
 }
 

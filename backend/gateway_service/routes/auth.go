@@ -53,7 +53,12 @@ func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
 // @Failure     423 {object} schemas.AuthCooldownErrorResponse "Временная блокировка (AuthCooldown)"
 // @Router      /api/v1/sessions [post]
 func (h *AuthHandler) Login(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/sessions", body, "auth", h.APIKey)
 }
 
@@ -70,7 +75,12 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Failure     404 {object} schemas.NotFoundErrorResponse "Email не найден в системе (AuthNotFound)"
 // @Router      /api/v1/auth/unlock-codes [post]
 func (h *AuthHandler) RequestUnlock(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock-codes", body, "auth", h.APIKey)
 }
 
@@ -88,7 +98,12 @@ func (h *AuthHandler) RequestUnlock(c echo.Context) error {
 // @Failure     404 {object} schemas.NotFoundErrorResponse "Пользователь не найден"
 // @Router      /api/v1/auth/unlock-codes/verifications [post]
 func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/unlock-codes/verifications", body, "auth", h.APIKey)
 }
 
@@ -107,7 +122,12 @@ func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {
 // @Failure     401 {object} schemas.UnauthorizedErrorResponse "Сессия невалидна или отсутствует токен"
 // @Router      /api/v1/auth/pins [put]
 func (h *AuthHandler) SetPin(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 
 	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodPut, "/pins", body, "auth", h.APIKey)
 	if err != nil {

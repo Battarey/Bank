@@ -108,7 +108,12 @@ func (h *CustomerHandler) OnboardingStep(c echo.Context, subPath string) error {
 		return err
 	}
 
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	path := fmt.Sprintf("/onboarding/%s/%s", userID, subPath)
 	return h.Proxy.ForwardRaw(c, http.MethodPost, path, body, "customer", h.APIKey)
 }
@@ -286,7 +291,12 @@ func (h *CustomerHandler) GetProfile(c echo.Context) error {
 // @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
 // @Router      /api/v1/customers/me/personal-data [patch]
 func (h *CustomerHandler) UpdatePersonalData(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPatch, "/users/personal-data", body, "customer", h.APIKey)
 }
 
@@ -301,7 +311,12 @@ func (h *CustomerHandler) UpdatePersonalData(c echo.Context) error {
 // @Success     200 {object} schemas.SuccessResponse "Паспорт успешно обновлен"
 // @Router      /api/v1/customers/me/passport [put]
 func (h *CustomerHandler) ReplacePassport(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPut, "/users/passport", body, "customer", h.APIKey)
 }
 
@@ -318,7 +333,12 @@ func (h *CustomerHandler) ReplacePassport(c echo.Context) error {
 // @Failure     409 {object} schemas.ConflictErrorResponse "Контактные данные уже заняты (UpdateDataConflict)"
 // @Router      /api/v1/customers/me/contacts [patch]
 func (h *CustomerHandler) UpdateContacts(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPatch, "/users/contacts", body, "customer", h.APIKey)
 }
 

@@ -78,6 +78,11 @@ func (h *CurrencyHandler) GetPairRate(c echo.Context) error {
 // @Failure     401 {object} schemas.UnauthorizedErrorResponse "Не авторизован"
 // @Router      /api/v1/currency-conversions [post]
 func (h *CurrencyHandler) Convert(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/currency-conversions", body, "currency", h.APIKey)
 }

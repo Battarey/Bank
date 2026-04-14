@@ -88,7 +88,12 @@ func (h *TransactionHandler) Withdraw(c echo.Context) error {
 // @Failure     422 {object} schemas.TransactionErrorResponse "Недостаточно средств или несоответствие валют"
 // @Router      /api/v1/transfers [post]
 func (h *TransactionHandler) Transfer(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	data, _ := JSONToMap(body)
 	if data == nil {
 		data = make(map[string]interface{})
@@ -102,7 +107,12 @@ func (h *TransactionHandler) Transfer(c echo.Context) error {
 // Вспомогательный метод для инъекции типа и account_id
 func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) error {
 	accountID := c.Param("account_id")
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 
 	data, _ := JSONToMap(body)
 	data["type"] = txType
@@ -126,7 +136,12 @@ func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) e
 // @Failure     422 {object} schemas.TransactionErrorResponse "Бизнес-ошибка (недостаточно средств/счет не активен)"
 // @Router      /api/v1/transactions [post]
 func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
-	body, _ := ReadBody(c)
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/transactions", body, "transaction", h.APIKey)
 }
 
