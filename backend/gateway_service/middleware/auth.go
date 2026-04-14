@@ -95,7 +95,10 @@ func AuthMiddleware(sessions redisClient.SessionStore) echo.MiddlewareFunc {
 			userID := sessionData["user_id"]
 
 			// Скользящая экспирация: продлеваем TTL при каждом запросе
-			_ = sessions.TouchToken(c.Request().Context(), token, userID, redisClient.DefaultSessionTTL)
+			err = sessions.TouchToken(c.Request().Context(), token, userID, redisClient.DefaultSessionTTL)
+			if err != nil {
+				c.Logger().Errorf("Ошибка продления TTL сессионного токена: %v", err)
+			}
 
 			// Сохраняем user_id в контексте Echo
 			c.Set("user_id", userID)

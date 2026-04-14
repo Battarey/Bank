@@ -143,9 +143,12 @@ func (h *AuthHandler) SetPin(c echo.Context) error {
 	// Обновляем состояние сессии в Redis: PIN установлен
 	token := c.Request().Header.Get("X-Session-Token")
 	if token != "" {
-		_ = h.Sessions.UpdateTokenData(c.Request().Context(), token, map[string]string{
+		err = h.Sessions.UpdateTokenData(c.Request().Context(), token, map[string]string{
 			"has_pin": "true",
 		})
+		if err != nil {
+			c.Logger().Errorf("Ошибка обновления данных сессии (has_pin) в Redis: %v", err)
+		}
 	}
 
 	return c.JSON(statusCode, respData)

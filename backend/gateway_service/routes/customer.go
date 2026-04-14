@@ -59,7 +59,11 @@ func (h *CustomerHandler) resolveOnboarding(c echo.Context) (string, error) {
 	}
 
 	// Обновляем TTL токена при активности
-	_ = h.Onboarding.TouchOnboardingToken(c.Request().Context(), token, redisClient.DefaultOnboardingTTL)
+	err = h.Onboarding.TouchOnboardingToken(c.Request().Context(), token, redisClient.DefaultOnboardingTTL)
+	if err != nil {
+		// Логируем ошибку, но не прерываем запрос, так как это не критично для текущего шага
+		c.Logger().Errorf("Ошибка продления TTL onboarding-токена: %v", err)
+	}
 
 	return userID, nil
 }
@@ -96,7 +100,10 @@ func (h *CustomerHandler) StartOnboarding(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Ошибка генерации токена регистрации.")
 	}
 
-	_ = h.Onboarding.SaveOnboardingToken(c.Request().Context(), token, userID, redisClient.DefaultOnboardingTTL)
+	err = h.Onboarding.SaveOnboardingToken(c.Request().Context(), token, userID, redisClient.DefaultOnboardingTTL)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Ошибка сохранения сессии регистрации.")
+	}
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"onboarding_token": token,
@@ -253,7 +260,10 @@ func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 
 	// Очистка onboarding-данных
 	if onbToken != "" {
-		_ = h.Onboarding.DeleteOnboardingToken(c.Request().Context(), onbToken)
+		err = h.Onboarding.DeleteOnboardingToken(c.Request().Context(), onbToken)
+		if err != nil {
+			c.Logger().Errorf("Ошибка удаления onboarding-токена: %v", err)
+		}
 	}
 
 	// Генерируем сессию, чтобы пользователь сразу был залогинен
@@ -261,7 +271,10 @@ func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Ошибка генерации сессионного токена.")
 	}
-	_ = h.Sessions.SaveToken(c.Request().Context(), sessionToken, userID, nil, redisClient.DefaultSessionTTL)
+	err = h.Sessions.SaveToken(c.Request().Context(), sessionToken, userID, nil, redisClient.DefaultSessionTTL)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Ошибка сохранения сессии пользователя.")
+	}
 
 	// Добавляем токен в ответ
 	respData["session_token"] = sessionToken
@@ -370,7 +383,10 @@ func (h *CustomerHandler) DeleteAccount(c echo.Context) error {
 
 	// Принудительный логаут со всех устройств после удаления
 	if userID, ok := c.Get("user_id").(string); ok && userID != "" {
-		_ = h.Sessions.RevokeAll(c.Request().Context(), userID)
+		err = h.Sessions.RevokeAll(c.Request().Context(), userID)
+		if err != nil {
+			c.Logger().Errorf("Ошибка аннулирования сессий при удалении аккаунта: %v", err)
+		}
 	}
 
 	return c.JSON(http.StatusOK, respData)
