@@ -18,6 +18,7 @@ type OnboardingStore interface {
 	LoadOnboardingToken(ctx context.Context, token string) (string, error)
 	TouchOnboardingToken(ctx context.Context, token string, ttl time.Duration) error
 	DeleteOnboardingToken(ctx context.Context, token string) error
+	Ping(ctx context.Context) error
 	Close() error
 }
 
@@ -39,6 +40,11 @@ func NewOnboardingClient(redisURL string) (*OnboardingClient, error) {
 // Close закрывает соединение с Redis.
 func (o *OnboardingClient) Close() error {
 	return o.rdb.Close()
+}
+
+// Ping проверяет доступность Redis.
+func (o *OnboardingClient) Ping(ctx context.Context) error {
+	return o.rdb.Ping(ctx).Err()
 }
 
 func onboardingTokenKey(token string) string {

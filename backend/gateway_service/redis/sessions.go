@@ -17,6 +17,7 @@ type SessionStore interface {
 	LoadToken(ctx context.Context, token string) (map[string]string, error)
 	TouchToken(ctx context.Context, token, userID string, ttl time.Duration) error
 	UpdateTokenData(ctx context.Context, token string, data map[string]string) error
+	Ping(ctx context.Context) error
 	DeleteToken(ctx context.Context, token string) error
 	RevokeAll(ctx context.Context, userID string) error
 	Close() error

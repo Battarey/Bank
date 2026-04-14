@@ -47,7 +47,11 @@ func SetupApp(
 	e.GET("/docs/*", echoSwagger.WrapHandler)
 
 	// Healthcheck
-	e.GET("/health", routes.Health)
+	healthHandler := &routes.HealthHandler{
+		Sessions:   sessions,
+		Onboarding: onboarding,
+	}
+	e.GET("/health", healthHandler.Health)
 
 	// Регистрация маршрутов
 	customerHandler := &routes.CustomerHandler{
