@@ -81,6 +81,11 @@ func (sc *ServiceClients) PrepareRequest(
 		req.Header.Set("X-Session-Token", sessionToken)
 	}
 
+	// Проброс Request ID для трассировки
+	if requestID := c.Response().Header().Get(echo.HeaderXRequestID); requestID != "" {
+		req.Header.Set(echo.HeaderXRequestID, requestID)
+	}
+
 	return req, svc, nil
 }
 

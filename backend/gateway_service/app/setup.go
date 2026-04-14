@@ -33,7 +33,8 @@ func SetupApp(
 		AllowHeaders:     []string{"*"},
 	}))
 
-	// Middleware: логирование + recover + rate limiting + аутентификация
+	// Middleware: Request ID + логирование + recover + rate limiting + аутентификация
+	e.Use(echoMiddleware.RequestID())
 	e.Use(echoMiddleware.Logger())
 	e.Use(echoMiddleware.Recover())
 	e.Use(echoMiddleware.RateLimiter(echoMiddleware.NewRateLimiterMemoryStore(20)))
