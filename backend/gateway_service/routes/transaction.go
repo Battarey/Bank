@@ -118,7 +118,7 @@ func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) e
 		})
 	}
 
-	body, err = ReadBody(c)
+	body, err := ReadBody(c)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
 			"detail": "Ошибка чтения тела запроса.",

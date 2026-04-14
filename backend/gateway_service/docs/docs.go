@@ -1691,7 +1691,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "Возвращает статус 'ok', если Gateway запущен и готов принимать запросы.",
+                "description": "Возвращает статус 'ok', если Gateway и его зависимости (Redis) доступны.",
                 "produces": [
                     "application/json"
                 ],
@@ -1704,6 +1704,12 @@ const docTemplate = `{
                         "description": "Система работает нормально",
                         "schema": {
                             "$ref": "#/definitions/schemas.HealthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Одна из зависимостей недоступна",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.HealthErrorResponse"
                         }
                     }
                 }
@@ -1737,8 +1743,8 @@ const docTemplate = `{
             "properties": {
                 "balance": {
                     "description": "Доступный остаток средств",
-                    "type": "number",
-                    "example": 15000.5
+                    "type": "string",
+                    "example": "15000.50"
                 },
                 "created_at": {
                     "description": "Дата и время открытия счета (ISO 8601)",
@@ -1883,9 +1889,8 @@ const docTemplate = `{
             "properties": {
                 "amount": {
                     "description": "Сумма операции (положительное число)",
-                    "type": "number",
-                    "minimum": 0.01,
-                    "example": 1000.5
+                    "type": "string",
+                    "example": "1000.50"
                 }
             }
         },
@@ -2048,9 +2053,8 @@ const docTemplate = `{
                 },
                 "amount": {
                     "description": "Сумма операции",
-                    "type": "number",
-                    "minimum": 0.01,
-                    "example": 1000
+                    "type": "string",
+                    "example": "1000.00"
                 },
                 "description": {
                     "description": "Описание/комментарий",
@@ -2167,8 +2171,8 @@ const docTemplate = `{
                 },
                 "rate": {
                     "description": "Значение курса (сколько target дают за 1 base)",
-                    "type": "number",
-                    "example": 0.0108
+                    "type": "string",
+                    "example": "0.0108"
                 },
                 "target": {
                     "description": "Валюта, которую получаем",
@@ -2194,11 +2198,11 @@ const docTemplate = `{
                     "description": "Таблица курсов (Ключ - код валюты, значение - цена за 1 ед. базы)",
                     "type": "object",
                     "additionalProperties": {
-                        "type": "number"
+                        "type": "string"
                     },
                     "example": {
-                        "EUR": 0.0102,
-                        "USD": 0.0108
+                        "EUR": "0.0102",
+                        "USD": "0.0108"
                     }
                 }
             }
@@ -2213,9 +2217,8 @@ const docTemplate = `{
             "properties": {
                 "amount": {
                     "description": "Сумма в валюте списания",
-                    "type": "number",
-                    "minimum": 0.01,
-                    "example": 100
+                    "type": "string",
+                    "example": "100.00"
                 },
                 "from_account_id": {
                     "description": "ID счёта списания (UUID)",
@@ -2228,6 +2231,21 @@ const docTemplate = `{
                     "type": "string",
                     "format": "uuid",
                     "example": "550e8400-e29b-41d4-a716-446655440002"
+                }
+            }
+        },
+        "schemas.HealthErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "description": "Детальное описание проблемы",
+                    "type": "string",
+                    "example": "Redis (sessions) non-responsive"
+                },
+                "status": {
+                    "description": "Статус ошибки ('error')",
+                    "type": "string",
+                    "example": "error"
                 }
             }
         },
@@ -2327,8 +2345,8 @@ const docTemplate = `{
                 },
                 "price": {
                     "description": "Текущая стоимость за единицу (грамм)",
-                    "type": "number",
-                    "example": 5850.4
+                    "type": "string",
+                    "example": "5850.40"
                 },
                 "unit": {
                     "description": "Единица измерения (всегда 'gram')",
@@ -2695,8 +2713,8 @@ const docTemplate = `{
                 },
                 "amount": {
                     "description": "Сумма операции",
-                    "type": "number",
-                    "example": 500
+                    "type": "string",
+                    "example": "500.00"
                 },
                 "currency": {
                     "description": "Валюта операции",
@@ -2783,9 +2801,8 @@ const docTemplate = `{
             "properties": {
                 "amount": {
                     "description": "Сумма перевода",
-                    "type": "number",
-                    "minimum": 0.01,
-                    "example": 500
+                    "type": "string",
+                    "example": "500.00"
                 },
                 "description": {
                     "description": "Назначение платежа (комментарий для получателя)",

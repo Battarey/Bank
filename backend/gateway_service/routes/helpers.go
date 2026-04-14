@@ -3,9 +3,7 @@ package routes
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/labstack/echo/v4"
 

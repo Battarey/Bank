@@ -20,14 +20,14 @@ type HealthHandler struct {
 // @Tags        system
 // @Produce     json
 // @Success     200 {object} schemas.HealthResponse "Система работает нормально"
-// @Failure     503 {object} schemas.HealthResponse "Одна из зависимостей недоступна"
+// @Failure     503 {object} schemas.HealthErrorResponse "Одна из зависимостей недоступна"
 // @Router      /health [get]
 func (h *HealthHandler) Health(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	// Проверка Redis сессий
 	if err := h.Sessions.Ping(ctx); err != nil {
-		return c.JSON(http.StatusServiceUnavailable, schemas.HealthResponse{
+		return c.JSON(http.StatusServiceUnavailable, schemas.HealthErrorResponse{
 			Status: "error",
 			Detail: "Redis (sessions) non-responsive",
 		})
@@ -35,7 +35,7 @@ func (h *HealthHandler) Health(c echo.Context) error {
 
 	// Проверка Redis онбординга
 	if err := h.Onboarding.Ping(ctx); err != nil {
-		return c.JSON(http.StatusServiceUnavailable, schemas.HealthResponse{
+		return c.JSON(http.StatusServiceUnavailable, schemas.HealthErrorResponse{
 			Status: "error",
 			Detail: "Redis (onboarding) non-responsive",
 		})

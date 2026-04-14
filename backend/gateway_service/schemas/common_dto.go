@@ -69,3 +69,11 @@ type HealthResponse struct {
 	// Статус доступности ('ok')
 	Status string `json:"status" example:"ok"`
 }
+
+// HealthErrorResponse описание ошибки при недоступности зависимостей
+type HealthErrorResponse struct {
+	// Статус ошибки ('error')
+	Status string `json:"status" example:"error"`
+	// Детальное описание проблемы
+	Detail string `json:"detail" example:"Redis (sessions) non-responsive"`
+}
