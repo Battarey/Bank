@@ -33,9 +33,10 @@ func SetupApp(
 		AllowHeaders:     []string{"*"},
 	}))
 
-	// Middleware: логирование + recover + аутентификация
+	// Middleware: логирование + recover + rate limiting + аутентификация
 	e.Use(echoMiddleware.Logger())
 	e.Use(echoMiddleware.Recover())
+	e.Use(echoMiddleware.RateLimiter(echoMiddleware.NewRateLimiterMemoryStore(20)))
 	e.Use(middleware.AuthMiddleware(sessions))
 
 	// Swagger UI
