@@ -41,9 +41,9 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -86,13 +86,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Неверные параметры (валюта или тип)",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Лимит счетов превышен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AccountLimitReachedError"
                         }
                     }
                 }
@@ -131,15 +137,15 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Счёт не найден",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.AccountNotFoundError"
                         }
                     }
                 }
@@ -175,16 +181,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/schemas.SuccessResponse"
                         }
                     },
-                    "400": {
-                        "description": "Нельзя закрыть счёт с ненулевым балансом",
+                    "401": {
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Счёт не найден",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.AccountNotFoundError"
+                        }
+                    },
+                    "409": {
+                        "description": "Нельзя закрыть счёт с ненулевым балансом",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AccountNonZeroBalanceError"
                         }
                     }
                 }
@@ -235,15 +247,27 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Неверная сумма или валюта",
+                        "description": "Некорректная сумма пополнения",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Счёт заморожен (AccountFrozen)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AccountFrozenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Счёт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     }
                 }
@@ -281,10 +305,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/schemas.SuccessResponse"
                         }
                     },
+                    "401": {
+                        "description": "Необходима авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Счёт не найден",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.AccountNotFoundError"
+                        }
+                    },
+                    "409": {
+                        "description": "Счёт уже заморожен",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AccountConflictError"
                         }
                     }
                 }
@@ -320,10 +356,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/schemas.SuccessResponse"
                         }
                     },
-                    "403": {
-                        "description": "Нет прав на разморозку (если заморожен системой)",
+                    "401": {
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Разморозка запрещена (требуется личное присутствие или код)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SecurityViolationErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Счёт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AccountNotFoundError"
                         }
                     }
                 }
@@ -378,9 +426,15 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Счёт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     }
                 }
@@ -430,16 +484,28 @@ const docTemplate = `{
                             "$ref": "#/definitions/schemas.TransactionDTO"
                         }
                     },
-                    "400": {
-                        "description": "Недостаточно средств",
+                    "401": {
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     },
-                    "401": {
-                        "description": "Не авторизован",
+                    "403": {
+                        "description": "Счёт заморожен или заблокирован антифродом",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.AccountFrozenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Счёт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Недостаточно средств (InsufficientFunds)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionErrorResponse"
                         }
                     }
                 }
@@ -484,7 +550,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Сессия невалидна или отсутствует токен",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -515,7 +581,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -553,15 +619,15 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Некорректный Email",
+                        "description": "Некорректный формат Email",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Пользователь с таким Email не найден",
+                        "description": "Email не найден в системе (AuthNotFound)",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     }
                 }
@@ -599,9 +665,21 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Неверный или просроченный код",
+                        "description": "Ошибка формата данных",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный или просроченный код (AuthInvalidCode)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AuthInvalidCodeErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Пользователь не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     }
                 }
@@ -636,7 +714,7 @@ const docTemplate = `{
                     "502": {
                         "description": "Внешний API котировок недоступен",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.BadGatewayErrorResponse"
                         }
                     }
                 }
@@ -680,7 +758,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Валюта не поддерживается",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     }
                 }
@@ -725,13 +803,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Недостаточно средств или неверные счета",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.TransactionErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -760,9 +838,15 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация (Invalid Session)",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Профиль не найден (UpdateDataNotFound)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     }
                 }
@@ -789,9 +873,15 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Аккаунт не найден (AccountNotFound)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     }
                 }
@@ -831,6 +921,18 @@ const docTemplate = `{
                         "description": "Контакты успешно обновлены",
                         "schema": {
                             "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Необходима авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Контактные данные уже заняты (UpdateDataConflict)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ConflictErrorResponse"
                         }
                     }
                 }
@@ -912,9 +1014,9 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Не авторизован",
+                        "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -946,10 +1048,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/schemas.MetalRatesResponse"
                         }
                     },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Валюта не поддерживается",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
+                        }
+                    },
                     "502": {
                         "description": "Внешний источник цен недоступен",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.BadGatewayErrorResponse"
                         }
                     }
                 }
@@ -1007,9 +1121,15 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Не все шаги пройдены",
+                        "description": "Не все шаги регистрации пройдены",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.OnboardingInvalidStepErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Сессия регистрации не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingNotFoundErrorResponse"
                         }
                     }
                 }
@@ -1045,10 +1165,22 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Контактные данные сохранены",
+                    "400": {
+                        "description": "Ошибка валидации контактов",
                         "schema": {
-                            "$ref": "#/definitions/schemas.SuccessResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Сессия регистрации не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingNotFoundErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email или телефон уже используются (OnboardingConflict)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingConflictErrorResponse"
                         }
                     }
                 }
@@ -1074,6 +1206,18 @@ const docTemplate = `{
                         "description": "Код успешно отправлен",
                         "schema": {
                             "$ref": "#/definitions/schemas.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Сессия регистрации не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingNotFoundErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком частые запросы кода",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingTooManyRequestsErrorResponse"
                         }
                     }
                 }
@@ -1116,9 +1260,15 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Неверный или просроченный код",
+                        "description": "Неверный или просроченный код подтверждения",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Сессия регистрации не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingNotFoundErrorResponse"
                         }
                     }
                 }
@@ -1161,9 +1311,21 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации (дубликат или формат)",
+                        "description": "Ошибка валидации форматов",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Сессия регистрации не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingNotFoundErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "ИНН или СНИЛС уже используются (OnboardingConflict)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingConflictErrorResponse"
                         }
                     }
                 }
@@ -1205,10 +1367,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/schemas.SuccessResponse"
                         }
                     },
-                    "401": {
-                        "description": "Невалидный токен",
+                    "400": {
+                        "description": "Ошибка валидации паспортных данных",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Сессия регистрации не найдена (OnboardingNotFound)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.OnboardingNotFoundErrorResponse"
                         }
                     }
                 }
@@ -1251,15 +1419,15 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации данных",
+                        "description": "Ошибка валидации входных данных",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Невалидный токен онбординга",
+                        "description": "Сессия регистрации не найдена (OnboardingNotFound)",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.OnboardingNotFoundErrorResponse"
                         }
                     }
                 }
@@ -1297,21 +1465,33 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Неверный формат входных данных",
+                        "description": "Ошибка валидации входных данных",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Неверный телефон или PIN-код",
+                        "description": "Неверный логин или пароль",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Доступ запрещён (аккаунт заблокирован)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AuthBlockedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Пользователь не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
                     },
                     "423": {
-                        "description": "Аккаунт временно заблокирован из-за перебора PIN",
+                        "description": "Временная блокировка (AuthCooldown)",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.AuthCooldownErrorResponse"
                         }
                     }
                 }
@@ -1340,7 +1520,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Необходима авторизация",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -1371,7 +1551,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Токен уже недействителен",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -1416,7 +1596,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидные данные запроса",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Необходима авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Бизнес-ошибка (недостаточно средств/счет не активен)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionErrorResponse"
                         }
                     }
                 }
@@ -1459,9 +1651,33 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Ошибка перевода (недостаточно средств или неверный счет)",
+                        "description": "Ошибка формата данных",
                         "schema": {
-                            "$ref": "#/definitions/schemas.ErrorResponse"
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Необходима авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Операция отклонена безопасностью (SecurityViolation)",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SecurityViolationErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Один из счетов не найден",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.NotFoundErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Недостаточно средств или несоответствие валют",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.TransactionErrorResponse"
                         }
                     }
                 }
@@ -1489,6 +1705,27 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "schemas.AccountConflictError": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Операция невозможна из-за текущего состояния счёта"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 409
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Конфликт статуса"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AccountConflict"
+                }
+            }
+        },
         "schemas.AccountDTO": {
             "type": "object",
             "properties": {
@@ -1548,6 +1785,90 @@ const docTemplate = `{
                 }
             }
         },
+        "schemas.AccountFrozenErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Операция невозможна, так как счёт временно заморожен или заблокирован"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Счёт заморожен"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AccountFrozen"
+                }
+            }
+        },
+        "schemas.AccountLimitReachedError": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Вы достигли максимального количества активных счетов для данной валюты"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Лимит счетов превышен"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AccountLimitReached"
+                }
+            }
+        },
+        "schemas.AccountNonZeroBalanceError": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Невозможно закрыть счёт с положительным балансом. Сначала выведите средства"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 409
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Баланс не нулевой"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AccountNonZeroBalance"
+                }
+            }
+        },
+        "schemas.AccountNotFoundError": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Счёт с указанным ID не найден или доступ к нему запрещён"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 404
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Счёт не найден"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AccountNotFound"
+                }
+            }
+        },
         "schemas.AmountPayload": {
             "type": "object",
             "required": [
@@ -1559,6 +1880,111 @@ const docTemplate = `{
                     "type": "number",
                     "minimum": 0.01,
                     "example": 1000.5
+                }
+            }
+        },
+        "schemas.AuthBlockedErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Доступ к аккаунту заблокирован по соображениям безопасности"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Аккаунт заблокирован"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AuthBlocked"
+                }
+            }
+        },
+        "schemas.AuthCooldownErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Слишком много попыток входа. Попробуйте через 5 минут или воспользуйтесь кодом разблокировки."
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 423
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Временная блокировка"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AuthCooldown"
+                }
+            }
+        },
+        "schemas.AuthInvalidCodeErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Код разблокировки неверен или истек"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Неверный код"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "AuthInvalidCode"
+                }
+            }
+        },
+        "schemas.BadGatewayErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Не удалось получить данные от внешнего поставщика (курсы валют, котировки металлов)"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 502
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Внешний сервис недоступен"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "BadGateway"
+                }
+            }
+        },
+        "schemas.ConflictErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Операция невозможна из-за текущего состояния ресурса"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 409
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Конфликт данных"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "Conflict"
                 }
             }
         },
@@ -1700,9 +2126,23 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "detail": {
-                    "description": "Подробное сообщение об ошибке для разработчика и пользователя",
                     "type": "string",
-                    "example": "Неверный PIN-код или формат данных"
+                    "example": "Описание ошибки"
+                },
+                "details": {
+                    "type": "object"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Ошибка бизнес-логики"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "BaseBusinessError"
                 }
             }
         },
@@ -1748,8 +2188,7 @@ const docTemplate = `{
                     "description": "Таблица курсов (Ключ - код валюты, значение - цена за 1 ед. базы)",
                     "type": "object",
                     "additionalProperties": {
-                        "type": "number",
-                        "format": "float64"
+                        "type": "number"
                     },
                     "example": {
                         "EUR": 0.0102,
@@ -1914,6 +2353,90 @@ const docTemplate = `{
                 }
             }
         },
+        "schemas.NotFoundErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Запрашиваемый объект (счёт, транзакция, профиль) не существует"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 404
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Ресурс не найден"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "ResourceNotFound"
+                }
+            }
+        },
+        "schemas.OnboardingConflictErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Пользователь с таким Email, ИНН или СНИЛС уже зарегистрирован в системе"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 409
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Данные уже используются"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "OnboardingConflict"
+                }
+            }
+        },
+        "schemas.OnboardingInvalidStepErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Невозможно выполнить этот шаг (например, завершить регистрацию), так как не все предыдущие данные заполнены"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Неверный шаг"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "OnboardingInvalidStep"
+                }
+            }
+        },
+        "schemas.OnboardingNotFoundErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Сессия регистрации истекла или заголовок X-Onboarding-Token отсутствует"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 401
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Черновик не найден"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "OnboardingNotFound"
+                }
+            }
+        },
         "schemas.OnboardingStartResponse": {
             "type": "object",
             "properties": {
@@ -1926,6 +2449,27 @@ const docTemplate = `{
                     "description": "Текущий статус онбординга",
                     "type": "string",
                     "example": "started"
+                }
+            }
+        },
+        "schemas.OnboardingTooManyRequestsErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Вы слишком часто запрашиваете код подтверждения. Пожалуйста, подождите 2 минуты."
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 429
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Слишком много запросов"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "OnboardingRateLimit"
                 }
             }
         },
@@ -2088,6 +2632,27 @@ const docTemplate = `{
                 }
             }
         },
+        "schemas.SecurityViolationErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Операция отклонена системой безопасности банка. Обратитесь в поддержку."
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Операция отклонена"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "SecurityViolation"
+                }
+            }
+        },
         "schemas.SetPinRequest": {
             "type": "object",
             "required": [
@@ -2179,6 +2744,30 @@ const docTemplate = `{
                 }
             }
         },
+        "schemas.TransactionErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "На счёте недостаточно средств для совершения перевода"
+                },
+                "details": {
+                    "type": "object"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 422
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Недостаточно средств"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "InsufficientFunds"
+                }
+            }
+        },
         "schemas.TransferRequest": {
             "type": "object",
             "required": [
@@ -2205,6 +2794,27 @@ const docTemplate = `{
                 }
             }
         },
+        "schemas.UnauthorizedErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Для доступа к ресурсу необходимо войти в систему"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 401
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Не авторизован"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "Unauthorized"
+                }
+            }
+        },
         "schemas.UnlockRequest": {
             "type": "object",
             "required": [
@@ -2224,6 +2834,30 @@ const docTemplate = `{
                     "type": "string",
                     "format": "email",
                     "example": "user@example.com"
+                }
+            }
+        },
+        "schemas.ValidationErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Некорректное значение одного или нескольких полей запроса"
+                },
+                "details": {
+                    "type": "object"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Ошибка валидации"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "ValidationError"
                 }
             }
         },

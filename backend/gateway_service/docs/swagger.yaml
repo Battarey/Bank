@@ -1,5 +1,20 @@
 basePath: /
 definitions:
+  schemas.AccountConflictError:
+    properties:
+      detail:
+        example: Операция невозможна из-за текущего состояния счёта
+        type: string
+      status:
+        example: 409
+        type: integer
+      title:
+        example: Конфликт статуса
+        type: string
+      type:
+        example: AccountConflict
+        type: string
+    type: object
   schemas.AccountDTO:
     properties:
       balance:
@@ -47,6 +62,67 @@ definitions:
         format: uuid
         type: string
     type: object
+  schemas.AccountFrozenErrorResponse:
+    properties:
+      detail:
+        example: Операция невозможна, так как счёт временно заморожен или заблокирован
+        type: string
+      status:
+        example: 403
+        type: integer
+      title:
+        example: Счёт заморожен
+        type: string
+      type:
+        example: AccountFrozen
+        type: string
+    type: object
+  schemas.AccountLimitReachedError:
+    properties:
+      detail:
+        example: Вы достигли максимального количества активных счетов для данной валюты
+        type: string
+      status:
+        example: 403
+        type: integer
+      title:
+        example: Лимит счетов превышен
+        type: string
+      type:
+        example: AccountLimitReached
+        type: string
+    type: object
+  schemas.AccountNonZeroBalanceError:
+    properties:
+      detail:
+        example: Невозможно закрыть счёт с положительным балансом. Сначала выведите
+          средства
+        type: string
+      status:
+        example: 409
+        type: integer
+      title:
+        example: Баланс не нулевой
+        type: string
+      type:
+        example: AccountNonZeroBalance
+        type: string
+    type: object
+  schemas.AccountNotFoundError:
+    properties:
+      detail:
+        example: Счёт с указанным ID не найден или доступ к нему запрещён
+        type: string
+      status:
+        example: 404
+        type: integer
+      title:
+        example: Счёт не найден
+        type: string
+      type:
+        example: AccountNotFound
+        type: string
+    type: object
   schemas.AmountPayload:
     properties:
       amount:
@@ -56,6 +132,83 @@ definitions:
         type: number
     required:
     - amount
+    type: object
+  schemas.AuthBlockedErrorResponse:
+    properties:
+      detail:
+        example: Доступ к аккаунту заблокирован по соображениям безопасности
+        type: string
+      status:
+        example: 403
+        type: integer
+      title:
+        example: Аккаунт заблокирован
+        type: string
+      type:
+        example: AuthBlocked
+        type: string
+    type: object
+  schemas.AuthCooldownErrorResponse:
+    properties:
+      detail:
+        example: Слишком много попыток входа. Попробуйте через 5 минут или воспользуйтесь
+          кодом разблокировки.
+        type: string
+      status:
+        example: 423
+        type: integer
+      title:
+        example: Временная блокировка
+        type: string
+      type:
+        example: AuthCooldown
+        type: string
+    type: object
+  schemas.AuthInvalidCodeErrorResponse:
+    properties:
+      detail:
+        example: Код разблокировки неверен или истек
+        type: string
+      status:
+        example: 403
+        type: integer
+      title:
+        example: Неверный код
+        type: string
+      type:
+        example: AuthInvalidCode
+        type: string
+    type: object
+  schemas.BadGatewayErrorResponse:
+    properties:
+      detail:
+        example: Не удалось получить данные от внешнего поставщика (курсы валют, котировки
+          металлов)
+        type: string
+      status:
+        example: 502
+        type: integer
+      title:
+        example: Внешний сервис недоступен
+        type: string
+      type:
+        example: BadGateway
+        type: string
+    type: object
+  schemas.ConflictErrorResponse:
+    properties:
+      detail:
+        example: Операция невозможна из-за текущего состояния ресурса
+        type: string
+      status:
+        example: 409
+        type: integer
+      title:
+        example: Конфликт данных
+        type: string
+      type:
+        example: Conflict
+        type: string
     type: object
   schemas.ContactsPayload:
     properties:
@@ -155,8 +308,18 @@ definitions:
   schemas.ErrorResponse:
     properties:
       detail:
-        description: Подробное сообщение об ошибке для разработчика и пользователя
-        example: Неверный PIN-код или формат данных
+        example: Описание ошибки
+        type: string
+      details:
+        type: object
+      status:
+        example: 400
+        type: integer
+      title:
+        example: Ошибка бизнес-логики
+        type: string
+      type:
+        example: BaseBusinessError
         type: string
     type: object
   schemas.ExchangeRatePairResponse:
@@ -190,7 +353,6 @@ definitions:
         type: string
       rates:
         additionalProperties:
-          format: float64
           type: number
         description: Таблица курсов (Ключ - код валюты, значение - цена за 1 ед. базы)
         example:
@@ -320,6 +482,67 @@ definitions:
         example: "2023-10-27T10:00:00Z"
         type: string
     type: object
+  schemas.NotFoundErrorResponse:
+    properties:
+      detail:
+        example: Запрашиваемый объект (счёт, транзакция, профиль) не существует
+        type: string
+      status:
+        example: 404
+        type: integer
+      title:
+        example: Ресурс не найден
+        type: string
+      type:
+        example: ResourceNotFound
+        type: string
+    type: object
+  schemas.OnboardingConflictErrorResponse:
+    properties:
+      detail:
+        example: Пользователь с таким Email, ИНН или СНИЛС уже зарегистрирован в системе
+        type: string
+      status:
+        example: 409
+        type: integer
+      title:
+        example: Данные уже используются
+        type: string
+      type:
+        example: OnboardingConflict
+        type: string
+    type: object
+  schemas.OnboardingInvalidStepErrorResponse:
+    properties:
+      detail:
+        example: Невозможно выполнить этот шаг (например, завершить регистрацию),
+          так как не все предыдущие данные заполнены
+        type: string
+      status:
+        example: 400
+        type: integer
+      title:
+        example: Неверный шаг
+        type: string
+      type:
+        example: OnboardingInvalidStep
+        type: string
+    type: object
+  schemas.OnboardingNotFoundErrorResponse:
+    properties:
+      detail:
+        example: Сессия регистрации истекла или заголовок X-Onboarding-Token отсутствует
+        type: string
+      status:
+        example: 401
+        type: integer
+      title:
+        example: Черновик не найден
+        type: string
+      type:
+        example: OnboardingNotFound
+        type: string
+    type: object
   schemas.OnboardingStartResponse:
     properties:
       onboarding_token:
@@ -329,6 +552,22 @@ definitions:
       status:
         description: Текущий статус онбординга
         example: started
+        type: string
+    type: object
+  schemas.OnboardingTooManyRequestsErrorResponse:
+    properties:
+      detail:
+        example: Вы слишком часто запрашиваете код подтверждения. Пожалуйста, подождите
+          2 минуты.
+        type: string
+      status:
+        example: 429
+        type: integer
+      title:
+        example: Слишком много запросов
+        type: string
+      type:
+        example: OnboardingRateLimit
         type: string
     type: object
   schemas.OpenAccountRequest:
@@ -456,6 +695,21 @@ definitions:
     required:
     - email
     type: object
+  schemas.SecurityViolationErrorResponse:
+    properties:
+      detail:
+        example: Операция отклонена системой безопасности банка. Обратитесь в поддержку.
+        type: string
+      status:
+        example: 403
+        type: integer
+      title:
+        example: Операция отклонена
+        type: string
+      type:
+        example: SecurityViolation
+        type: string
+    type: object
   schemas.SetPinRequest:
     properties:
       pin:
@@ -527,6 +781,23 @@ definitions:
         example: transfer
         type: string
     type: object
+  schemas.TransactionErrorResponse:
+    properties:
+      detail:
+        example: На счёте недостаточно средств для совершения перевода
+        type: string
+      details:
+        type: object
+      status:
+        example: 422
+        type: integer
+      title:
+        example: Недостаточно средств
+        type: string
+      type:
+        example: InsufficientFunds
+        type: string
+    type: object
   schemas.TransferRequest:
     properties:
       amount:
@@ -547,6 +818,21 @@ definitions:
     - amount
     - to_account_id
     type: object
+  schemas.UnauthorizedErrorResponse:
+    properties:
+      detail:
+        example: Для доступа к ресурсу необходимо войти в систему
+        type: string
+      status:
+        example: 401
+        type: integer
+      title:
+        example: Не авторизован
+        type: string
+      type:
+        example: Unauthorized
+        type: string
+    type: object
   schemas.UnlockRequest:
     properties:
       code:
@@ -563,6 +849,23 @@ definitions:
     required:
     - code
     - email
+    type: object
+  schemas.ValidationErrorResponse:
+    properties:
+      detail:
+        example: Некорректное значение одного или нескольких полей запроса
+        type: string
+      details:
+        type: object
+      status:
+        example: 400
+        type: integer
+      title:
+        example: Ошибка валидации
+        type: string
+      type:
+        example: ValidationError
+        type: string
     type: object
   schemas.VerifyEmailRequest:
     properties:
@@ -597,9 +900,9 @@ paths:
               $ref: '#/definitions/schemas.AccountDTO'
             type: array
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
       security:
       - SessionToken: []
       summary: Список счетов
@@ -628,11 +931,15 @@ paths:
         "400":
           description: Неверные параметры (валюта или тип)
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "403":
+          description: Лимит счетов превышен
+          schema:
+            $ref: '#/definitions/schemas.AccountLimitReachedError'
       security:
       - SessionToken: []
       summary: Открыть счёт
@@ -657,14 +964,18 @@ paths:
           description: Счёт успешно закрыт
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
-        "400":
-          description: Нельзя закрыть счёт с ненулевым балансом
+        "401":
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
         "404":
           description: Счёт не найден
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.AccountNotFoundError'
+        "409":
+          description: Нельзя закрыть счёт с ненулевым балансом
+          schema:
+            $ref: '#/definitions/schemas.AccountNonZeroBalanceError'
       security:
       - SessionToken: []
       summary: Закрыть счёт
@@ -688,13 +999,13 @@ paths:
           schema:
             $ref: '#/definitions/schemas.AccountDTO'
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
         "404":
           description: Счёт не найден
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.AccountNotFoundError'
       security:
       - SessionToken: []
       summary: Детали счёта
@@ -726,13 +1037,21 @@ paths:
           schema:
             $ref: '#/definitions/schemas.TransactionDTO'
         "400":
-          description: Неверная сумма или валюта
+          description: Некорректная сумма пополнения
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "403":
+          description: Счёт заморожен (AccountFrozen)
+          schema:
+            $ref: '#/definitions/schemas.AccountFrozenErrorResponse'
+        "404":
+          description: Счёт не найден
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
       security:
       - SessionToken: []
       summary: Пополнение счёта
@@ -756,10 +1075,18 @@ paths:
           description: Счёт успешно разморожен
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
-        "403":
-          description: Нет прав на разморозку (если заморожен системой)
+        "401":
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "403":
+          description: Разморозка запрещена (требуется личное присутствие или код)
+          schema:
+            $ref: '#/definitions/schemas.SecurityViolationErrorResponse'
+        "404":
+          description: Счёт не найден
+          schema:
+            $ref: '#/definitions/schemas.AccountNotFoundError'
       security:
       - SessionToken: []
       summary: Возобновить обслуживание (Разморозка)
@@ -781,10 +1108,18 @@ paths:
           description: Счёт успешно заморожен
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
+        "401":
+          description: Необходима авторизация
+          schema:
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
         "404":
           description: Счёт не найден
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.AccountNotFoundError'
+        "409":
+          description: Счёт уже заморожен
+          schema:
+            $ref: '#/definitions/schemas.AccountConflictError'
       security:
       - SessionToken: []
       summary: Приостановить обслуживание (Заморозка)
@@ -821,9 +1156,13 @@ paths:
               $ref: '#/definitions/schemas.TransactionDTO'
             type: array
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "404":
+          description: Счёт не найден
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
       security:
       - SessionToken: []
       summary: История транзакций по счёту
@@ -856,14 +1195,22 @@ paths:
           description: Транзакция снятия создана
           schema:
             $ref: '#/definitions/schemas.TransactionDTO'
-        "400":
-          description: Недостаточно средств
-          schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "403":
+          description: Счёт заморожен или заблокирован антифродом
+          schema:
+            $ref: '#/definitions/schemas.AccountFrozenErrorResponse'
+        "404":
+          description: Счёт не найден
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
+        "422":
+          description: Недостаточно средств (InsufficientFunds)
+          schema:
+            $ref: '#/definitions/schemas.TransactionErrorResponse'
       security:
       - SessionToken: []
       summary: Снятие средств
@@ -893,7 +1240,7 @@ paths:
         "401":
           description: Сессия невалидна или отсутствует токен
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
       security:
       - SessionToken: []
       summary: Обновить PIN-код
@@ -914,7 +1261,7 @@ paths:
         "401":
           description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
       security:
       - SessionToken: []
       summary: Самоблокировка клиента
@@ -942,13 +1289,13 @@ paths:
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "400":
-          description: Некорректный Email
+          description: Некорректный формат Email
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
         "404":
-          description: Пользователь с таким Email не найден
+          description: Email не найден в системе (AuthNotFound)
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
       summary: Запросить код разблокировки
       tags:
       - auth-unlock
@@ -974,9 +1321,17 @@ paths:
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "400":
-          description: Неверный или просроченный код
+          description: Ошибка формата данных
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "403":
+          description: Неверный или просроченный код (AuthInvalidCode)
+          schema:
+            $ref: '#/definitions/schemas.AuthInvalidCodeErrorResponse'
+        "404":
+          description: Пользователь не найден
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
       summary: Подтвердить разблокировку
       tags:
       - auth-unlock
@@ -1001,7 +1356,7 @@ paths:
         "502":
           description: Внешний API котировок недоступен
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.BadGatewayErrorResponse'
       summary: Все курсы валют
       tags:
       - currencies
@@ -1032,7 +1387,7 @@ paths:
         "404":
           description: Валюта не поддерживается
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
       summary: Курс валютной пары
       tags:
       - currencies
@@ -1060,11 +1415,11 @@ paths:
         "400":
           description: Недостаточно средств или неверные счета
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.TransactionErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
       security:
       - SessionToken: []
       summary: Конвертировать валюту (Обмен)
@@ -1082,9 +1437,13 @@ paths:
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "404":
+          description: Аккаунт не найден (AccountNotFound)
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
       security:
       - SessionToken: []
       summary: Удалить профиль клиента
@@ -1101,9 +1460,13 @@ paths:
           schema:
             $ref: '#/definitions/schemas.CustomerProfileDTO'
         "401":
-          description: Не авторизован
+          description: Необходима авторизация (Invalid Session)
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "404":
+          description: Профиль не найден (UpdateDataNotFound)
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
       security:
       - SessionToken: []
       summary: Получить профиль клиента
@@ -1128,6 +1491,14 @@ paths:
           description: Контакты успешно обновлены
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
+        "401":
+          description: Необходима авторизация
+          schema:
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "409":
+          description: Контактные данные уже заняты (UpdateDataConflict)
+          schema:
+            $ref: '#/definitions/schemas.ConflictErrorResponse'
       security:
       - SessionToken: []
       summary: Смена контактных данных
@@ -1178,9 +1549,9 @@ paths:
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "401":
-          description: Не авторизован
+          description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
       security:
       - SessionToken: []
       summary: Обновить ФИО
@@ -1204,10 +1575,18 @@ paths:
           description: Список актуальных котировок
           schema:
             $ref: '#/definitions/schemas.MetalRatesResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "404":
+          description: Валюта не поддерживается
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
         "502":
           description: Внешний источник цен недоступен
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.BadGatewayErrorResponse'
       summary: Котировки драгоценных металлов
       tags:
       - metals
@@ -1245,9 +1624,13 @@ paths:
           schema:
             $ref: '#/definitions/schemas.LoginResponse'
         "400":
-          description: Не все шаги пройдены
+          description: Не все шаги регистрации пройдены
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.OnboardingInvalidStepErrorResponse'
+        "401":
+          description: Сессия регистрации не найдена
+          schema:
+            $ref: '#/definitions/schemas.OnboardingNotFoundErrorResponse'
       security:
       - OnboardingToken: []
       summary: Завершение регистрации
@@ -1270,10 +1653,18 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: Контактные данные сохранены
+        "400":
+          description: Ошибка валидации контактов
           schema:
-            $ref: '#/definitions/schemas.SuccessResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "401":
+          description: Сессия регистрации не найдена
+          schema:
+            $ref: '#/definitions/schemas.OnboardingNotFoundErrorResponse'
+        "409":
+          description: Email или телефон уже используются (OnboardingConflict)
+          schema:
+            $ref: '#/definitions/schemas.OnboardingConflictErrorResponse'
       security:
       - OnboardingToken: []
       summary: 'Шаг 4: Контакты (Email/Телефон)'
@@ -1291,6 +1682,14 @@ paths:
           description: Код успешно отправлен
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
+        "401":
+          description: Сессия регистрации не найдена
+          schema:
+            $ref: '#/definitions/schemas.OnboardingNotFoundErrorResponse'
+        "429":
+          description: Слишком частые запросы кода
+          schema:
+            $ref: '#/definitions/schemas.OnboardingTooManyRequestsErrorResponse'
       security:
       - OnboardingToken: []
       summary: Запросить Email-подтверждение
@@ -1318,9 +1717,13 @@ paths:
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "400":
-          description: Неверный или просроченный код
+          description: Неверный или просроченный код подтверждения
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "401":
+          description: Сессия регистрации не найдена
+          schema:
+            $ref: '#/definitions/schemas.OnboardingNotFoundErrorResponse'
       security:
       - OnboardingToken: []
       summary: Подтвердить Email
@@ -1348,9 +1751,17 @@ paths:
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "400":
-          description: Ошибка валидации (дубликат или формат)
+          description: Ошибка валидации форматов
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "401":
+          description: Сессия регистрации не найдена
+          schema:
+            $ref: '#/definitions/schemas.OnboardingNotFoundErrorResponse'
+        "409":
+          description: ИНН или СНИЛС уже используются (OnboardingConflict)
+          schema:
+            $ref: '#/definitions/schemas.OnboardingConflictErrorResponse'
       security:
       - OnboardingToken: []
       summary: 'Шаг 3: ИНН и СНИЛС'
@@ -1377,10 +1788,14 @@ paths:
           description: Данные сохранены
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
-        "401":
-          description: Невалидный токен
+        "400":
+          description: Ошибка валидации паспортных данных
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "401":
+          description: Сессия регистрации не найдена (OnboardingNotFound)
+          schema:
+            $ref: '#/definitions/schemas.OnboardingNotFoundErrorResponse'
       security:
       - OnboardingToken: []
       summary: 'Шаг 2: Паспортные данные'
@@ -1408,13 +1823,13 @@ paths:
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "400":
-          description: Ошибка валидации данных
+          description: Ошибка валидации входных данных
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
         "401":
-          description: Невалидный токен онбординга
+          description: Сессия регистрации не найдена (OnboardingNotFound)
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.OnboardingNotFoundErrorResponse'
       security:
       - OnboardingToken: []
       summary: 'Шаг 1: ФИО и дата рождения'
@@ -1435,7 +1850,7 @@ paths:
         "401":
           description: Необходима авторизация
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
       security:
       - SessionToken: []
       summary: Выход со всех устройств
@@ -1462,17 +1877,25 @@ paths:
           schema:
             $ref: '#/definitions/schemas.LoginResponse'
         "400":
-          description: Неверный формат входных данных
+          description: Ошибка валидации входных данных
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
         "401":
-          description: Неверный телефон или PIN-код
+          description: Неверный логин или пароль
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "403":
+          description: Доступ запрещён (аккаунт заблокирован)
+          schema:
+            $ref: '#/definitions/schemas.AuthBlockedErrorResponse'
+        "404":
+          description: Пользователь не найден
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
         "423":
-          description: Аккаунт временно заблокирован из-за перебора PIN
+          description: Временная блокировка (AuthCooldown)
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.AuthCooldownErrorResponse'
       summary: Вход в приложение
       tags:
       - sessions
@@ -1491,7 +1914,7 @@ paths:
         "401":
           description: Токен уже недействителен
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
       security:
       - SessionToken: []
       summary: Выход (текущая сессия)
@@ -1520,7 +1943,15 @@ paths:
         "400":
           description: Невалидные данные запроса
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "401":
+          description: Необходима авторизация
+          schema:
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "422":
+          description: Бизнес-ошибка (недостаточно средств/счет не активен)
+          schema:
+            $ref: '#/definitions/schemas.TransactionErrorResponse'
       security:
       - SessionToken: []
       summary: Универсальная финансовая операция
@@ -1548,9 +1979,25 @@ paths:
           schema:
             $ref: '#/definitions/schemas.TransactionDTO'
         "400":
-          description: Ошибка перевода (недостаточно средств или неверный счет)
+          description: Ошибка формата данных
           schema:
-            $ref: '#/definitions/schemas.ErrorResponse'
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "401":
+          description: Необходима авторизация
+          schema:
+            $ref: '#/definitions/schemas.UnauthorizedErrorResponse'
+        "403":
+          description: Операция отклонена безопасностью (SecurityViolation)
+          schema:
+            $ref: '#/definitions/schemas.SecurityViolationErrorResponse'
+        "404":
+          description: Один из счетов не найден
+          schema:
+            $ref: '#/definitions/schemas.NotFoundErrorResponse'
+        "422":
+          description: Недостаточно средств или несоответствие валют
+          schema:
+            $ref: '#/definitions/schemas.TransactionErrorResponse'
       security:
       - SessionToken: []
       summary: Перевод средств
