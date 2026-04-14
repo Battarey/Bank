@@ -94,7 +94,12 @@ func (h *TransactionHandler) Transfer(c echo.Context) error {
 			"detail": "Ошибка чтения тела запроса.",
 		})
 	}
-	data, _ := JSONToMap(body)
+	data, err := JSONToMap(body)
+	if err != nil && len(body) > 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат JSON.",
+		})
+	}
 	if data == nil {
 		data = make(map[string]interface{})
 	}
@@ -113,14 +118,19 @@ func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) e
 		})
 	}
 
-	body, err := ReadBody(c)
+	body, err = ReadBody(c)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
 			"detail": "Ошибка чтения тела запроса.",
 		})
 	}
 
-	data, _ := JSONToMap(body)
+	data, err := JSONToMap(body)
+	if err != nil && len(body) > 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Некорректный формат JSON.",
+		})
+	}
 	if data == nil {
 		data = make(map[string]interface{})
 	}
