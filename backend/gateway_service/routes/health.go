@@ -2,21 +2,25 @@ package routes
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/labstack/echo/v4"
+	"gateway_service/proxy"
 	"gateway_service/redis"
 	"gateway_service/schemas"
 )
 
 // HealthHandler хранит зависимости для проверки здоровья системы.
 type HealthHandler struct {
-	Sessions   redis.SessionStore
-	Onboarding redis.OnboardingStore
+	Sessions       redis.SessionStore
+	Onboarding     redis.OnboardingStore
+	Proxy          *proxy.ServiceClients
+	InternalAPIKey string
 }
 
 // Health godoc
 // @Summary     Проверка состояния системы
-// @Description Возвращает статус 'ok', если Gateway и его зависимости (Redis) доступны.
+// @Description Возвращает детальный статус всех компонентов бэкенда.
 // @Tags        system
 // @Produce     json
 // @Success     200 {object} schemas.HealthResponse "Система работает нормально"
@@ -24,22 +28,60 @@ type HealthHandler struct {
 // @Router      /health [get]
 func (h *HealthHandler) Health(c echo.Context) error {
 	ctx := c.Request().Context()
+	components := make(map[string]interface{})
+	isError := false
+	var mu sync.Mutex
 
-	// Проверка Redis сессий
+	// 1. Проверка Redis сессий
 	if err := h.Sessions.Ping(ctx); err != nil {
-		return c.JSON(http.StatusServiceUnavailable, schemas.HealthErrorResponse{
-			Status: "error",
-			Detail: "Redis (sessions) non-responsive",
-		})
+		components["redis_sessions"] = map[string]string{"status": "error", "detail": err.Error()}
+		isError = true
+	} else {
+		components["redis_sessions"] = map[string]string{"status": "ok"}
 	}
 
-	// Проверка Redis онбординга
+	// 2. Проверка Redis онбординга
 	if err := h.Onboarding.Ping(ctx); err != nil {
+		components["redis_onboarding"] = map[string]string{"status": "error", "detail": err.Error()}
+		isError = true
+	} else {
+		components["redis_onboarding"] = map[string]string{"status": "ok"}
+	}
+
+	// 3. Параллельный опрос микросервисов
+	services := h.Proxy.ListServices()
+	var wg sync.WaitGroup
+	for _, svcName := range services {
+		wg.Add(1)
+		go func(name string) {
+			defer wg.Done()
+			result, err := h.Proxy.Ping(c, name, h.InternalAPIKey)
+			
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				components[name] = map[string]string{"status": "error", "detail": "Service unreachable"}
+				isError = true
+			} else {
+				components[name] = result
+				if result["status"] == "error" {
+					isError = true
+				}
+			}
+		}(svcName)
+	}
+	wg.Wait()
+
+	if isError {
 		return c.JSON(http.StatusServiceUnavailable, schemas.HealthErrorResponse{
-			Status: "error",
-			Detail: "Redis (onboarding) non-responsive",
+			Status:     "error",
+			Detail:     "One or more dependencies are down",
+			Components: components,
 		})
 	}
 
-	return c.JSON(http.StatusOK, schemas.HealthResponse{Status: "ok"})
+	return c.JSON(http.StatusOK, schemas.HealthResponse{
+		Status:     "ok",
+		Components: components,
+	})
 }

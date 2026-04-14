@@ -1685,7 +1685,7 @@
         },
         "/health": {
             "get": {
-                "description": "Возвращает статус 'ok', если Gateway и его зависимости (Redis) доступны.",
+                "description": "Возвращает детальный статус всех компонентов бэкенда.",
                 "produces": [
                     "application/json"
                 ],
@@ -2231,10 +2231,15 @@
         "schemas.HealthErrorResponse": {
             "type": "object",
             "properties": {
+                "components": {
+                    "description": "Состояние всех проверенных компонентов",
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "detail": {
-                    "description": "Детальное описание проблемы",
+                    "description": "Краткое описание проблемы или список упавших компонентов",
                     "type": "string",
-                    "example": "Redis (sessions) non-responsive"
+                    "example": "One or more dependencies are down"
                 },
                 "status": {
                     "description": "Статус ошибки ('error')",
@@ -2246,8 +2251,13 @@
         "schemas.HealthResponse": {
             "type": "object",
             "properties": {
+                "components": {
+                    "description": "Детальный статус всех компонентов системы",
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "status": {
-                    "description": "Статус доступности ('ok')",
+                    "description": "Статус доступности ('ok', 'error')",
                     "type": "string",
                     "example": "ok"
                 }

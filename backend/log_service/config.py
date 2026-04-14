@@ -24,3 +24,6 @@ class LogSettings(BaseAppSettings):
 	CLICKHOUSE_USER: str = Field(..., alias="CLICKHOUSE_USER")
 	CLICKHOUSE_PASSWORD: str = Field(..., alias="CLICKHOUSE_PASSWORD")
 	CLICKHOUSE_DB: str = Field("bank_logs", alias="CLICKHOUSE_DB")
+
+	# Веб-сервер для хелсчеков
+	HEALTH_PORT: int = Field(8000, alias="HEALTH_PORT")

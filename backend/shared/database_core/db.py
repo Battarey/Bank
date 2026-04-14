@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from .env import (
@@ -33,4 +34,11 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 		yield session
 
 
-__all__ = ["AsyncSession", "SessionLocal", "engine", "get_session"]
+async def ping_db() -> bool:
+	"""Проверить доступность базы данных."""
+	async with engine.connect() as conn:
+		await conn.execute(text("SELECT 1"))
+		return True
+
+
+__all__ = ["AsyncSession", "SessionLocal", "engine", "get_session", "ping_db"]

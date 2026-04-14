@@ -1,8 +1,5 @@
-import asyncio
-import logging
-
-from shared.bootstrap import bootstrap
-
+import uvicorn
+from .api import app
 from .config import LogSettings
 from .consumers import run_consumers
 
@@ -13,13 +10,27 @@ logging.basicConfig(
 logger = logging.getLogger("log_service")
 
 
+async def run_services(settings: LogSettings):
+	"""Запуск API и консьюмеров параллельно."""
+	config = uvicorn.Config(app, host="0.0.0.0", port=settings.HEALTH_PORT, log_level="info")
+	server = uvicorn.Server(config)
+	
+	# Запускаем и то, и другое
+	await asyncio.gather(
+		server.serve(),
+		run_consumers()
+	)
+
+
 def main() -> None:
 	"""Entry point."""
 	# Инициализация инфраструктуры на базе типизированных настроек
 	bootstrap(LogSettings)
+	container = get_container()
+	settings = container.settings
 
 	try:
-		asyncio.run(run_consumers())
+		asyncio.run(run_services(settings))
 	except KeyboardInterrupt:
 		logger.info("Прервано пользователем.")
 	except Exception as exc:

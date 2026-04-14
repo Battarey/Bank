@@ -161,4 +161,11 @@ async def insert_log_event(
 		logger.exception("Не удалось записать событие в ClickHouse")
 
 
-__all__ = ["close_clickhouse", "init_clickhouse", "insert_log_event"]
+async def ping_clickhouse() -> bool:
+	"""Проверить доступность ClickHouse."""
+	if _client is None:
+		return False
+	return await _client.ping()
+
+
+__all__ = ["close_clickhouse", "init_clickhouse", "insert_log_event", "ping_clickhouse"]

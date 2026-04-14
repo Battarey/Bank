@@ -85,4 +85,13 @@ async def publish(
 	logger.debug("Published %s → %s: %s", exchange_name, routing_key, body.get("type"))
 
 
-__all__ = ["connect", "disconnect", "publish"]
+async def ping_rabbitmq() -> bool:
+	"""Проверить доступность RabbitMQ."""
+	if _connection is None or _connection.is_closed:
+		return False
+	if _channel is None or _channel.is_closed:
+		return False
+	return True
+
+
+__all__ = ["connect", "disconnect", "ping_rabbitmq", "publish"]

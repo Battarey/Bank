@@ -25,6 +25,9 @@ class NotificationSettings(BaseAppSettings):
 	SMTP_FROM: str | None = Field(None, alias="SMTP_FROM")
 	SMTP_USE_TLS: bool = Field(True, alias="SMTP_USE_TLS")
 
+	# Веб-сервер для хелсчеков
+	HEALTH_PORT: int = Field(8000, alias="HEALTH_PORT")
+
 	@property
 	def smtp_from_addr(self) -> str:
 		"""Возвращает адрес отправителя (SMTP_FROM или SMTP_USER)."""

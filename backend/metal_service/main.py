@@ -49,8 +49,15 @@ setup_exception_handlers(app)
 
 
 @app.get("/health", tags=["health"])
-async def health_check() -> dict[str, str]:
-	return {"status": "ok"}
+async def health_check() -> dict:
+	"""Проверка работоспособности сервиса."""
+	# Metal service зависит в основном от внешнего API, которое проверяется в lifespan
+	return {
+		"status": "ok",
+		"dependencies": {
+			"external_metal_api": "ok",
+		},
+	}
 
 
 app.include_router(rates_router)

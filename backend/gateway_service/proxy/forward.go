@@ -197,3 +197,53 @@ func (sc *ServiceClients) ForwardAndParse(
 
 	return parsed, resp.StatusCode, nil
 }
+
+// ListServices возвращает список имен всех зарегистрированных сервисов.
+func (sc *ServiceClients) ListServices() []string {
+	services := make([]string, 0, len(sc.clients))
+	for name := range sc.clients {
+		services = append(services, name)
+	}
+	return services
+}
+
+// Ping проверяет доступность конкретного сервиса, вызывая его эндпоинт /health.
+func (sc *ServiceClients) Ping(c echo.Context, service, internalAPIKey string) (map[string]interface{}, error) {
+	svc, ok := sc.clients[service]
+	if !ok {
+		return nil, fmt.Errorf("неизвестный сервис: %s", service)
+	}
+
+	url := svc.BaseURL + "/health"
+	req, err := http.NewRequestWithContext(c.Request().Context(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("X-Internal-Key", internalAPIKey)
+	req.Header.Set("X-Request-ID", c.Response().Header().Get(echo.HeaderXRequestID))
+
+	resp, err := svc.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		// Если это не JSON, возвращаем статус как есть
+		return map[string]interface{}{
+			"status": "error",
+			"detail": "Некорректный формат ответа от сервиса",
+			"code":   resp.StatusCode,
+		}, nil
+	}
+
+	// Если статус в JSON не равен 200, но мы смогли распарсить - возвращаем как есть
+	if resp.StatusCode != http.StatusOK && result["status"] == nil {
+		result["status"] = "error"
+	}
+
+	return result, nil
+}

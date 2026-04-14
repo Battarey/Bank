@@ -66,14 +66,18 @@ type SuccessResponse struct {
 
 // HealthResponse содержит информацию о текущем состоянии работоспособности шлюза
 type HealthResponse struct {
-	// Статус доступности ('ok')
+	// Статус доступности ('ok', 'error')
 	Status string `json:"status" example:"ok"`
+	// Детальный статус всех компонентов системы
+	Components map[string]interface{} `json:"components,omitempty"`
 }
 
 // HealthErrorResponse описание ошибки при недоступности зависимостей
 type HealthErrorResponse struct {
 	// Статус ошибки ('error')
 	Status string `json:"status" example:"error"`
-	// Детальное описание проблемы
-	Detail string `json:"detail" example:"Redis (sessions) non-responsive"`
+	// Краткое описание проблемы или список упавших компонентов
+	Detail string `json:"detail" example:"One or more dependencies are down"`
+	// Состояние всех проверенных компонентов
+	Components map[string]interface{} `json:"components,omitempty"`
 }

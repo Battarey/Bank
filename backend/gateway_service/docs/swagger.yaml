@@ -381,9 +381,13 @@ definitions:
     type: object
   schemas.HealthErrorResponse:
     properties:
+      components:
+        additionalProperties: true
+        description: Состояние всех проверенных компонентов
+        type: object
       detail:
-        description: Детальное описание проблемы
-        example: Redis (sessions) non-responsive
+        description: Краткое описание проблемы или список упавших компонентов
+        example: One or more dependencies are down
         type: string
       status:
         description: Статус ошибки ('error')
@@ -392,8 +396,12 @@ definitions:
     type: object
   schemas.HealthResponse:
     properties:
+      components:
+        additionalProperties: true
+        description: Детальный статус всех компонентов системы
+        type: object
       status:
-        description: Статус доступности ('ok')
+        description: Статус доступности ('ok', 'error')
         example: ok
         type: string
     type: object
@@ -2016,8 +2024,7 @@ paths:
       - transactions
   /health:
     get:
-      description: Возвращает статус 'ok', если Gateway и его зависимости (Redis)
-        доступны.
+      description: Возвращает детальный статус всех компонентов бэкенда.
       produces:
       - application/json
       responses:

@@ -58,8 +58,25 @@ setup_exception_handlers(app)
 
 
 @app.get("/health", tags=["health"])
-async def health_check() -> dict[str, str]:
-	return {"status": "ok"}
+async def health_check() -> dict:
+	"""Глубокая проверка работоспособности сервиса и его зависимостей."""
+	from shared.database_core.db import ping_db
+	from shared.rabbitmq.client import ping_rabbitmq
+
+	db_ok = await ping_db()
+	redis_ok = await redis_client.ping()
+	rmq_ok = await ping_rabbitmq()
+
+	overall_status = "ok" if db_ok and redis_ok and rmq_ok else "error"
+	
+	return {
+		"status": overall_status,
+		"dependencies": {
+			"postgres": "ok" if db_ok else "error",
+			"redis_sessions": "ok" if redis_ok else "error",
+			"rabbitmq": "ok" if rmq_ok else "error",
+		},
+	}
 
 
 app.include_router(login_router)

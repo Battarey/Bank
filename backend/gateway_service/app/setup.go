@@ -46,10 +46,12 @@ func SetupApp(
 	})
 	e.GET("/docs/*", echoSwagger.WrapHandler)
 
-	// Healthcheck
+	// Регистрация системных роутов (Healthcheck)
 	healthHandler := &routes.HealthHandler{
-		Sessions:   sessions,
-		Onboarding: onboarding,
+		Sessions:       sessions,
+		Onboarding:     onboarding,
+		Proxy:          services,
+		InternalAPIKey: cfg.InternalAPIKey,
 	}
 	e.GET("/health", healthHandler.Health)
 

@@ -46,6 +46,9 @@ async def init_mongo() -> None:
 	logger.info("MongoDB подключена: %s", _db.name)
 
 
+__all__ = ["close_mongo", "init_mongo", "ping_mongo", "save_event"]
+
+
 async def close_mongo() -> None:
 	"""Закрытие соединения с MongoDB."""
 
@@ -56,6 +59,17 @@ async def close_mongo() -> None:
 		_client = None
 		_db = None
 		logger.info("MongoDB отключена.")
+
+
+async def ping_mongo() -> bool:
+	"""Проверить доступность MongoDB."""
+	if _client is None:
+		return False
+	try:
+		await _client.admin.command("ping")
+		return True
+	except Exception:
+		return False
 
 
 def _get_db() -> AsyncIOMotorDatabase:

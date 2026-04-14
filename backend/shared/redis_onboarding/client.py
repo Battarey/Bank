@@ -38,4 +38,10 @@ async def close_client() -> None:
 	_client = None
 
 
-__all__ = ["close_client", "get_client"]
+async def ping() -> bool:
+	"""Проверить доступность Redis."""
+	client = get_client()
+	return await client.ping()
+
+
+__all__ = ["close_client", "get_client", "ping"]
