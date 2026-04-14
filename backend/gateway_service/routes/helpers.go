@@ -26,7 +26,7 @@ func ReadBody(c echo.Context) ([]byte, error) {
 	return body, nil
 }
 
-// ForwardAndParse пересылает запрос и парсит JSON-ответ (для cases, где нужно обработать ответ).
+// ForwardAndParse пересылает запрос и парсит JSON-ответ (устарело, используйте sc.ForwardAndParse).
 func ForwardAndParse(
 	c echo.Context,
 	sc *proxy.ServiceClients,
@@ -34,49 +34,7 @@ func ForwardAndParse(
 	rawBody []byte,
 	service, apiKey string,
 ) (map[string]interface{}, int, error) {
-	svc := sc.GetClient(service)
-	if svc == nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("неизвестный сервис: %s", service)
-	}
-
-	var bodyReader io.Reader
-	if rawBody != nil {
-		bodyReader = bytes.NewReader(rawBody)
-	}
-
-	url := svc.BaseURL + path
-	req, err := http.NewRequestWithContext(c.Request().Context(), method, url, bodyReader)
-	if err != nil {
-		return nil, http.StatusInternalServerError, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Internal-Key", apiKey)
-	if userID, ok := c.Get("user_id").(string); ok && userID != "" {
-		req.Header.Set("X-User-ID", userID)
-	}
-	if sessionToken := c.Request().Header.Get("X-Session-Token"); sessionToken != "" {
-		req.Header.Set("X-Session-Token", sessionToken)
-	}
-
-	resp, err := svc.HTTP.Do(req)
-	if err != nil {
-		return nil, http.StatusBadGateway, err
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, http.StatusInternalServerError, err
-	}
-
-	var parsed map[string]interface{}
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
-		// Если ответ не JSON, возвращаем как текст
-		parsed = map[string]interface{}{"detail": string(respBody)}
-	}
-
-	return parsed, resp.StatusCode, nil
+	return sc.ForwardAndParse(c, method, path, rawBody, service, apiKey)
 }
 
 // JSONToMap конвертирует []byte в map для модификации.
