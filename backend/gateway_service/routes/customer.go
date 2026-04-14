@@ -391,11 +391,3 @@ func (h *CustomerHandler) DeleteAccount(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, respData)
 }
-
-// ── Утилиты ────────────────────────────────────────────────────────────
-
-func generateSessionToken() string {
-	b := make([]byte, 32)
-	_, _ = rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
-}
