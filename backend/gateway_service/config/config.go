@@ -2,6 +2,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strings"
 )
@@ -31,17 +32,17 @@ type Config struct {
 // Load загружает конфигурацию из переменных окружения.
 func Load() *Config {
 	return &Config{
-		CustomerServiceURL:    getEnv("CUSTOMER_SERVICE_URL", "http://customer_service:8000"),
-		AuthServiceURL:        getEnv("AUTH_SERVICE_URL", "http://auth_service:8000"),
-		AccountServiceURL:     getEnv("ACCOUNT_SERVICE_URL", "http://account_service:8000"),
-		TransactionServiceURL: getEnv("TRANSACTION_SERVICE_URL", "http://transaction_service:8000"),
-		CurrencyServiceURL:    getEnv("CURRENCY_SERVICE_URL", "http://currency_service:8000"),
-		MetalServiceURL:       getEnv("METAL_SERVICE_URL", "http://metal_service:8000"),
+		CustomerServiceURL:    getEnvRequired("CUSTOMER_SERVICE_URL"),
+		AuthServiceURL:        getEnvRequired("AUTH_SERVICE_URL"),
+		AccountServiceURL:     getEnvRequired("ACCOUNT_SERVICE_URL"),
+		TransactionServiceURL: getEnvRequired("TRANSACTION_SERVICE_URL"),
+		CurrencyServiceURL:    getEnvRequired("CURRENCY_SERVICE_URL"),
+		MetalServiceURL:       getEnvRequired("METAL_SERVICE_URL"),
 
-		RedisSessionsURL:   getEnv("REDIS_SESSIONS_URL", "redis://redis_sessions:6379/0"),
-		RedisOnboardingURL: getEnv("REDIS_ONBOARDING_URL", "redis://redis_onboarding:6379/0"),
+		RedisSessionsURL:   getEnvRequired("REDIS_SESSIONS_URL"),
+		RedisOnboardingURL: getEnvRequired("REDIS_ONBOARDING_URL"),
 
-		InternalAPIKey:     getEnv("INTERNAL_API_KEY", ""),
+		InternalAPIKey:     getEnvRequired("INTERNAL_API_KEY"),
 		CORSAllowedOrigins: parseCORSOrigins(getEnv("CORS_ALLOWED_ORIGINS", "")),
 
 		Port: getEnv("GATEWAY_PORT", "8000"),
@@ -54,6 +55,15 @@ func getEnv(key, fallback string) string {
 		return val
 	}
 	return fallback
+}
+
+// getEnvRequired возвращает значение или паникует, если переменная не задана.
+func getEnvRequired(key string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		log.Fatalf("Критическая ошибка: переменная окружения %s обязательна, но не задана", key)
+	}
+	return val
 }
 
 // parseCORSOrigins разбивает строку origins через запятую.
