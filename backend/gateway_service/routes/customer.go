@@ -10,6 +10,7 @@ import (
 
 	redisClient "gateway_service/redis"
 	"gateway_service/proxy"
+	_ "gateway_service/schemas"
 )
 
 // CustomerHandler обрабатывает маршруты онбординга (регистрации) и профиля клиента.
@@ -122,8 +123,8 @@ func (h *CustomerHandler) OnboardingStep(c echo.Context, subPath string) error {
 // @Produce     json
 // @Param       payload body schemas.PersonalDataPayload true "Анкетные данные"
 // @Success     200 {object} schemas.SuccessResponse "Данные сохранены"
-// @Failure     400 {object} schemas.ErrorResponse "Ошибка валидации данных"
-// @Failure     401 {object} schemas.ErrorResponse "Невалидный токен онбординга"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка валидации входных данных"
+// @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена (OnboardingNotFound)"
 // @Router      /api/v1/onboarding/personal-data [post]
 func (h *CustomerHandler) SubmitPersonalData(c echo.Context) error {
 	return h.OnboardingStep(c, "personal-data")
@@ -139,7 +140,8 @@ func (h *CustomerHandler) SubmitPersonalData(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.PassportPayload true "Данные паспорта"
 // @Success     200 {object} schemas.SuccessResponse "Данные сохранены"
-// @Failure     401 {object} schemas.ErrorResponse "Невалидный токен"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка валидации паспортных данных"
+// @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена (OnboardingNotFound)"
 // @Router      /api/v1/onboarding/passport [post]
 func (h *CustomerHandler) SubmitPassport(c echo.Context) error {
 	return h.OnboardingStep(c, "passport")
@@ -155,7 +157,9 @@ func (h *CustomerHandler) SubmitPassport(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.IdentifiersPayload true "ИНН и СНИЛС"
 // @Success     200 {object} schemas.SuccessResponse "Данные сохранены"
-// @Failure     400 {object} schemas.ErrorResponse "Ошибка валидации (дубликат или формат)"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка валидации форматов"
+// @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена"
+// @Failure     409 {object} schemas.OnboardingConflictErrorResponse "ИНН или СНИЛС уже используются (OnboardingConflict)"
 // @Router      /api/v1/onboarding/identifiers [post]
 func (h *CustomerHandler) SubmitIdentifiers(c echo.Context) error {
 	return h.OnboardingStep(c, "identifiers")
@@ -170,7 +174,9 @@ func (h *CustomerHandler) SubmitIdentifiers(c echo.Context) error {
 // @Accept      json
 // @Produce     json
 // @Param       payload body schemas.ContactsPayload true "Email и Телефон"
-// @Success     200 {object} schemas.SuccessResponse "Контактные данные сохранены"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка валидации контактов"
+// @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена"
+// @Failure     409 {object} schemas.OnboardingConflictErrorResponse "Email или телефон уже используются (OnboardingConflict)"
 // @Router      /api/v1/onboarding/contacts [post]
 func (h *CustomerHandler) SubmitContacts(c echo.Context) error {
 	return h.OnboardingStep(c, "contacts")
@@ -184,6 +190,8 @@ func (h *CustomerHandler) SubmitContacts(c echo.Context) error {
 // @Security    OnboardingToken
 // @Produce     json
 // @Success     200 {object} schemas.SuccessResponse "Код успешно отправлен"
+// @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена"
+// @Failure     429 {object} schemas.OnboardingTooManyRequestsErrorResponse "Слишком частые запросы кода"
 // @Router      /api/v1/onboarding/email/send [post]
 func (h *CustomerHandler) SendEmailCode(c echo.Context) error {
 	return h.OnboardingStep(c, "email/send")
@@ -199,7 +207,8 @@ func (h *CustomerHandler) SendEmailCode(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.VerifyEmailRequest true "Код подтверждения"
 // @Success     200 {object} schemas.SuccessResponse "Email подтвержден"
-// @Failure     400 {object} schemas.ErrorResponse "Неверный или просроченный код"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Неверный или просроченный код подтверждения"
+// @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена"
 // @Router      /api/v1/onboarding/email/verify [post]
 func (h *CustomerHandler) VerifyEmailCode(c echo.Context) error {
 	return h.OnboardingStep(c, "email/verify")
@@ -213,7 +222,8 @@ func (h *CustomerHandler) VerifyEmailCode(c echo.Context) error {
 // @Security    OnboardingToken
 // @Produce     json
 // @Success     200 {object} schemas.LoginResponse "Регистрация успешно завершена"
-// @Failure     400 {object} schemas.ErrorResponse "Не все шаги пройдены"
+// @Failure     400 {object} schemas.OnboardingInvalidStepErrorResponse "Не все шаги регистрации пройдены"
+// @Failure     401 {object} schemas.OnboardingNotFoundErrorResponse "Сессия регистрации не найдена"
 // @Router      /api/v1/onboarding/completion [post]
 func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 	userID, err := h.resolveOnboarding(c)
@@ -257,7 +267,8 @@ func (h *CustomerHandler) CompleteOnboarding(c echo.Context) error {
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} schemas.CustomerProfileDTO "Полный профиль пользователя"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация (Invalid Session)"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Профиль не найден (UpdateDataNotFound)"
 // @Router      /api/v1/customers/me [get]
 func (h *CustomerHandler) GetProfile(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodGet, "/users/me", nil, "customer", h.APIKey)
@@ -272,7 +283,7 @@ func (h *CustomerHandler) GetProfile(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.PersonalDataUpdate true "Новые анкетные данные"
 // @Success     200 {object} schemas.SuccessResponse "Данные успешно обновлены"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
 // @Router      /api/v1/customers/me/personal-data [patch]
 func (h *CustomerHandler) UpdatePersonalData(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -303,6 +314,8 @@ func (h *CustomerHandler) ReplacePassport(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.ContactsUpdate true "Новые контакты"
 // @Success     200 {object} schemas.SuccessResponse "Контакты успешно обновлены"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     409 {object} schemas.ConflictErrorResponse "Контактные данные уже заняты (UpdateDataConflict)"
 // @Router      /api/v1/customers/me/contacts [patch]
 func (h *CustomerHandler) UpdateContacts(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -316,7 +329,8 @@ func (h *CustomerHandler) UpdateContacts(c echo.Context) error {
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} schemas.SuccessResponse "Профиль успешно удален"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Аккаунт не найден (AccountNotFound)"
 // @Router      /api/v1/customers/me [delete]
 func (h *CustomerHandler) DeleteAccount(c echo.Context) error {
 	respData, statusCode, err := ForwardAndParse(c, h.Proxy, http.MethodDelete, "/users/me", nil, "customer", h.APIKey)

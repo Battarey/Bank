@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"gateway_service/proxy"
+	_ "gateway_service/schemas"
 )
 
 // AccountHandler обрабатывает маршруты управления банковскими счетами.
@@ -39,8 +40,9 @@ func (h *AccountHandler) RegisterAccountRoutes(e *echo.Echo) {
 // @Produce     json
 // @Param       payload body schemas.OpenAccountRequest true "Тип счёта и валюта"
 // @Success     201 {object} schemas.AccountDTO "Счёт успешно создан"
-// @Failure     400 {object} schemas.ErrorResponse "Неверные параметры (валюта или тип)"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Неверные параметры (валюта или тип)"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     403 {object} schemas.AccountLimitReachedError "Лимит счетов превышен"
 // @Router      /api/v1/accounts [post]
 func (h *AccountHandler) OpenAccount(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -54,7 +56,7 @@ func (h *AccountHandler) OpenAccount(c echo.Context) error {
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} []schemas.AccountDTO "Список счетов"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
 // @Router      /api/v1/accounts [get]
 func (h *AccountHandler) ListAccounts(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodGet, "/accounts", nil, "account", h.APIKey)
@@ -68,8 +70,8 @@ func (h *AccountHandler) ListAccounts(c echo.Context) error {
 // @Produce     json
 // @Param       account_id path string true "UUID счёта" format(uuid)
 // @Success     200 {object} schemas.AccountDTO "Информация о счёте"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
-// @Failure     404 {object} schemas.ErrorResponse "Счёт не найден"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     404 {object} schemas.AccountNotFoundError "Счёт не найден"
 // @Router      /api/v1/accounts/{account_id} [get]
 func (h *AccountHandler) GetAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
@@ -86,8 +88,9 @@ func (h *AccountHandler) GetAccount(c echo.Context) error {
 // @Produce     json
 // @Param       account_id path string true "UUID счёта" format(uuid)
 // @Success     200 {object} schemas.SuccessResponse "Счёт успешно закрыт"
-// @Failure     400 {object} schemas.ErrorResponse "Нельзя закрыть счёт с ненулевым балансом"
-// @Failure     404 {object} schemas.ErrorResponse "Счёт не найден"
+// @Failure     409 {object} schemas.AccountNonZeroBalanceError "Нельзя закрыть счёт с ненулевым балансом"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     404 {object} schemas.AccountNotFoundError "Счёт не найден"
 // @Router      /api/v1/accounts/{account_id} [delete]
 func (h *AccountHandler) CloseAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
@@ -103,7 +106,9 @@ func (h *AccountHandler) CloseAccount(c echo.Context) error {
 // @Produce     json
 // @Param       account_id path string true "UUID счёта" format(uuid)
 // @Success     200 {object} schemas.SuccessResponse "Счёт успешно заморожен"
-// @Failure     404 {object} schemas.ErrorResponse "Счёт не найден"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     404 {object} schemas.AccountNotFoundError "Счёт не найден"
+// @Failure     409 {object} schemas.AccountConflictError "Счёт уже заморожен"
 // @Router      /api/v1/accounts/{account_id}/suspensions [post]
 func (h *AccountHandler) SuspendAccount(c echo.Context) error {
 	accountID := c.Param("account_id")
@@ -119,7 +124,9 @@ func (h *AccountHandler) SuspendAccount(c echo.Context) error {
 // @Produce     json
 // @Param       account_id path string true "UUID счёта" format(uuid)
 // @Success     200 {object} schemas.SuccessResponse "Счёт успешно разморожен"
-// @Failure     403 {object} schemas.ErrorResponse "Нет прав на разморозку (если заморожен системой)"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     403 {object} schemas.SecurityViolationErrorResponse "Разморозка запрещена (требуется личное присутствие или код)"
+// @Failure     404 {object} schemas.AccountNotFoundError "Счёт не найден"
 // @Router      /api/v1/accounts/{account_id}/suspensions [delete]
 func (h *AccountHandler) ResumeAccount(c echo.Context) error {
 	accountID := c.Param("account_id")

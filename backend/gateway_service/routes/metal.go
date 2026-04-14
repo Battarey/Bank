@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"gateway_service/proxy"
+	_ "gateway_service/schemas"
 )
 
 // MetalHandler обрабатывает маршруты котировок драгоценных металлов.
@@ -30,7 +31,9 @@ func (h *MetalHandler) RegisterMetalRoutes(e *echo.Echo) {
 // @Produce     json
 // @Param       base query string false "Валюта цены (ISO 4217)" default(RUB)
 // @Success     200 {object} schemas.MetalRatesResponse "Список актуальных котировок"
-// @Failure     502 {object} schemas.ErrorResponse "Внешний источник цен недоступен"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Не авторизован"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Валюта не поддерживается"
+// @Failure     502 {object} schemas.BadGatewayErrorResponse "Внешний источник цен недоступен"
 // @Router      /api/v1/metals/rates [get]
 func (h *MetalHandler) GetMetalRates(c echo.Context) error {
 	base := c.QueryParam("base")

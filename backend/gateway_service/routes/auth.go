@@ -8,6 +8,7 @@ import (
 
 	"gateway_service/proxy"
 	redisClient "gateway_service/redis"
+	_ "gateway_service/schemas"
 )
 
 // AuthHandler обрабатывает маршруты аутентификации и управления доступом.
@@ -45,9 +46,11 @@ func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
 // @Produce     json
 // @Param       payload body schemas.LoginPinRequest true "Номер телефона (+7...) и 4-значный PIN"
 // @Success     201 {object} schemas.LoginResponse "Успешная авторизация"
-// @Failure     400 {object} schemas.ErrorResponse "Неверный формат входных данных"
-// @Failure     401 {object} schemas.ErrorResponse "Неверный телефон или PIN-код"
-// @Failure     423 {object} schemas.ErrorResponse "Аккаунт временно заблокирован из-за перебора PIN"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка валидации входных данных"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Неверный логин или пароль"
+// @Failure     403 {object} schemas.AuthBlockedErrorResponse "Доступ запрещён (аккаунт заблокирован)"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Пользователь не найден"
+// @Failure     423 {object} schemas.AuthCooldownErrorResponse "Временная блокировка (AuthCooldown)"
 // @Router      /api/v1/sessions [post]
 func (h *AuthHandler) Login(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -63,8 +66,8 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.RequestUnlockRequest true "Email, привязанный к аккаунту"
 // @Success     201 {object} schemas.SuccessResponse "Код успешно отправлен"
-// @Failure     400 {object} schemas.ErrorResponse "Некорректный Email"
-// @Failure     404 {object} schemas.ErrorResponse "Пользователь с таким Email не найден"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Некорректный формат Email"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Email не найден в системе (AuthNotFound)"
 // @Router      /api/v1/auth/unlock-codes [post]
 func (h *AuthHandler) RequestUnlock(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -80,7 +83,9 @@ func (h *AuthHandler) RequestUnlock(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.UnlockRequest true "Email и 6-значный код"
 // @Success     200 {object} schemas.SuccessResponse "Аккаунт успешно разблокирован"
-// @Failure     400 {object} schemas.ErrorResponse "Неверный или просроченный код"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка формата данных"
+// @Failure     403 {object} schemas.AuthInvalidCodeErrorResponse "Неверный или просроченный код (AuthInvalidCode)"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Пользователь не найден"
 // @Router      /api/v1/auth/unlock-codes/verifications [post]
 func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -99,7 +104,7 @@ func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.SetPinRequest true "Новый 4-значный PIN"
 // @Success     200 {object} schemas.SuccessResponse "PIN успешно изменен"
-// @Failure     401 {object} schemas.ErrorResponse "Сессия невалидна или отсутствует токен"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Сессия невалидна или отсутствует токен"
 // @Router      /api/v1/auth/pins [put]
 func (h *AuthHandler) SetPin(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -134,7 +139,7 @@ func (h *AuthHandler) SetPin(c echo.Context) error {
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} schemas.SuccessResponse "Выход успешно выполнен"
-// @Failure     401 {object} schemas.ErrorResponse "Токен уже недействителен"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Токен уже недействителен"
 // @Router      /api/v1/sessions/current [delete]
 func (h *AuthHandler) Logout(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodDelete, "/sessions/current", nil, "auth", h.APIKey)
@@ -148,7 +153,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} schemas.SuccessResponse "Все сессии завершены"
-// @Failure     401 {object} schemas.ErrorResponse "Необходима авторизация"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
 // @Router      /api/v1/sessions [delete]
 func (h *AuthHandler) LogoutAll(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodDelete, "/sessions", nil, "auth", h.APIKey)
@@ -162,7 +167,7 @@ func (h *AuthHandler) LogoutAll(c echo.Context) error {
 // @Security    SessionToken
 // @Produce     json
 // @Success     200 {object} schemas.SuccessResponse "Аккаунт успешно заблокирован"
-// @Failure     401 {object} schemas.ErrorResponse "Необходима авторизация"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
 // @Router      /api/v1/auth/self-block [post]
 func (h *AuthHandler) SelfBlock(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/sessions/me/block", nil, "auth", h.APIKey)

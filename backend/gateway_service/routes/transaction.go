@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"gateway_service/proxy"
+	_ "gateway_service/schemas"
 )
 
 // TransactionHandler обрабатывает маршруты финансовых операций и истории.
@@ -41,8 +42,10 @@ func (h *TransactionHandler) RegisterTransactionRoutes(e *echo.Echo) {
 // @Param       account_id path string true "UUID счёта" format(uuid)
 // @Param       payload body schemas.AmountPayload true "Сумма пополнения"
 // @Success     200 {object} schemas.TransactionDTO "Транзакция пополнения создана"
-// @Failure     400 {object} schemas.ErrorResponse "Неверная сумма или валюта"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Некорректная сумма пополнения"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     403 {object} schemas.AccountFrozenErrorResponse "Счёт заморожен (AccountFrozen)"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Счёт не найден"
 // @Router      /api/v1/accounts/{account_id}/deposit [post]
 func (h *TransactionHandler) Deposit(c echo.Context) error {
 	return h.forwardWithPayload(c, "deposit")
@@ -59,8 +62,10 @@ func (h *TransactionHandler) Deposit(c echo.Context) error {
 // @Param       account_id path string true "UUID счёта" format(uuid)
 // @Param       payload body schemas.AmountPayload true "Сумма снятия"
 // @Success     200 {object} schemas.TransactionDTO "Транзакция снятия создана"
-// @Failure     400 {object} schemas.ErrorResponse "Недостаточно средств"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     403 {object} schemas.AccountFrozenErrorResponse "Счёт заморожен или заблокирован антифродом"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Счёт не найден"
+// @Failure     422 {object} schemas.TransactionErrorResponse "Недостаточно средств (InsufficientFunds)"
 // @Router      /api/v1/accounts/{account_id}/withdraw [post]
 func (h *TransactionHandler) Withdraw(c echo.Context) error {
 	return h.forwardWithPayload(c, "withdrawal")
@@ -76,7 +81,11 @@ func (h *TransactionHandler) Withdraw(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.TransferRequest true "Отправитель, получатель, сумма"
 // @Success     200 {object} schemas.TransactionDTO "Перевод успешно инициирован"
-// @Failure     400 {object} schemas.ErrorResponse "Ошибка перевода (недостаточно средств или неверный счет)"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка формата данных"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     403 {object} schemas.SecurityViolationErrorResponse "Операция отклонена безопасностью (SecurityViolation)"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Один из счетов не найден"
+// @Failure     422 {object} schemas.TransactionErrorResponse "Недостаточно средств или несоответствие валют"
 // @Router      /api/v1/transfers [post]
 func (h *TransactionHandler) Transfer(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -112,7 +121,9 @@ func (h *TransactionHandler) forwardWithPayload(c echo.Context, txType string) e
 // @Produce     json
 // @Param       payload body schemas.CreateTransactionRequest true "Детали операции"
 // @Success     200 {object} schemas.TransactionDTO "Операция успешно создана"
-// @Failure     400 {object} schemas.ErrorResponse "Невалидные данные запроса"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Невалидные данные запроса"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     422 {object} schemas.TransactionErrorResponse "Бизнес-ошибка (недостаточно средств/счет не активен)"
 // @Router      /api/v1/transactions [post]
 func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 	body, _ := ReadBody(c)
@@ -130,7 +141,8 @@ func (h *TransactionHandler) CreateTransaction(c echo.Context) error {
 // @Param       type query string false "Фильтр по типу (deposit|withdrawal|transfer|exchange)"
 // @Param       limit query int false "Максимальное количество записей" default(20)
 // @Success     200 {object} []schemas.TransactionDTO "Список транзакций"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Необходима авторизация"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Счёт не найден"
 // @Router      /api/v1/accounts/{account_id}/transactions [get]
 func (h *TransactionHandler) TransactionHistory(c echo.Context) error {
 	accountID := c.Param("account_id")

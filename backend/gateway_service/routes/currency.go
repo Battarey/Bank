@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"gateway_service/proxy"
+	_ "gateway_service/schemas"
 )
 
 // CurrencyHandler обрабатывает маршруты валютных котировок и обмена.
@@ -35,7 +36,7 @@ func (h *CurrencyHandler) RegisterCurrencyRoutes(e *echo.Echo) {
 // @Produce     json
 // @Param       base query string false "Базовая валюта (ISO 4217)" default(RUB)
 // @Success     200 {object} schemas.ExchangeRatesResponse "Таблица курсов"
-// @Failure     502 {object} schemas.ErrorResponse "Внешний API котировок недоступен"
+// @Failure     502 {object} schemas.BadGatewayErrorResponse "Внешний API котировок недоступен"
 // @Router      /api/v1/currencies/rates [get]
 func (h *CurrencyHandler) GetRates(c echo.Context) error {
 	base := c.QueryParam("base")
@@ -54,7 +55,7 @@ func (h *CurrencyHandler) GetRates(c echo.Context) error {
 // @Param       base path string true "Базовая валюта (откуда)" example(RUB)
 // @Param       target path string true "Целевая валюта (куда)" example(USD)
 // @Success     200 {object} schemas.ExchangeRatePairResponse "Точный курс пары"
-// @Failure     404 {object} schemas.ErrorResponse "Валюта не поддерживается"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Валюта не поддерживается"
 // @Router      /api/v1/currencies/rates/{base}/{target} [get]
 func (h *CurrencyHandler) GetPairRate(c echo.Context) error {
 	base := c.Param("base")
@@ -73,8 +74,8 @@ func (h *CurrencyHandler) GetPairRate(c echo.Context) error {
 // @Produce     json
 // @Param       payload body schemas.ExchangeRequest true "Параметры обмена"
 // @Success     200 {object} schemas.TransactionDTO "Обмен успешно выполнен"
-// @Failure     400 {object} schemas.ErrorResponse "Недостаточно средств или неверные счета"
-// @Failure     401 {object} schemas.ErrorResponse "Не авторизован"
+// @Failure     400 {object} schemas.TransactionErrorResponse "Недостаточно средств или неверные счета"
+// @Failure     401 {object} schemas.UnauthorizedErrorResponse "Не авторизован"
 // @Router      /api/v1/currency-conversions [post]
 func (h *CurrencyHandler) Convert(c echo.Context) error {
 	body, _ := ReadBody(c)
