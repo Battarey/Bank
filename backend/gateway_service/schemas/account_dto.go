@@ -11,7 +11,7 @@ type OpenAccountRequest struct {
 // AmountPayload стандартный запрос с указанием суммы денежных средств
 type AmountPayload struct {
 	// Сумма операции (положительное число)
-	Amount float64 `json:"amount" example:"1000.50" minimum:"0.01" validate:"required"`
+	Amount string `json:"amount" example:"1000.50" validate:"required"`
 }
 
 // AccountDTO полная детальная информация о банковском счёте
@@ -25,7 +25,7 @@ type AccountDTO struct {
 	// Валюта (ISO 4217)
 	Currency string `json:"currency" example:"RUB" enums:"RUB,USD,EUR"`
 	// Доступный остаток средств
-	Balance float64 `json:"balance" example:"15000.50"`
+	Balance string `json:"balance" example:"15000.50"`
 	// Текущее состояние счёта
 	Status string `json:"status" example:"active" enums:"active,frozen,closed"`
 	// Дата и время открытия счета (ISO 8601)

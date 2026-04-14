@@ -5,7 +5,7 @@ type MetalPriceDTO struct {
 	// Код металла (XAU - золото, XAG - серебро, XPT - платина, XPD - палладий)
 	Metal string `json:"metal" example:"XAU" enums:"XAU,XAG,XPT,XPD"`
 	// Текущая стоимость за единицу (грамм)
-	Price float64 `json:"price" example:"5850.40"`
+	Price string `json:"price" example:"5850.40"`
 	// Единица измерения (всегда 'gram')
 	Unit string `json:"unit" example:"gram"`
 	// Валюта стоимости
