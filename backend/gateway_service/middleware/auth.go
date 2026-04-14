@@ -10,30 +10,34 @@ import (
 	redisClient "gateway_service/redis"
 )
 
-// Публичные пути, не требующие авторизации.
-var publicPaths = map[string]bool{
-	"/":             true,
-	"/health":       true,
-	"/docs":         true,
-	"/docs/":        true,
-	"/openapi.json": true,
-	"/redoc":        true,
-	"/favicon.ico":  true,
-	"/api/v1/sessions":            true,
-	"/api/v1/auth/unlock-codes":   true,
-	"/api/v1/auth/unlock-codes/verifications": true,
+// Публичные пути с ограничением по методам. 
+// Если список методов пуст, разрешены все методы.
+var publicPaths = map[string]map[string]bool{
+	"/":             nil,
+	"/health":       nil,
+	"/docs":         nil,
+	"/docs/":        nil,
+	"/openapi.json": nil,
+	"/redoc":        nil,
+	"/favicon.ico":  nil,
+	"/api/v1/sessions": {
+		http.MethodPost: true, // Вход — публичный
+	},
+	"/api/v1/auth/unlock-codes": {
+		http.MethodPost: true,
+	},
+	"/api/v1/auth/unlock-codes/verifications": {
+		http.MethodPost: true,
+	},
 }
 
-// Префиксы публичных путей.
+// Префиксы публичных путей (доступны все методы).
 var publicPrefixes = []string{
 	"/api/v1/onboarding",
 	"/api/v1/currencies/rates",
 	"/api/v1/metals/rates",
 	"/docs/",
 }
-
-// Подстроки, по которым путь считается публичным.
-var publicSegments = []string{}
 
 var pinExemptPaths = map[string]bool{
 	"/api/v1/auth/pins":            true,
@@ -46,19 +50,24 @@ func IsPublic(path, method string) bool {
 	if method == http.MethodOptions {
 		return true
 	}
-	if publicPaths[path] {
-		return true
+
+	// Точное совпадение пути
+	if allowedMethods, ok := publicPaths[path]; ok {
+		// nil или пустая мапа означает, что разрешены все методы
+		if len(allowedMethods) == 0 {
+			return true
+		}
+		// Иначе проверяем конкретный метод
+		return allowedMethods[method]
 	}
+
+	// Проверка по префиксам
 	for _, prefix := range publicPrefixes {
 		if strings.HasPrefix(path, prefix) {
 			return true
 		}
 	}
-	for _, seg := range publicSegments {
-		if strings.Contains(path, seg) {
-			return true
-		}
-	}
+
 	return false
 }
 
