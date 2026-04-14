@@ -77,6 +77,8 @@ github.com/swaggo/files
 # github.com/swaggo/swag v1.16.4
 ## explicit; go 1.18
 github.com/swaggo/swag
+# github.com/swaggo/swag/v2 v2.0.0-rc4
+## explicit
 # github.com/valyala/bytebufferpool v1.0.0
 ## explicit
 github.com/valyala/bytebufferpool
