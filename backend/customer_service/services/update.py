@@ -9,13 +9,13 @@ from shared.events.base import LogEvent
 from shared.utils.normalize import normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
 
-from ..exceptions import (
+from ..core.exceptions import (
 	UpdateDataConflict,
 	UpdateDataEmpty,
 	UpdateDataError,
 	UpdateDataNotFound,
 )
-from ..uow import CustomerUnitOfWork
+from ..core.uow import CustomerUnitOfWork
 
 
 async def _get_active_user(uow: CustomerUnitOfWork, user_id: UUID) -> models.User:

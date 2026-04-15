@@ -8,8 +8,8 @@ from typing import Any
 from shared.bootstrap import get_container
 from shared.database_core.uow import SqlAlchemyUnitOfWork
 
-from .queries.repository import CustomerQueryRepository
-from .repository import CustomerRepository
+from ..repositories.queries import CustomerQueryRepository
+from ..repositories.customer import CustomerRepository
 
 
 class CustomerUnitOfWork(SqlAlchemyUnitOfWork):

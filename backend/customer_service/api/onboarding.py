@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, status
 
 from shared import schemas
 
-from ..uow import CustomerUnitOfWork, get_uow
-from . import service
+from ..core.uow import CustomerUnitOfWork, get_uow
+from ..services import onboarding as service
 
 router = APIRouter(
 	prefix="/onboarding",
@@ -109,7 +109,7 @@ async def verify_email(
 	"""Проверяет код. Если код верный, Email помечается как подтверждённый."""
 	success = await service.verify_email(user_id, payload.code)
 	if not success:
-		from ..exceptions import OnboardingError
+		from ..core.exceptions import OnboardingError
 
 		raise OnboardingError("Неверный код или срок его действия истёк.")
 	return {"message": "Email успешно подтверждён."}

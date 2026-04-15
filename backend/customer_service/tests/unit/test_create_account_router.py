@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from customer_service.create_account.router import (
+from customer_service.api.onboarding import (
 	complete_onboarding,
 	start_onboarding,
 	store_personal_data,
@@ -13,7 +13,7 @@ from shared import schemas
 
 
 @pytest.mark.asyncio
-@patch("customer_service.create_account.router.service.start_onboarding", new_callable=AsyncMock)
+@patch("customer_service.api.onboarding.service.start_onboarding", new_callable=AsyncMock)
 async def test_router_start_onboarding(mock_svc, uow):
 	"""Роутер: начало онбординга."""
 	user_id = uuid4()
@@ -27,7 +27,7 @@ async def test_router_start_onboarding(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("customer_service.create_account.router.service.store_personal_data", new_callable=AsyncMock)
+@patch("customer_service.api.onboarding.service.store_personal_data", new_callable=AsyncMock)
 async def test_router_store_personal_data(mock_svc, uow):
 	"""Роутер: сохранение персональных данных."""
 	user_id = uuid4()
@@ -45,7 +45,7 @@ async def test_router_store_personal_data(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("customer_service.create_account.router.service.persist_onboarding_data", new_callable=AsyncMock)
+@patch("customer_service.api.onboarding.service.persist_onboarding_data", new_callable=AsyncMock)
 async def test_router_complete_onboarding(mock_svc, uow):
 	"""Роутер: завершение онбординга."""
 	user_id = uuid4()

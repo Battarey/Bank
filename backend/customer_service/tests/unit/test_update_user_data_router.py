@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from customer_service.update_user_data.router import (
+from customer_service.api.update import (
 	get_my_profile,
 	replace_passport,
 	update_contacts,
@@ -14,7 +14,7 @@ from shared import schemas
 
 
 @pytest.mark.asyncio
-@patch("customer_service.update_user_data.router.service.get_full_profile", new_callable=AsyncMock)
+@patch("customer_service.api.update.service.get_full_profile", new_callable=AsyncMock)
 async def test_router_get_my_profile(mock_svc, uow):
 	"""Роутер: получение профиля текущего пользователя."""
 	user_id = uuid4()
@@ -42,7 +42,7 @@ async def test_router_get_my_profile(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("customer_service.update_user_data.router.service.update_personal_data", new_callable=AsyncMock)
+@patch("customer_service.api.update.service.update_personal_data", new_callable=AsyncMock)
 async def test_router_update_personal_data(mock_svc, uow):
 	"""Роутер: обновление ФИО."""
 	user_id = uuid4()
@@ -58,7 +58,7 @@ async def test_router_update_personal_data(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("customer_service.update_user_data.router.service.replace_passport", new_callable=AsyncMock)
+@patch("customer_service.api.update.service.replace_passport", new_callable=AsyncMock)
 async def test_router_replace_passport(mock_svc, uow):
 	"""Роутер: замена паспорта."""
 	user_id = uuid4()
@@ -80,7 +80,7 @@ async def test_router_replace_passport(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("customer_service.update_user_data.router.service.update_contacts", new_callable=AsyncMock)
+@patch("customer_service.api.update.service.update_contacts", new_callable=AsyncMock)
 async def test_router_update_contacts(mock_svc, uow):
 	"""Роутер: обновление контактов."""
 	user_id = uuid4()

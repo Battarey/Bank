@@ -2,16 +2,18 @@
 
 Центральный сервис управления данными клиентов: онбординг, ведение досье, обновление персональной информации и мягкое удаление.
 
-## Файловая архитектура
-```
+## Архитектура
+Сервис построен по принципам **Layered Architecture** и строго следует 4-х слойной структуре (api, services, repositories, core).
+
+### Файловая структура
+```text
 customer_service/
-├── create_account/      # 6-этапный онбординг (Router + Service)
-├── delete_account/      # Soft Delete и каскадная заморозка
-├── update_user_data/    # Обновление профиля и нормализация
-├── queries/             # CQRS для агрегации профиля (Raw SQL)
-├── exceptions.py        # Бизнес-исключения клиентов
-├── uow.py               # CustomerUnitOfWork
-├── main.py              # Точка входа FastAPI
+├── api/                # Слой Routers: онбординг, обновление данных, удаление
+├── services/           # Слой Services: бизнес-логика регистрации и управления данными
+├── repositories/       # Слой Repository: работа с БД (ORM + SQL/CQRS)
+├── core/               # Инфраструктурный слой: uow, exceptions
+├── main.py             # Точка входа в приложение
+├── tests/              # Юнит и интеграционные тесты
 └── README.md
 ```
 

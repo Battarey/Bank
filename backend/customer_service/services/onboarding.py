@@ -21,11 +21,11 @@ from shared.redis_onboarding.email_codes import (
 from shared.utils.normalize import digits_only, normalize_email, normalize_name, normalize_phone
 from shared.utils.security import get_blind_index
 
-from ..exceptions import (
+from ..core.exceptions import (
 	OnboardingConflict,
 	OnboardingError,
 )
-from ..uow import CustomerUnitOfWork
+from ..core.uow import CustomerUnitOfWork
 
 
 async def start_onboarding(uow: CustomerUnitOfWork) -> UUID:

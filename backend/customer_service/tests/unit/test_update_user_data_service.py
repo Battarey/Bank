@@ -5,12 +5,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from customer_service.exceptions import (
+from customer_service.core.exceptions import (
 	UpdateDataConflict,
 	UpdateDataError,
 	UpdateDataNotFound,
 )
-from customer_service.update_user_data.service import (
+from customer_service.services.update import (
 	_get_active_user,
 	get_full_profile,
 	replace_passport,

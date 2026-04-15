@@ -4,12 +4,12 @@ from uuid import uuid4
 
 import pytest
 
-from customer_service.create_account.service import (
+from customer_service.services.onboarding import (
 	persist_onboarding_data,
 	start_onboarding,
 	store_personal_data,
 )
-from customer_service.exceptions import (
+from customer_service.core.exceptions import (
 	OnboardingError,
 )
 from shared import models, schemas
@@ -49,7 +49,7 @@ async def test_store_personal_data_success(uow):
 	)
 	uow.customers.get_active_user.return_value = models.User(id=user_id)
 
-	with patch("customer_service.create_account.service.onboarding_drafts.save_draft", AsyncMock()) as mock_save:
+	with patch("customer_service.services.onboarding.onboarding_drafts.save_draft", AsyncMock()) as mock_save:
 		res = await store_personal_data(uow, user_id, payload)
 
 		assert res.first_name == "ИВАН"
@@ -90,10 +90,10 @@ async def test_persist_onboarding_data_success(uow):
 
 	load_draft_mock = AsyncMock(side_effect=lambda _uid, step: drafts.get(step))
 	with (
-		patch("customer_service.create_account.service.onboarding_drafts.load_draft", load_draft_mock),
-		patch("customer_service.create_account.service.is_email_verified", AsyncMock(return_value=True)),
-		patch("customer_service.create_account.service.onboarding_drafts.clear_all", AsyncMock()),
-		patch("customer_service.create_account.service.clear_email_verification", AsyncMock()),
+		patch("customer_service.services.onboarding.onboarding_drafts.load_draft", load_draft_mock),
+		patch("customer_service.services.onboarding.is_email_verified", AsyncMock(return_value=True)),
+		patch("customer_service.services.onboarding.onboarding_drafts.clear_all", AsyncMock()),
+		patch("customer_service.services.onboarding.clear_email_verification", AsyncMock()),
 	):
 		await persist_onboarding_data(uow, user_id)
 
@@ -109,6 +109,6 @@ async def test_persist_onboarding_data_success(uow):
 async def test_persist_onboarding_data_missing_steps(uow):
 	"""Ошибка финализации: не все шаги заполнены."""
 	user_id = uuid4()
-	with patch("customer_service.create_account.service.onboarding_drafts.load_draft", AsyncMock(return_value=None)):
+	with patch("customer_service.services.onboarding.onboarding_drafts.load_draft", AsyncMock(return_value=None)):
 		with pytest.raises(OnboardingError, match="Не все шаги онбординга завершены"):
 			await persist_onboarding_data(uow, user_id)

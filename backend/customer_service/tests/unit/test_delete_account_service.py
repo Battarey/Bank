@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from customer_service.delete_account.service import delete_account
-from customer_service.exceptions import AccountAlreadyDeleted, AccountNotFound
+from customer_service.services.account import delete_account
+from customer_service.core.exceptions import AccountAlreadyDeleted, AccountNotFound
 from shared import models
 
 

@@ -17,9 +17,9 @@ from shared.rabbitmq import disconnect as rmq_disconnect
 from shared.redis_onboarding import client as redis_onboarding_client
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .create_account.router import router as onboarding_router
-from .delete_account.router import router as delete_account_router
-from .update_user_data.router import router as update_user_data_router
+from .api.onboarding import router as onboarding_router
+from .api.account import router as delete_account_router
+from .api.update import router as update_user_data_router
 
 
 @asynccontextmanager

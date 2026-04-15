@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared import models
 from shared.database_core.base_repository import BaseRepository
 
-from .exceptions import UpdateDataConflict, UpdateDataNotFound
+from ..core.exceptions import UpdateDataConflict, UpdateDataNotFound
 
 
 class CustomerRepository(BaseRepository[models.User]):
