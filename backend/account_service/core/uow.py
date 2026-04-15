@@ -8,8 +8,8 @@ from typing import Any
 from shared.bootstrap import get_container
 from shared.database_core.uow import SqlAlchemyUnitOfWork
 
-from .queries.repository import AccountQueryRepository
-from .repository import AccountRepository
+from ..repositories.account import AccountRepository
+from ..repositories.queries import AccountQueryRepository
 
 
 class AccountUnitOfWork(SqlAlchemyUnitOfWork):

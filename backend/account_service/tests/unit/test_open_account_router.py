@@ -5,16 +5,16 @@ from uuid import uuid4
 
 import pytest
 
-from account_service.exceptions import (
+from account_service.core.exceptions import (
 	AccountNotFound,
 	AccountOwnerNotFound,
 )
-from account_service.open_account.router import get_account, list_accounts, open_account
+from account_service.api.accounts import get_account, list_accounts, open_account
 from shared import models, schemas
 
 
 @pytest.mark.asyncio
-@patch("account_service.open_account.router.service.open_account")
+@patch("account_service.api.accounts.service.open_account")
 async def test_open_account_success(mock_svc, uow):
 	user_id = uuid4()
 	payload = schemas.OpenAccountRequest(type="checking", currency="RUB")
@@ -39,7 +39,7 @@ async def test_open_account_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.open_account.router.service.open_account")
+@patch("account_service.api.accounts.service.open_account")
 async def test_open_account_error(mock_svc, uow):
 	user_id = uuid4()
 	payload = schemas.OpenAccountRequest(type="checking", currency="RUB")
@@ -51,7 +51,7 @@ async def test_open_account_error(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.open_account.router.service.list_accounts")
+@patch("account_service.api.accounts.service.list_accounts")
 async def test_list_accounts_success(mock_svc, uow):
 	user_id = uuid4()
 
@@ -75,7 +75,7 @@ async def test_list_accounts_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.open_account.router.service.get_account")
+@patch("account_service.api.accounts.service.get_account")
 async def test_get_account_success(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()
@@ -99,7 +99,7 @@ async def test_get_account_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.open_account.router.service.get_account")
+@patch("account_service.api.accounts.service.get_account")
 async def test_get_account_error(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()

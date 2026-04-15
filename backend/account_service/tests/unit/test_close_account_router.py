@@ -5,15 +5,15 @@ from uuid import uuid4
 
 import pytest
 
-from account_service.close_account.router import close_account
-from account_service.exceptions import (
+from account_service.api.accounts import close_account
+from account_service.core.exceptions import (
 	AccountNonZeroBalance,
 )
 from shared import models
 
 
 @pytest.mark.asyncio
-@patch("account_service.close_account.router.service.close_account")
+@patch("account_service.api.accounts.service.close_account")
 async def test_close_account_success(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()
@@ -38,7 +38,7 @@ async def test_close_account_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.close_account.router.service.close_account")
+@patch("account_service.api.accounts.service.close_account")
 async def test_close_account_error(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()

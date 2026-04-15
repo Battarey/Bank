@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared import models
 from shared.database_core.base_repository import BaseRepository
 
-from .exceptions import AccountNotFound, AccountOwnerNotFound
+from ..core.exceptions import AccountNotFound, AccountOwnerNotFound
 
 
 class AccountRepository(BaseRepository[models.BankAccount]):
@@ -57,3 +57,22 @@ class AccountRepository(BaseRepository[models.BankAccount]):
 		stmt = select(models.BankAccount.id).where(models.BankAccount.account_number == number)
 		result = await self.session.execute(stmt)
 		return result.first() is None
+
+	async def get_open_accounts(self, user_id: UUID) -> list[models.BankAccount]:
+		"""Возвращает все открытые счета пользователя."""
+		stmt = select(models.BankAccount).where(
+			models.BankAccount.client_id == user_id,
+			models.BankAccount.status == "open",
+		)
+		result = await self.session.execute(stmt)
+		return list(result.scalars().all())
+
+	async def get_system_frozen_accounts(self, user_id: UUID) -> list[models.BankAccount]:
+		"""Возвращает счета пользователя, замороженные системой."""
+		stmt = select(models.BankAccount).where(
+			models.BankAccount.client_id == user_id,
+			models.BankAccount.status == "frozen",
+			models.BankAccount.frozen_by == "system",
+		)
+		result = await self.session.execute(stmt)
+		return list(result.scalars().all())

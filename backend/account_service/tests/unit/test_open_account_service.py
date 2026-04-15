@@ -4,12 +4,12 @@ from uuid import uuid4
 
 import pytest
 
-from account_service.exceptions import (
+from account_service.core.exceptions import (
 	AccountLimitReached,
 	AccountNotFound,
 	AccountOwnerNotFound,
 )
-from account_service.open_account.service import (
+from account_service.services.account import (
 	MAX_ACCOUNTS_PER_TYPE_CURRENCY,
 	get_account,
 	list_accounts,

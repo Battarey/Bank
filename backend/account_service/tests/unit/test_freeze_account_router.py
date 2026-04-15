@@ -5,16 +5,16 @@ from uuid import uuid4
 
 import pytest
 
-from account_service.exceptions import (
+from account_service.api.accounts import resume_account, suspend_account
+from account_service.core.exceptions import (
 	AccountAlreadyFrozen,
 	UnfreezeNotAllowed,
 )
-from account_service.freeze_account.router import resume_account, suspend_account
 from shared import models
 
 
 @pytest.mark.asyncio
-@patch("account_service.freeze_account.router.service.freeze_account")
+@patch("account_service.api.accounts.service.freeze_account")
 async def test_freeze_success(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()
@@ -39,7 +39,7 @@ async def test_freeze_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.freeze_account.router.service.freeze_account")
+@patch("account_service.api.accounts.service.freeze_account")
 async def test_freeze_error(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()
@@ -51,7 +51,7 @@ async def test_freeze_error(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.freeze_account.router.service.unfreeze_account")
+@patch("account_service.api.accounts.service.unfreeze_account")
 async def test_unfreeze_success(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()
@@ -76,7 +76,7 @@ async def test_unfreeze_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("account_service.freeze_account.router.service.unfreeze_account")
+@patch("account_service.api.accounts.service.unfreeze_account")
 async def test_unfreeze_error(mock_svc, uow):
 	user_id = uuid4()
 	account_id = uuid4()

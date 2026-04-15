@@ -5,12 +5,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from account_service.close_account.service import close_account
-from account_service.exceptions import (
+from account_service.core.exceptions import (
 	AccountConflict,
 	AccountNonZeroBalance,
 	AccountNotOpen,
 )
+from account_service.services.account import close_account
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 

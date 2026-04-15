@@ -2,12 +2,12 @@ from uuid import uuid4
 
 import pytest
 
-from account_service.exceptions import (
+from account_service.core.exceptions import (
 	AccountAlreadyFrozen,
 	AccountNotFrozen,
 	UnfreezeNotAllowed,
 )
-from account_service.freeze_account.service import (
+from account_service.services.account import (
 	cascade_freeze,
 	cascade_unfreeze,
 	freeze_account,
