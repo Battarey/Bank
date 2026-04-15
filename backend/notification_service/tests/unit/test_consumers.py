@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from notification_service.consumers import _process_message, run_consumers
-from notification_service.schemas import NotificationTask
+from shared.schemas import NotificationTask
 
 
 @pytest.mark.asyncio
@@ -46,8 +46,8 @@ async def test_process_message_invalid_json(notification_service):
 
 
 @pytest.mark.asyncio
-@patch("notification_service.consumers.init_mongo", AsyncMock())
-@patch("notification_service.consumers.close_mongo", AsyncMock())
+@patch("notification_service.consumers.init_mongodb", AsyncMock())
+@patch("notification_service.consumers.close_mongodb", AsyncMock())
 @patch("notification_service.consumers.NotificationRepository")
 @patch("notification_service.consumers.aio_pika.connect_robust")
 @patch("notification_service.consumers.get_container")

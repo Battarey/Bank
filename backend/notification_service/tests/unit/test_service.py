@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from notification_service.schemas import NotificationPayload, NotificationTask
+from shared.schemas import NotificationPayload, NotificationTask
 
 
 @pytest.mark.asyncio

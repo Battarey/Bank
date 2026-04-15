@@ -18,15 +18,24 @@ from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
 from .check.router import router as check_router
-from .store import close_mongo, init_mongo
-
+from shared.mongodb_core import close_mongodb, init_mongodb, ping_mongodb
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
 	await rmq_connect()
-	await init_mongo()
+	
+	settings: SecuritySettings = container.settings
+	mongo_indexes = [
+		{
+			"collection": settings.SECURITY_COLLECTION,
+			"fields": [("created_at", 1)],
+			"expireAfterSeconds": settings.SECURITY_TTL_DAYS * 86_400,
+		}
+	]
+	await init_mongodb(settings.MONGO_URL, indexes=mongo_indexes)
+	
 	yield
-	await close_mongo()
+	await close_mongodb()
 	await rmq_disconnect()
 	await container.dispose()
 
@@ -59,9 +68,8 @@ setup_exception_handlers(app)
 async def health_check() -> dict:
 	"""Глубокая проверка работоспособности сервиса и его зависимостей."""
 	from shared.rabbitmq.client import ping_rabbitmq
-	from .store import ping_mongo
 
-	mongo_ok = await ping_mongo()
+	mongo_ok = await ping_mongodb()
 	rmq_ok = await ping_rabbitmq()
 
 	overall_status = "ok" if mongo_ok and rmq_ok else "error"

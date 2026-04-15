@@ -6,8 +6,8 @@ from uuid import UUID
 
 from shared.events.base import LogEvent
 
+from ..mongo_repository import SecurityEventRepository
 from ..rules import ALL_RULES, Violation
-from ..store import save_event
 from ..uow import SecurityUnitOfWork
 
 logger = logging.getLogger("security_service")
@@ -15,6 +15,7 @@ logger = logging.getLogger("security_service")
 
 async def check_transaction(
 	uow: SecurityUnitOfWork,
+	mongo_repo: SecurityEventRepository,
 	account_id: UUID,
 	tx_type: str,
 	amount: Decimal,
@@ -50,7 +51,7 @@ async def check_transaction(
 
 				# Фиксация события безопасности в MongoDB (внешнее хранилище)
 				try:
-					await save_event(
+					await mongo_repo.save_event(
 						account_id=str(account_id),
 						rule=violation.rule,
 						details={

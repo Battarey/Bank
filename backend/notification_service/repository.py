@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from .store.client import COLLECTION_NAME, get_mongo
+from shared.mongodb_core import get_mongodb
 
 logger = logging.getLogger("notification_service")
 
@@ -13,8 +13,8 @@ class NotificationRepository:
 	"""Репозиторий для работы с журналом уведомлений."""
 
 	def __init__(self):
-		self.db = get_mongo()
-		self.collection = self.db[COLLECTION_NAME]
+		self.db = get_mongodb()
+		self.collection = self.db["email_log"]
 
 	async def save(
 		self,

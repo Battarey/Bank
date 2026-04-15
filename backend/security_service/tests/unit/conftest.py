@@ -38,6 +38,35 @@ def mock_session():
 
 
 @pytest.fixture
+def mock_aio_pika():
+	"""Сложный мок для aio_pika."""
+	mock_connection = AsyncMock()
+	mock_channel = AsyncMock()
+	mock_queue = AsyncMock()
+
+	mock_connection.channel.return_value = mock_channel
+	mock_channel.declare_queue.return_value = mock_queue
+
+	# Поддержка async with connection
+	mock_connection.__aenter__.return_value = mock_connection
+	mock_connection.__aexit__.return_value = None
+
+	return {
+		"connection": mock_connection,
+		"channel": mock_channel,
+		"queue": mock_queue,
+	}
+
+
+@pytest.fixture
+def mock_mongo_repo():
+	"""Фикстура для мока SecurityEventRepository."""
+	repo = AsyncMock()
+	repo.save_event = AsyncMock()
+	return repo
+
+
+@pytest.fixture
 def mock_uow():
 	"""Фикстура-заглушка Unit of Work."""
 	uow = MagicMock()

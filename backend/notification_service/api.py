@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from shared.rabbitmq.client import ping_rabbitmq
-from .store.client import ping_mongo
+from shared.mongodb_core import ping_mongodb
+from shared.rabbitmq.client import ping_rabbitmq
 
 app = FastAPI(title="Notification Service Health API")
 
 @app.get("/health")
 async def health_check():
 	"""Глубокая проверка MongoDB (logs) и RabbitMQ."""
-	mongo_ok = await ping_mongo()
+	mongo_ok = await ping_mongodb()
 	rmq_ok = await ping_rabbitmq()
 
 	return {

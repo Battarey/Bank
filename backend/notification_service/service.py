@@ -3,7 +3,7 @@
 import logging
 
 from .repository import NotificationRepository
-from .schemas import NotificationTask
+from shared.schemas import NotificationTask
 from .smtp import send_email
 from .templates import get_template
 

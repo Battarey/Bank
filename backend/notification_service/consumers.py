@@ -10,9 +10,9 @@ import aio_pika
 from shared.bootstrap import get_container
 
 from .repository import NotificationRepository
-from .schemas import NotificationTask
+from shared.schemas import NotificationTask
 from .service import NotificationService
-from .store import close_mongo, init_mongo
+from shared.mongodb_core import close_mongodb, init_mongodb
 
 logger = logging.getLogger("notification_service.consumers")
 
@@ -52,7 +52,17 @@ async def run_consumers() -> None:
 	"""
 	# 1. Инициализация слоев
 	settings = get_container().settings
-	await init_mongo(settings.MONGO_URL)
+	
+	# Конфигурация индексов для MongoDB
+	mongo_indexes = [
+		{
+			"collection": "email_log",
+			"fields": [("created_at", 1)],
+			"expireAfterSeconds": 90 * 86400,  # 90 дней
+		}
+	]
+	
+	await init_mongodb(settings.MONGO_URL, indexes=mongo_indexes)
 	repository = NotificationRepository()
 	service = NotificationService(repository)
 
@@ -102,5 +112,5 @@ async def run_consumers() -> None:
 		await stop_event.wait()
 
 	# 3. Очистка ресурсов
-	await close_mongo()
+	await close_mongodb()
 	logger.info("Потребители остановлены.")

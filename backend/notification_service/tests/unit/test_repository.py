@@ -6,11 +6,11 @@ from notification_service.repository import NotificationRepository
 
 
 @pytest.fixture
-@patch("notification_service.repository.get_mongo")
-def repo(mock_get_mongo):
+@patch("notification_service.repository.get_mongodb")
+def repo(mock_get_mongodb):
 	"""Фикстура репозитория с моком базы данных."""
 	mock_db = MagicMock()
-	mock_get_mongo.return_value = mock_db
+	mock_get_mongodb.return_value = mock_db
 	mock_coll = AsyncMock()
 	mock_db.__getitem__.return_value = mock_coll
 
