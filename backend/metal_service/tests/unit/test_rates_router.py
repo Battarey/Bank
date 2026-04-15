@@ -5,12 +5,12 @@ from unittest.mock import patch
 import pytest
 from fastapi import HTTPException
 
-from metal_service.exceptions import RateUnavailable
-from metal_service.rates.router import get_metal_rates
+from metal_service.core.exceptions import RateUnavailable
+from metal_service.api.rates import get_metal_rates
 
 
 @pytest.mark.asyncio
-@patch("metal_service.rates.router.service.get_all_prices")
+@patch("metal_service.api.rates.service.get_all_prices")
 async def test_get_metal_rates_success(mock_svc):
 	"""Роутер: успешное получение всех котировок металлов."""
 	prices = {
@@ -32,7 +32,7 @@ async def test_get_metal_rates_success(mock_svc):
 
 
 @pytest.mark.asyncio
-@patch("metal_service.rates.router.service.get_all_prices")
+@patch("metal_service.api.rates.service.get_all_prices")
 async def test_get_metal_rates_empty(mock_svc):
 	"""Пустой ответ (нет металлов) — пустой список."""
 	mock_svc.return_value = ({}, datetime.now(UTC))
@@ -42,7 +42,7 @@ async def test_get_metal_rates_empty(mock_svc):
 
 
 @pytest.mark.asyncio
-@patch("metal_service.rates.router.service.get_all_prices")
+@patch("metal_service.api.rates.service.get_all_prices")
 async def test_get_metal_rates_unavailable(mock_svc):
 	"""502 Bad Gateway — при ошибке получения цен."""
 	mock_svc.side_effect = RateUnavailable("Внешний API недоступен")

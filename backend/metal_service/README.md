@@ -2,13 +2,19 @@
 
 Сервис для получения актуальных рыночных котировок драгоценных металлов (золото, серебро, платина, палладий).
 
-## Файловая архитектура
-```
+## Архитектура
+Микросервис построен по принципам **Layered Architecture** и строго следует 4-х слойной структуре (api, services, repositories, core) с добавлением слоя `clients` для внешних интеграций.
+
+### Файловая структура
+```text
 metal_service/
-├── rates/            # Модуль котировок (Router + Service)
-├── exceptions.py     # Специфичные ошибки (RateUnavailable)
-├── metal_client.py   # Внутренний клиент для Metals.Dev API
-├── main.py           # Точка входа FastAPI
+├── api/                # Слой Routers: получение актуальных котировок
+├── services/           # Слой Services: бизнес-логика и агрегация цен
+├── clients/            # Слой Clients: интеграция с Metals.Dev API
+├── repositories/       # Слой Repository: (зарезервирован, не используется)
+├── core/               # Инфраструктурный слой: config, exceptions
+├── main.py             # Точка входа в приложение
+├── tests/              # Юнит и интеграционные тесты
 └── README.md
 ```
 

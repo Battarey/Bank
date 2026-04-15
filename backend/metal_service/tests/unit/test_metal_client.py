@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from metal_service import metal_client
+from metal_service.clients import metal_client
 
 # Фикстура сброса в conftest.py работает превосходно
 
@@ -13,7 +13,7 @@ from metal_service import metal_client
 
 
 @pytest.mark.asyncio
-@patch("metal_service.metal_client.httpx.AsyncClient")
+@patch("metal_service.clients.metal_client.httpx.AsyncClient")
 async def test_connect(mock_cls):
 	"""Проверка создания клиента httpx."""
 	mock_instance = MagicMock()
@@ -24,7 +24,7 @@ async def test_connect(mock_cls):
 
 
 @pytest.mark.asyncio
-@patch("metal_service.metal_client.httpx.AsyncClient")
+@patch("metal_service.clients.metal_client.httpx.AsyncClient")
 async def test_disconnect(mock_cls):
 	"""Проверка закрытия клиента."""
 	mock_instance = AsyncMock()
@@ -122,7 +122,7 @@ async def test_fetch_prices_bad_timestamp():
 
 
 @pytest.mark.asyncio
-@patch("metal_service.metal_client._fetch_prices")
+@patch("metal_service.clients.metal_client._fetch_prices")
 async def test_get_metal_prices_use_cache(mock_fetch):
 	"""Проверка, что кэш работает и не делает лишних запросов."""
 	prices = {"XAU": Decimal("100.00")}
@@ -138,8 +138,8 @@ async def test_get_metal_prices_use_cache(mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("metal_service.metal_client.time")
-@patch("metal_service.metal_client._fetch_prices")
+@patch("metal_service.clients.metal_client.time")
+@patch("metal_service.clients.metal_client._fetch_prices")
 async def test_get_metal_prices_cache_expired(mock_fetch, mock_time):
 	"""Проверка сброса кэша по TTL."""
 	prices = {"XAU": Decimal("100.00")}

@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI
 
 from shared.bootstrap import bootstrap, get_container
 
-from .config import MetalSettings
+from .core.config import MetalSettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
 bootstrap(MetalSettings)
@@ -15,8 +15,8 @@ container = get_container()
 from shared.internal_auth import verify_internal_key
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from . import metal_client
-from .rates.router import router as rates_router
+from .clients import metal_client
+from .api.rates import router as rates_router
 
 
 @asynccontextmanager

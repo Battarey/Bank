@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from metal_service import metal_client
+from metal_service.clients import metal_client
 
 # Устанавливаем переменные окружения
 os.environ.setdefault("METALS_DEV_API_KEY", "test-key")
@@ -23,7 +23,7 @@ def cleanup_and_mock_bootstrap():
 	mock_container = MagicMock()
 	mock_container.settings = mock_settings
 
-	with patch("metal_service.metal_client.get_container", return_value=mock_container):
+	with patch("metal_service.clients.metal_client.get_container", return_value=mock_container):
 		yield mock_container
 
 	metal_client._client = None

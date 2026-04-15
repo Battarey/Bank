@@ -4,12 +4,12 @@ from unittest.mock import patch
 
 import pytest
 
-from metal_service.exceptions import RateUnavailable
-from metal_service.rates.service import get_all_prices
+from metal_service.core.exceptions import RateUnavailable
+from metal_service.services.rates import get_all_prices
 
 
 @pytest.mark.asyncio
-@patch("metal_service.rates.service.metal_client.get_metal_prices")
+@patch("metal_service.services.rates.metal_client.get_metal_prices")
 async def test_get_all_prices_success(mock_client):
 	"""Успешное получение цен через клиента."""
 	prices = {"XAU": Decimal("6500.00"), "XAG": Decimal("85.50")}
@@ -24,7 +24,7 @@ async def test_get_all_prices_success(mock_client):
 
 
 @pytest.mark.asyncio
-@patch("metal_service.rates.service.metal_client.get_metal_prices")
+@patch("metal_service.services.rates.metal_client.get_metal_prices")
 async def test_get_all_prices_error(mock_client):
 	"""RateUnavailable — если клиент бросил ошибку."""
 	mock_client.side_effect = Exception("Metals.Dev error")

@@ -12,7 +12,7 @@ import httpx
 
 from shared.bootstrap import get_container
 
-from .config import MetalSettings
+from ..core.config import MetalSettings
 
 logger = logging.getLogger("metal_service.client")
 

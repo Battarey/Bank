@@ -3,8 +3,8 @@
 from datetime import datetime
 from decimal import Decimal
 
-from .. import metal_client
-from ..exceptions import RateUnavailable
+from ..clients import metal_client
+from ..core.exceptions import RateUnavailable
 
 
 async def get_all_prices(base_currency: str) -> tuple[dict[str, Decimal], datetime]:
