@@ -10,12 +10,12 @@ from shared.redis_sessions import rate_limit
 from shared.redis_sessions import tokens as session_tokens
 from shared.utils.security import get_blind_index
 
-from ..exceptions import (
+from ..core.exceptions import (
 	AuthCooldown,
 	AuthForbidden,
 	AuthNotFound,
 )
-from ..uow import AuthUnitOfWork
+from ..core.uow import AuthUnitOfWork
 
 
 async def login_pin(

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, status
 
 from shared.schemas import MessageResponse, RequestUnlockRequest, UnlockRequest
 
-from ..uow import AuthUnitOfWork, get_uow
-from . import service
+from ..core.uow import AuthUnitOfWork, get_uow
+from ..services import unlock as service
 
 router = APIRouter(tags=["auth-unlock"])
 

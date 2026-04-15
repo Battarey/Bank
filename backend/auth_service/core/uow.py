@@ -6,7 +6,7 @@ from typing import Any
 from shared.bootstrap import get_container
 from shared.database_core.uow import SqlAlchemyUnitOfWork
 
-from .repository import AuthRepository
+from ..repositories.auth import AuthRepository
 
 
 class AuthUnitOfWork(SqlAlchemyUnitOfWork):

@@ -3,11 +3,11 @@ from uuid import uuid4
 
 import pytest
 
-from auth_service.exceptions import (
+from auth_service.core.exceptions import (
 	AuthAlreadyBlocked,
 	AuthNotFound,
 )
-from auth_service.session.service import (
+from auth_service.services.session import (
 	logout,
 	logout_all,
 	self_block,
@@ -18,7 +18,7 @@ from shared import models
 
 
 @pytest.mark.asyncio
-@patch("auth_service.session.service.session_tokens")
+@patch("auth_service.services.session.session_tokens")
 async def test_logout_success(mock_tokens):
 	"""Успешное удаление токена сессии."""
 	mock_tokens.delete_token = AsyncMock()
@@ -28,7 +28,7 @@ async def test_logout_success(mock_tokens):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.session.service.session_tokens")
+@patch("auth_service.services.session.session_tokens")
 async def test_logout_all_success(mock_tokens):
 	"""Успешный отзыв всех сессий пользователя."""
 	mock_tokens.revoke_all = AsyncMock()
@@ -69,7 +69,7 @@ async def test_self_block_already_blocked(uow, user_contact_tuple):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.session.service.session_tokens")
+@patch("auth_service.services.session.session_tokens")
 async def test_self_block_success(mock_tokens, uow, user_contact_tuple):
 	"""Успешная самоблокировка с заморозкой счетов и событиями."""
 	mock_tokens.revoke_all = AsyncMock()

@@ -3,12 +3,12 @@ from uuid import uuid4
 
 import pytest
 
-from auth_service.exceptions import (
+from auth_service.core.exceptions import (
 	AuthInvalidCode,
 	AuthNotBlocked,
 	AuthNotFound,
 )
-from auth_service.unlock.service import (
+from auth_service.services.unlock import (
 	confirm_unlock,
 	request_unlock,
 )
@@ -46,7 +46,7 @@ async def test_request_unlock_not_blocked(uow, user_contact_tuple):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.unlock.service.unlock_codes")
+@patch("auth_service.services.unlock.unlock_codes")
 async def test_request_unlock_success(mock_codes, uow, user_contact_tuple):
 	"""Успешный запрос когда через роутер с использованием uow."""
 	mock_codes.save_unlock_code = AsyncMock()
@@ -62,7 +62,7 @@ async def test_request_unlock_success(mock_codes, uow, user_contact_tuple):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.unlock.service.unlock_codes")
+@patch("auth_service.services.unlock.unlock_codes")
 async def test_confirm_unlock_invalid_code(mock_codes, uow, user_contact_tuple):
 	"""Ошибка при вводе неверного кода разблокировки."""
 	user, contact = user_contact_tuple
@@ -74,8 +74,8 @@ async def test_confirm_unlock_invalid_code(mock_codes, uow, user_contact_tuple):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.unlock.service.rate_limit")
-@patch("auth_service.unlock.service.unlock_codes")
+@patch("auth_service.services.unlock.rate_limit")
+@patch("auth_service.services.unlock.unlock_codes")
 async def test_confirm_unlock_success(mock_codes, mock_rate_limit, uow, user_contact_tuple):
 	"""Успешное подтверждение разблокировки с разморозкой счетов."""
 	user, contact = user_contact_tuple

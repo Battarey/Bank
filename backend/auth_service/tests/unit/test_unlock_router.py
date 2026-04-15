@@ -2,16 +2,16 @@ from unittest.mock import patch
 
 import pytest
 
-from auth_service.exceptions import (
+from auth_service.core.exceptions import (
 	AuthInvalidCode,
 	AuthNotBlocked,
 )
-from auth_service.unlock.router import confirm_unlock, request_unlock
+from auth_service.api.unlock import confirm_unlock, request_unlock
 from shared.schemas import RequestUnlockRequest, UnlockRequest
 
 
 @pytest.mark.asyncio
-@patch("auth_service.unlock.router.service.request_unlock")
+@patch("auth_service.api.unlock.service.request_unlock")
 async def test_request_unlock_success(mock_svc, uow):
 	"""Успешный запрос когда через роутер с использованием uow."""
 	body = RequestUnlockRequest(email="a@a.com")
@@ -22,7 +22,7 @@ async def test_request_unlock_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.unlock.router.service.request_unlock")
+@patch("auth_service.api.unlock.service.request_unlock")
 async def test_request_unlock_error(mock_svc, uow):
 	"""Ошибка запроса разблокировки через роутер."""
 	mock_svc.side_effect = AuthNotBlocked("Not blocked")
@@ -34,7 +34,7 @@ async def test_request_unlock_error(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.unlock.router.service.confirm_unlock")
+@patch("auth_service.api.unlock.service.confirm_unlock")
 async def test_confirm_unlock_success(mock_svc, uow):
 	"""Успешная разблокировка через роутер."""
 	body = UnlockRequest(email="a@a.com", code="123456")
@@ -45,7 +45,7 @@ async def test_confirm_unlock_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.unlock.router.service.confirm_unlock")
+@patch("auth_service.api.unlock.service.confirm_unlock")
 async def test_confirm_unlock_error(mock_svc, uow):
 	"""Ошибка подтверждения разблокировки через роутер."""
 	mock_svc.side_effect = AuthInvalidCode("Invalid")

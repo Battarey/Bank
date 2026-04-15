@@ -6,10 +6,10 @@ from uuid import UUID
 from shared.events.base import LogEvent, NotificationEvent
 from shared.redis_sessions import tokens as session_tokens
 
-from ..exceptions import (
+from ..core.exceptions import (
 	AuthAlreadyBlocked,
 )
-from ..uow import AuthUnitOfWork
+from ..core.uow import AuthUnitOfWork
 
 
 async def logout(token: str) -> None:

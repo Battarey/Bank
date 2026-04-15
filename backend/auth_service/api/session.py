@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Header, status
 from shared.internal_auth import require_user_id
 from shared.schemas import MessageResponse
 
-from ..uow import AuthUnitOfWork, get_uow
-from . import service
+from ..core.uow import AuthUnitOfWork, get_uow
+from ..services import session as service
 
 router = APIRouter(tags=["auth-sessions"])
 

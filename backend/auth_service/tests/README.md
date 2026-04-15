@@ -14,3 +14,12 @@
 ```powershell
 docker compose run --rm -e APP_ENV=test auth_service sh -c "pip install --no-cache-dir -r shared/requirements-test.txt && pytest auth_service/tests/unit -v"
 ```
+
+refactor: приведение auth_service к 4-х слойной архитектуре
+
+- Создана структура папок: api, core, repositories, services
+- Перенесены роутеры в api/ и сервисы в services/
+- Репозиторий перенесен в repositories/auth.py
+- UoW и исключения перенесены в core/
+- Обновлены импорты во всем сервисе и тестах
+- Добавлены README.md для каждого архитектурного слоя

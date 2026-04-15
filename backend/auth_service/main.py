@@ -17,9 +17,9 @@ from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.redis_sessions import client as redis_client
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .login.router import router as login_router
-from .session.router import router as session_router
-from .unlock.router import router as unlock_router
+from .api.login import router as login_router
+from .api.session import router as session_router
+from .api.unlock import router as unlock_router
 
 
 @asynccontextmanager

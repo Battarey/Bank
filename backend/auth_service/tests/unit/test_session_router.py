@@ -3,14 +3,14 @@ from uuid import uuid4
 
 import pytest
 
-from auth_service.exceptions import (
+from auth_service.core.exceptions import (
 	AuthAlreadyBlocked,
 )
-from auth_service.session.router import logout, logout_all, self_block
+from auth_service.api.session import logout, logout_all, self_block
 
 
 @pytest.mark.asyncio
-@patch("auth_service.session.router.service.logout")
+@patch("auth_service.api.session.service.logout")
 async def test_logout_success(mock_svc):
 	"""Успешный выход через роутер с передачей токена из заголовка."""
 	res = await logout(x_session_token="tok")
@@ -19,7 +19,7 @@ async def test_logout_success(mock_svc):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.session.router.service.logout_all")
+@patch("auth_service.api.session.service.logout_all")
 async def test_logout_all_success(mock_svc):
 	"""Успешный выход из всех устройств пользователя."""
 	user_id = uuid4()
@@ -29,7 +29,7 @@ async def test_logout_all_success(mock_svc):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.session.router.service.self_block")
+@patch("auth_service.api.session.service.self_block")
 async def test_self_block_success(mock_svc, uow):
 	"""Успешная самоблокировка с использованием uow."""
 	user_id = uuid4()
@@ -40,7 +40,7 @@ async def test_self_block_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.session.router.service.self_block")
+@patch("auth_service.api.session.service.self_block")
 async def test_self_block_error(mock_svc, uow):
 	"""Ошибка самоблокировки (например, уже заблокирован)."""
 	user_id = uuid4()

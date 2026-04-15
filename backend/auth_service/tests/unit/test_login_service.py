@@ -3,12 +3,12 @@ from uuid import uuid4
 
 import pytest
 
-from auth_service.exceptions import (
+from auth_service.core.exceptions import (
 	AuthCooldown,
 	AuthForbidden,
 	AuthNotFound,
 )
-from auth_service.login.service import login_pin, set_pin
+from auth_service.services.login import login_pin, set_pin
 from shared import models
 
 # --- Тесты login_pin ---
@@ -27,7 +27,7 @@ def user_data():
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.service.rate_limit")
+@patch("auth_service.services.login.rate_limit")
 async def test_login_pin_cooldown(mock_rate_limit, uow):
 	"""Проверка ошибки, если превышен лимит попыток (cooldown)."""
 	mock_rate_limit.check = AsyncMock(return_value=(True, 60, 5))
@@ -39,8 +39,8 @@ async def test_login_pin_cooldown(mock_rate_limit, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.service.rate_limit")
-@patch("auth_service.login.service.get_blind_index")
+@patch("auth_service.services.login.rate_limit")
+@patch("auth_service.services.login.get_blind_index")
 async def test_login_pin_user_not_found(mock_blind, mock_rate_limit, uow):  # noqa: ARG001
 	"""Проверка ошибки, если пользователь не найден."""
 	mock_rate_limit.check = AsyncMock(return_value=(False, 0, 0))
@@ -51,8 +51,8 @@ async def test_login_pin_user_not_found(mock_blind, mock_rate_limit, uow):  # no
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.service.rate_limit")
-@patch("auth_service.login.service.get_blind_index")
+@patch("auth_service.services.login.rate_limit")
+@patch("auth_service.services.login.get_blind_index")
 async def test_login_pin_blocked(mock_blind, mock_rate_limit, uow, user_data):  # noqa: ARG001
 	"""Проверка ошибки, если аккаунт заблокирован."""
 	user, contact = user_data
@@ -65,8 +65,8 @@ async def test_login_pin_blocked(mock_blind, mock_rate_limit, uow, user_data):  
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.service.rate_limit")
-@patch("auth_service.login.service.get_blind_index")
+@patch("auth_service.services.login.rate_limit")
+@patch("auth_service.services.login.get_blind_index")
 async def test_login_pin_wrong_pin(mock_blind, mock_rate_limit, uow, user_data):  # noqa: ARG001
 	"""Проверка ошибки при неверном PIN-коде и регистрации события."""
 	user, contact = user_data
@@ -84,10 +84,10 @@ async def test_login_pin_wrong_pin(mock_blind, mock_rate_limit, uow, user_data):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.service.session_tokens")
-@patch("auth_service.login.service.rate_limit")
-@patch("auth_service.login.service.get_blind_index")
-@patch("auth_service.login.service.bcrypt")
+@patch("auth_service.services.login.session_tokens")
+@patch("auth_service.services.login.rate_limit")
+@patch("auth_service.services.login.get_blind_index")
+@patch("auth_service.services.login.bcrypt")
 async def test_login_pin_success(mock_bcrypt, mock_blind, mock_rate_limit, mock_tokens, uow, user_data):  # noqa: ARG001
 	"""Успешный вход с генерацией токена и событием."""
 	user, contact = user_data

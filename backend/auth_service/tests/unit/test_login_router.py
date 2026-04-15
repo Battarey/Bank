@@ -3,16 +3,16 @@ from uuid import uuid4
 
 import pytest
 
-from auth_service.exceptions import (
+from auth_service.core.exceptions import (
 	AuthForbidden,
 	AuthNotFound,
 )
-from auth_service.login.router import login, set_pin
+from auth_service.api.login import login, set_pin
 from shared.schemas import LoginPinRequest, SetPinRequest
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.router.service.login_pin")
+@patch("auth_service.api.login.service.login_pin")
 async def test_login_success(mock_svc, uow):
 	"""Успешный вход через роутер с возвратом токена."""
 	user_id = uuid4()
@@ -28,7 +28,7 @@ async def test_login_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.router.service.login_pin")
+@patch("auth_service.api.login.service.login_pin")
 async def test_login_error(mock_svc, uow):
 	"""Ошибка входа через роутер (например, неверный PIN)."""
 	mock_svc.side_effect = AuthForbidden("wrong pin")
@@ -40,7 +40,7 @@ async def test_login_error(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.router.service.set_pin")
+@patch("auth_service.api.login.service.set_pin")
 async def test_set_pin_success(mock_svc, uow):
 	"""Успешная установка PIN через роутер."""
 	user_id = uuid4()
@@ -53,7 +53,7 @@ async def test_set_pin_success(mock_svc, uow):
 
 
 @pytest.mark.asyncio
-@patch("auth_service.login.router.service.set_pin")
+@patch("auth_service.api.login.service.set_pin")
 async def test_set_pin_error(mock_svc, uow):
 	"""Ошибка установки PIN (например, пользователь не найден)."""
 	user_id = uuid4()
