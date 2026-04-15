@@ -1,4 +1,9 @@
+import asyncio
+import logging
+
 import uvicorn
+
+from shared.bootstrap import bootstrap, get_container
 from .api import app
 from .config import LogSettings
 from .consumers import run_consumers
