@@ -26,6 +26,7 @@ from .metal import (
 	MetalRateResponse,
 	MetalRatesListResponse,
 )
+from .notification import NotificationPayload, NotificationTask
 from .onboarding import (
 	FinalizeInternalResponse,
 	FinalizeResponse,
@@ -74,6 +75,8 @@ __all__ = [
 	"MessageResponse",
 	"MetalRateResponse",
 	"MetalRatesListResponse",
+	"NotificationPayload",
+	"NotificationTask",
 	"OpenAccountRequest",
 	"PassportPayload",
 	"PassportResponse",
