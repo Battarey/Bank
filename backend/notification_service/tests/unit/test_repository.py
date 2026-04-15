@@ -2,11 +2,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from notification_service.repository import NotificationRepository
+from notification_service.repositories.notification import NotificationRepository
 
 
 @pytest.fixture
-@patch("notification_service.repository.get_mongodb")
+@patch("notification_service.repositories.notification.get_mongodb")
 def repo(mock_get_mongodb):
 	"""Фикстура репозитория с моком базы данных."""
 	mock_db = MagicMock()

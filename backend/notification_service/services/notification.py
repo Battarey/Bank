@@ -2,9 +2,9 @@
 
 import logging
 
-from .repository import NotificationRepository
+from ..repositories.notification import NotificationRepository
 from shared.schemas import NotificationTask
-from .smtp import send_email
+from ..clients.smtp import send_email
 from .templates import get_template
 
 logger = logging.getLogger("notification_service")

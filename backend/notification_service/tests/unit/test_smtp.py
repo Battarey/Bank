@@ -2,11 +2,11 @@ from unittest.mock import patch
 
 import pytest
 
-from notification_service.smtp.client import send_email
+from notification_service.clients.smtp.client import send_email
 
 
 @pytest.mark.asyncio
-@patch("notification_service.smtp.client.aiosmtplib.send")
+@patch("notification_service.clients.smtp.client.aiosmtplib.send")
 async def test_send_email_success(mock_send, mock_bootstrap):  # noqa: ARG001
 	"""Успешная отправка email через aiosmtplib."""
 	mock_send.return_value = None

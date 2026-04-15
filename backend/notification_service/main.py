@@ -5,9 +5,9 @@ import uvicorn
 
 from shared.bootstrap import bootstrap, get_container
 
-from .api import app
-from .config import NotificationSettings
-from .consumers import run_consumers
+from .api.router import app
+from .core.config import NotificationSettings
+from .workers.consumers import run_consumers
 
 logging.basicConfig(
 	level=logging.INFO,

@@ -9,9 +9,9 @@ import aio_pika
 
 from shared.bootstrap import get_container
 
-from .repository import NotificationRepository
+from ..repositories.notification import NotificationRepository
 from shared.schemas import NotificationTask
-from .service import NotificationService
+from ..services.notification import NotificationService
 from shared.mongodb_core import close_mongodb, init_mongodb
 
 logger = logging.getLogger("notification_service.consumers")

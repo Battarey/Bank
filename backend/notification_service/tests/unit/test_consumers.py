@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from notification_service.consumers import _process_message, run_consumers
+from notification_service.workers.consumers import _process_message, run_consumers
 from shared.schemas import NotificationTask
 
 
@@ -40,17 +40,17 @@ async def test_process_message_invalid_json(notification_service):
 	process_ctx.__aexit__ = AsyncMock(return_value=None)
 	message.process.return_value = process_ctx
 
-	with patch("notification_service.consumers.logger") as mock_logger:
+	with patch("notification_service.workers.consumers.logger") as mock_logger:
 		await _process_message(message, notification_service)
 		mock_logger.error.assert_called_with("Невалидный JSON: %s", message.body[:200])
 
 
 @pytest.mark.asyncio
-@patch("notification_service.consumers.init_mongodb", AsyncMock())
-@patch("notification_service.consumers.close_mongodb", AsyncMock())
-@patch("notification_service.consumers.NotificationRepository")
-@patch("notification_service.consumers.aio_pika.connect_robust")
-@patch("notification_service.consumers.get_container")
+@patch("notification_service.workers.consumers.init_mongodb", AsyncMock())
+@patch("notification_service.workers.consumers.close_mongodb", AsyncMock())
+@patch("notification_service.workers.consumers.NotificationRepository")
+@patch("notification_service.workers.consumers.aio_pika.connect_robust")
+@patch("notification_service.workers.consumers.get_container")
 @patch("asyncio.Event")
 async def test_run_consumers_success(mock_event_cls, mock_container, mock_connect, mock_repo_cls, mock_aio_pika):  # noqa: ARG001
 	"""Тест запуска потребителей (run_consumers)."""
@@ -71,7 +71,7 @@ async def test_run_consumers_success(mock_event_cls, mock_container, mock_connec
 	mock_event.wait = AsyncMock()
 	mock_event_cls.return_value = mock_event
 
-	with patch("notification_service.consumers.asyncio.create_task", MagicMock()):
+	with patch("notification_service.workers.consumers.asyncio.create_task", MagicMock()):
 		await run_consumers()
 
 	mock_connect.assert_awaited_once()

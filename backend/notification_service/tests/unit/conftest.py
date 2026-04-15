@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from notification_service.service import NotificationService
+from notification_service.services.notification import NotificationService
 
 # Устанавливаем переменные окружения
 os.environ.setdefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
@@ -32,8 +32,8 @@ def mock_bootstrap():
 	mock_container.settings = mock_settings
 
 	with (
-		patch("notification_service.smtp.client.get_container", return_value=mock_container),
-		patch("notification_service.consumers.get_container", return_value=mock_container),
+		patch("notification_service.clients.smtp.client.get_container", return_value=mock_container),
+		patch("notification_service.workers.consumers.get_container", return_value=mock_container),
 	):
 		yield mock_container
 

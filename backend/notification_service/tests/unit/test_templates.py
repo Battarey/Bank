@@ -1,6 +1,6 @@
 import pytest
 
-from notification_service.templates.templates import (
+from notification_service.services.templates.templates import (
 	ACCOUNT_CLOSED,
 	ACCOUNT_DELETED,
 	ACCOUNT_FROZEN,

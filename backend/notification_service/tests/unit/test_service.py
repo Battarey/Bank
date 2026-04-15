@@ -6,8 +6,8 @@ from shared.schemas import NotificationPayload, NotificationTask
 
 
 @pytest.mark.asyncio
-@patch("notification_service.service.send_email", AsyncMock())
-@patch("notification_service.service.get_template")
+@patch("notification_service.services.notification.send_email", AsyncMock())
+@patch("notification_service.services.notification.get_template")
 async def test_process_notification_success(mock_get_template, notification_service, mock_repo):
 	"""Успешная обработка уведомления — рендеринг, отправка и сохранение."""
 	task = NotificationTask(
@@ -36,8 +36,8 @@ async def test_process_notification_success(mock_get_template, notification_serv
 
 
 @pytest.mark.asyncio
-@patch("notification_service.service.send_email")
-@patch("notification_service.service.get_template")
+@patch("notification_service.services.notification.send_email")
+@patch("notification_service.services.notification.get_template")
 async def test_process_notification_error(mock_get_template, mock_send_email, notification_service, mock_repo):
 	"""Ошибка при обработке (например, SMTP) — уведомление помечается как проваленное."""
 	task = NotificationTask(
