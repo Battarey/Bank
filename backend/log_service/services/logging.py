@@ -3,8 +3,8 @@
 import asyncio
 import logging
 
-from .repository import ClickHouseRepository, PostgresHistoryRepository
-from .schemas import LogEvent
+from ..repositories.log import ClickHouseRepository, PostgresHistoryRepository
+from ..core.schemas import LogEvent
 
 logger = logging.getLogger("log_service")
 

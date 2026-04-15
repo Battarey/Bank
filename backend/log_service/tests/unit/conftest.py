@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from log_service.service import LogService
+from log_service.services.logging import LogService
 
 # Устанавливаем переменные окружения
 os.environ.setdefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")

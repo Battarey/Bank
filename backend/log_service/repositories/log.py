@@ -11,7 +11,7 @@ from shared.history_core import (
 	UserAction,
 )
 
-from .schemas import LogPayload
+from ..core.schemas import LogPayload
 
 logger = logging.getLogger("log_service")
 

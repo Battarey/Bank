@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from log_service.consumers import _background_cleanup, _process_message, run_consumers
-from log_service.schemas import LogEvent
+from log_service.workers.consumers import _background_cleanup, _process_message, run_consumers
+from log_service.core.schemas import LogEvent
 
 
 @pytest.mark.asyncio
@@ -41,7 +41,7 @@ async def test_process_message_invalid_json(log_service):
 	process_ctx.__aexit__ = AsyncMock(return_value=None)
 	message.process.return_value = process_ctx
 
-	with patch("log_service.consumers.logger") as mock_logger:
+	with patch("log_service.workers.consumers.logger") as mock_logger:
 		await _process_message(message, log_service)
 		mock_logger.error.assert_called_with("Невалидный JSON: %s", message.body[:200])
 
@@ -59,11 +59,11 @@ async def test_background_cleanup(mock_postgres_repo):
 
 
 @pytest.mark.asyncio
-@patch("log_service.consumers._init_history_db", AsyncMock())
-@patch("log_service.consumers.init_clickhouse", AsyncMock())
-@patch("log_service.consumers.close_clickhouse", AsyncMock())
-@patch("log_service.consumers.aio_pika.connect_robust")
-@patch("log_service.consumers.get_container")
+@patch("log_service.workers.consumers._init_history_db", AsyncMock())
+@patch("log_service.workers.consumers.init_clickhouse", AsyncMock())
+@patch("log_service.workers.consumers.close_clickhouse", AsyncMock())
+@patch("log_service.workers.consumers.aio_pika.connect_robust")
+@patch("log_service.workers.consumers.get_container")
 @patch("asyncio.Event")
 async def test_run_consumers_success(mock_event_cls, mock_container, mock_connect, mock_aio_pika):
 	"""Тест запуска потребителей (run_consumers)."""
@@ -87,8 +87,8 @@ async def test_run_consumers_success(mock_event_cls, mock_container, mock_connec
 		pass
 
 	with (
-		patch("log_service.consumers.history_engine", AsyncMock()),
-		patch("log_service.consumers._background_cleanup", side_effect=empty_coro),
+		patch("log_service.workers.consumers.history_engine", AsyncMock()),
+		patch("log_service.workers.consumers._background_cleanup", side_effect=empty_coro),
 	):
 		await run_consumers()
 

@@ -4,9 +4,9 @@ import logging
 import uvicorn
 
 from shared.bootstrap import bootstrap, get_container
-from .api import app
-from .config import LogSettings
-from .consumers import run_consumers
+from .api.router import app
+from .core.config import LogSettings
+from .workers.consumers import run_consumers
 
 logging.basicConfig(
 	level=logging.INFO,

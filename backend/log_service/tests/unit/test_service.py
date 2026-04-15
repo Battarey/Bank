@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from log_service.schemas import LogEvent, LogPayload
+from log_service.core.schemas import LogEvent, LogPayload
 
 
 @pytest.mark.asyncio

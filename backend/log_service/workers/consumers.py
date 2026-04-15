@@ -14,9 +14,9 @@ from shared.history_core import (
 )
 from shared.history_core.models import HistoryBase
 
-from .repository import ClickHouseRepository, PostgresHistoryRepository
-from .schemas import LogEvent
-from .service import LogService
+from ..repositories.log import ClickHouseRepository, PostgresHistoryRepository
+from ..core.schemas import LogEvent
+from ..services.logging import LogService
 
 logger = logging.getLogger("log_service.consumers")
 
