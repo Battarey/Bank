@@ -1,8 +1,7 @@
 from uuid import UUID
 
-from shared import models, schemas
+from shared import schemas
 
-from ..repository import TransactionRepository
 from ..uow import TransactionUnitOfWork
 
 
@@ -46,25 +45,3 @@ async def list_transactions(
 			tx_type=tx_type,
 			direction=direction,
 		)
-
-
-from shared.rabbitmq import send_notification
-
-
-async def _notify_security_freeze(
-	repo: TransactionRepository, user_id: UUID, account: models.BankAccount, rules: str
-) -> None:
-	"""Вспомогательный метод для уведомления о блокировке AML (используется другими сервисами)."""
-	contact = await repo.get_owner_contact(user_id)
-	if not contact:
-		return
-
-	await send_notification(
-		notification_type="security_freeze",
-		to=contact.email,
-		variables={
-			"account_number": account.account_number,
-			"rule": rules,
-			"details": "Операция отклонена автоматической системой безопасности.",
-		},
-	)

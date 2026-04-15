@@ -67,10 +67,9 @@ async def create_transaction(
 		)
 		message = "Перевод успешно выполнен."
 	else:
-		# На случай если Discriminated Union пропустит что-то не то
-		from fastapi import HTTPException
+		from ..exceptions import TransactionError
 
-		raise HTTPException(status_code=400, detail="Неверный тип операции")
+		raise TransactionError("Неверный тип операции")
 
 	return schemas.TransactionMessageResponse(
 		message=message,

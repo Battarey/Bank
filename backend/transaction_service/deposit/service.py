@@ -8,10 +8,12 @@ from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
 from ..exceptions import (
+	AccountNotFound,
 	AccountNotOpen,
 	TransactionConflict,
 )
 from ..uow import TransactionUnitOfWork
+from ..utils import ensure_account_ownership
 
 # Мягкая заморозка: пополнение разрешено на open и frozen счетах
 _DEPOSIT_ALLOWED_STATUSES = {"open", "frozen"}
@@ -54,10 +56,7 @@ async def deposit(
 		# 1. Получение счёта с блокировкой
 		account = await uow.transactions.get_account_for_update(account_id)
 
-		if account.client_id != user_id:
-			from ..exceptions import AccountNotFound
-
-			raise AccountNotFound("Счёт не принадлежит вам.")
+		await ensure_account_ownership(account, user_id)
 
 		if account.status not in _DEPOSIT_ALLOWED_STATUSES:
 			raise AccountNotOpen(f"Счёт {account.account_number} в статусе «{account.status}» — пополнение невозможно.")

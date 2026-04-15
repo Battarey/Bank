@@ -9,12 +9,14 @@ from shared.events.base import LogEvent, NotificationEvent
 
 from ..exceptions import (
 	AccountFrozen,
+	AccountNotFound,
 	AccountNotOpen,
 	InsufficientFunds,
 	SecurityViolation,
 	TransactionConflict,
 )
 from ..uow import TransactionUnitOfWork
+from ..utils import apply_security_freeze, ensure_account_ownership
 
 
 async def withdraw(
@@ -57,10 +59,7 @@ async def withdraw(
 		# 1. Блокировка счёта
 		account = await uow.transactions.get_account_for_update(account_id)
 
-		if account.client_id != user_id:
-			from ..exceptions import AccountNotFound
-
-			raise AccountNotFound("Счёт не принадлежит вам.")
+		await ensure_account_ownership(account, user_id)
 
 		if account.status == "frozen":
 			raise AccountFrozen(f"Счёт {account.account_number} заморожен.")
@@ -74,22 +73,7 @@ async def withdraw(
 			account_id, "withdrawal", amount, account.currency
 		)
 		if not is_safe:
-			reason = ", ".join(v["rule"] for v in violations)
-			account.status = "frozen"
-			account.frozen_by = "system"
-			account.frozen_at = datetime.now(UTC)
-			account.freeze_reason = f"AML: {reason}"
-
-			uow.add_event(
-				NotificationEvent(
-					type="security_freeze",
-					to="owner",
-					variables={"account_number": account.account_number, "rule": reason},
-				)
-			)
-
-			await uow.commit()  # Сохраняем блокировку даже при нарушении правил
-			raise SecurityViolation(f"Операция отклонена безопасностью. Счёт заморожен: {reason}")
+			await apply_security_freeze(uow, account, violations)
 
 		# 3. Проверка баланса
 		if account.balance < amount:

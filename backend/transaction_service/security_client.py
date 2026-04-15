@@ -1,16 +1,22 @@
 """HTTP-клиент для вызова Security Service (AML-проверка)."""
 
 import logging
-import os
 from decimal import Decimal
 from uuid import UUID
 
 import httpx
 
+from shared.bootstrap import get_container
+
+from .config import TransactionSettings
+
 logger = logging.getLogger("transaction_service")
 
-SECURITY_SERVICE_URL = os.getenv("SECURITY_SERVICE_URL", "http://security_service:8000")
-INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+
+def _get_settings() -> TransactionSettings:
+	"""Получает специфические настройки для сервиса транзакций."""
+	return get_container().settings
+
 
 _client: httpx.AsyncClient | None = None
 
@@ -18,8 +24,9 @@ _client: httpx.AsyncClient | None = None
 async def connect() -> None:
 	"""Создаёт httpx-клиент для Security Service."""
 	global _client
-	_client = httpx.AsyncClient(base_url=SECURITY_SERVICE_URL, timeout=10.0)
-	logger.info("Security client подключён: %s", SECURITY_SERVICE_URL)
+	settings = _get_settings()
+	_client = httpx.AsyncClient(base_url=settings.SECURITY_SERVICE_URL, timeout=10.0)
+	logger.info("Security client подключён: %s", settings.SECURITY_SERVICE_URL)
 
 
 async def disconnect() -> None:
@@ -57,11 +64,12 @@ async def check_transaction(
 		currency=currency,
 	)
 
+	settings = _get_settings()
 	try:
 		response = await _client.post(
 			"/evaluations",
 			json=payload.model_dump(mode="json"),
-			headers={"X-Internal-Key": INTERNAL_API_KEY},
+			headers={"X-Internal-Key": settings.INTERNAL_API_KEY},
 		)
 		if response.status_code == 200:
 			data = response.json()

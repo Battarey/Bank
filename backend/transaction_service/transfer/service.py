@@ -20,6 +20,7 @@ from ..exceptions import (
 	TransactionConflict,
 )
 from ..uow import TransactionUnitOfWork
+from ..utils import apply_security_freeze
 
 # Мягкая заморозка: исходящие операции запрещены, пополнение возможно.
 _RECEIVE_ALLOWED_STATUSES = {"open", "frozen"}
@@ -117,23 +118,7 @@ async def transfer(
 			from_account_id, "transfer", amount, from_acc.currency
 		)
 		if not is_safe:
-			reason = ", ".join(v["rule"] for v in violations)
-			from_acc.status = "frozen"
-			from_acc.frozen_by = "system"
-			from_acc.frozen_at = datetime.now(UTC)
-			from_acc.freeze_reason = f"AML: {reason}"
-
-			uow.add_event(
-				NotificationEvent(
-					type="security_freeze",
-					to="owner",
-					variables={"account_number": from_acc.account_number, "rule": reason},
-				)
-			)
-
-			await uow.commit()  # Сохраняем блокировку даже при нарушении правил
-
-			raise SecurityViolation(f"Операция отклонена безопасностью. Счёт заморожен: {reason}")
+			await apply_security_freeze(uow, from_acc, violations)
 
 		# 5. Выполнение проводок
 		now = datetime.now(UTC)
