@@ -4,12 +4,12 @@ from unittest.mock import patch
 
 import pytest
 
-from currency_service.exceptions import CurrencyNotAvailable, RateUnavailable
-from currency_service.rates.service import get_all_rates, get_pair_rate
+from currency_service.core.exceptions import CurrencyNotAvailable, RateUnavailable
+from currency_service.services.rates import get_all_rates, get_pair_rate
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.service.exchange_client.get_rates")
+@patch("currency_service.services.rates.exchange_client.get_rates")
 async def test_get_all_rates_success(mock_get):
 	"""Успешное получение всех курсов."""
 	rates = {"USD": Decimal("0.011"), "EUR": Decimal("0.010")}
@@ -23,7 +23,7 @@ async def test_get_all_rates_success(mock_get):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.service.exchange_client.get_rates")
+@patch("currency_service.services.rates.exchange_client.get_rates")
 async def test_get_all_rates_error(mock_get):
 	"""Ошибка при получении всех курсов из внешнего API."""
 	mock_get.side_effect = Exception("API timeout")
@@ -32,7 +32,7 @@ async def test_get_all_rates_error(mock_get):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.service.exchange_client.get_rates")
+@patch("currency_service.services.rates.exchange_client.get_rates")
 async def test_get_pair_rate_success(mock_get):
 	"""Успешное получение курса конкретной пары."""
 	rates = {"USD": Decimal("0.011"), "EUR": Decimal("0.010")}
@@ -44,7 +44,7 @@ async def test_get_pair_rate_success(mock_get):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.service.exchange_client.get_rates")
+@patch("currency_service.services.rates.exchange_client.get_rates")
 async def test_get_pair_rate_not_found(mock_get):
 	"""Ошибка: целевая валюта не поддерживается."""
 	mock_get.return_value = ({"USD": Decimal("0.011")}, datetime.now(UTC))
@@ -53,7 +53,7 @@ async def test_get_pair_rate_not_found(mock_get):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.service.exchange_client.get_rates")
+@patch("currency_service.services.rates.exchange_client.get_rates")
 async def test_get_pair_rate_api_error(mock_get):
 	"""Ошибка внешнего API при получении пары."""
 	mock_get.side_effect = Exception("timeout")

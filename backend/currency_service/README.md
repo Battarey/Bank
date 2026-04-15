@@ -2,15 +2,19 @@
 
 Сервис обеспечения валютных операций: получение актуальных котировок, расчет кросс-курсов и выполнение конвертации между счетами пользователей.
 
-## Файловая архитектура
-```
+## Архитектура
+Сервис построен по принципам **Layered Architecture** (послойная архитектура) и строго следует 4-х слойной структуре (Routers, Services, Repositories, Core, Clients).
+
+### Файловая структура
+```text
 currency_service/
-├── exchange/         # Модуль обмена (Router + Атомарный Service)
-├── rates/            # Модуль котировок (Router + Caching Service)
-├── exceptions.py     # Специфичные ошибки обмена и курсов
-├── currency_client.py # Внутренний клиент для внешних API котировок
-├── uow.py            # CurrencyUnitOfWork
-├── main.py           # Точка входа FastAPI
+├── api/                # Слой Routers: эндпоинты котировок и обмена
+├── services/           # Слой Services: бизнес-логика валютных операций
+├── repositories/       # Слой Repository: работа со счетами и транзакциями
+├── core/               # Инфраструктурный слой: config, uow, exceptions
+├── clients/            # Внешние клиенты: ExchangeRate-API
+├── main.py             # Точка входа в приложение
+├── tests/              # Юнит и интеграционные тесты
 └── README.md
 ```
 

@@ -4,12 +4,12 @@ from unittest.mock import patch
 
 import pytest
 
-from currency_service.exceptions import CurrencyNotAvailable, RateUnavailable
-from currency_service.rates.router import get_pair_rate, get_rates
+from currency_service.core.exceptions import CurrencyNotAvailable, RateUnavailable
+from currency_service.api.rates import get_pair_rate, get_rates
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.router.service.get_all_rates")
+@patch("currency_service.api.rates.service.get_all_rates")
 async def test_get_rates_success(mock_svc):
 	"""Успешное получение списка курсов обмена через роутер."""
 	rates = {"USD": Decimal("0.011"), "EUR": Decimal("0.010")}
@@ -22,7 +22,7 @@ async def test_get_rates_success(mock_svc):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.router.service.get_all_rates")
+@patch("currency_service.api.rates.service.get_all_rates")
 async def test_get_rates_error(mock_svc):
 	"""Ошибка (502) при недоступности внешнего API курсов."""
 	from fastapi import HTTPException
@@ -34,7 +34,7 @@ async def test_get_rates_error(mock_svc):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.router.service.get_pair_rate")
+@patch("currency_service.api.rates.service.get_pair_rate")
 async def test_get_pair_rate_success(mock_svc):
 	"""Успешное получение курса валютной пары через роутер."""
 	mock_svc.return_value = (Decimal("0.011"), datetime.now(UTC))
@@ -45,7 +45,7 @@ async def test_get_pair_rate_success(mock_svc):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.rates.router.service.get_pair_rate")
+@patch("currency_service.api.rates.service.get_pair_rate")
 async def test_get_pair_rate_not_found(mock_svc):
 	"""Ошибка (404) при запросе несуществующей валюты."""
 	from fastapi import HTTPException

@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI
 
 from shared.bootstrap import bootstrap, get_container
 
-from .config import CurrencySettings
+from .core.config import CurrencySettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
 bootstrap(CurrencySettings)
@@ -17,9 +17,9 @@ from shared.rabbitmq.client import connect as rmq_connect
 from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from . import exchange_client
-from .exchange.router import router as exchange_router
-from .rates.router import router as rates_router
+from .api.exchange import router as exchange_router
+from .api.rates import router as rates_router
+from .clients import exchange_client
 
 
 @asynccontextmanager

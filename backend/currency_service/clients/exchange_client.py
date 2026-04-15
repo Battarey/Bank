@@ -21,7 +21,7 @@ def _get_settings() -> Any:
 		return get_container().settings
 	except Exception:
 		# fallback для тестов, если контейнер не инициализирован
-		from .config import CurrencySettings
+		from ..core.config import CurrencySettings
 
 		return CurrencySettings()
 

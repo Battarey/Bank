@@ -9,15 +9,15 @@ from sqlalchemy.exc import IntegrityError
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
-from .. import exchange_client
-from ..exceptions import (
+from ..clients import exchange_client
+from ..core.exceptions import (
 	AccountNotOpen,
 	InsufficientFunds,
 	RateUnavailable,
 	SameAccountExchange,
 	SameCurrencyExchange,
 )
-from ..uow import CurrencyUnitOfWork
+from ..core.uow import CurrencyUnitOfWork
 
 
 async def exchange(
@@ -64,11 +64,11 @@ async def exchange(
 		to_acc = accounts.get(to_account_id)
 
 		if not from_acc or from_acc.client_id != user_id:
-			from ..exceptions import AccountNotFound
+			from ..core.exceptions import AccountNotFound
 
 			raise AccountNotFound(f"Счёт списания {from_account_id} не найден.")
 		if not to_acc or to_acc.client_id != user_id:
-			from ..exceptions import AccountNotFound
+			from ..core.exceptions import AccountNotFound
 
 			raise AccountNotFound(f"Счёт зачисления {to_account_id} не найден.")
 

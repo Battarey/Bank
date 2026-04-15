@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from currency_service.exceptions import (
+from currency_service.core.exceptions import (
 	AccountNotFound,
 	AccountNotOpen,
 	InsufficientFunds,
@@ -12,7 +12,7 @@ from currency_service.exceptions import (
 	SameAccountExchange,
 	SameCurrencyExchange,
 )
-from currency_service.exchange.service import exchange
+from currency_service.services.exchange import exchange
 from shared import models
 
 
@@ -79,7 +79,7 @@ async def test_exchange_insufficient_funds(uow, user_id, accounts):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange.service.exchange_client.get_fresh_rate")
+@patch("currency_service.services.exchange.exchange_client.get_fresh_rate")
 async def test_exchange_success(mock_rate, uow, user_id, accounts):
 	"""Успешный обмен валют с проверкой событий и проводок."""
 	from_acc, to_acc = accounts
@@ -104,7 +104,7 @@ async def test_exchange_success(mock_rate, uow, user_id, accounts):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange.service.exchange_client.get_fresh_rate")
+@patch("currency_service.services.exchange.exchange_client.get_fresh_rate")
 async def test_exchange_rate_unavailable(mock_rate, uow, user_id, accounts):
 	"""Ошибка: курс валют недоступен."""
 	from_acc, to_acc = accounts

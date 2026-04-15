@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from currency_service import exchange_client
+from currency_service.clients import exchange_client
 
 
 @pytest.fixture(autouse=True)
@@ -21,7 +21,7 @@ def reset_state():
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange_client.httpx.AsyncClient")
+@patch("currency_service.clients.exchange_client.httpx.AsyncClient")
 async def test_connect(mock_cls):
 	mock_instance = MagicMock()
 	mock_cls.return_value = mock_instance
@@ -30,7 +30,7 @@ async def test_connect(mock_cls):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange_client.httpx.AsyncClient")
+@patch("currency_service.clients.exchange_client.httpx.AsyncClient")
 async def test_disconnect(mock_cls):  # noqa: ARG001
 	mock_instance = AsyncMock()
 	exchange_client._client = mock_instance
@@ -101,7 +101,7 @@ def test_parse_rates():
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange_client._fetch_rates")
+@patch("currency_service.clients.exchange_client._fetch_rates")
 async def test_get_rates_fetches(mock_fetch):
 	data = {
 		"conversion_rates": {"USD": 0.011},
@@ -115,7 +115,7 @@ async def test_get_rates_fetches(mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange_client._fetch_rates")
+@patch("currency_service.clients.exchange_client._fetch_rates")
 async def test_get_rates_uses_cache(mock_fetch):
 	data = {"conversion_rates": {"USD": 0.011}, "time_last_update_unix": 1700000000}
 	mock_fetch.return_value = data
@@ -127,8 +127,8 @@ async def test_get_rates_uses_cache(mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange_client.time")
-@patch("currency_service.exchange_client._fetch_rates")
+@patch("currency_service.clients.exchange_client.time")
+@patch("currency_service.clients.exchange_client._fetch_rates")
 async def test_get_rates_cache_expired(mock_fetch, mock_time):
 	data = {"conversion_rates": {"USD": 0.011}, "time_last_update_unix": 1700000000}
 	mock_fetch.return_value = data
@@ -146,7 +146,7 @@ async def test_get_rates_cache_expired(mock_fetch, mock_time):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange_client._fetch_rates")
+@patch("currency_service.clients.exchange_client._fetch_rates")
 async def test_get_fresh_rate_from_cache(mock_fetch):
 	data = {"conversion_rates": {"USD": 0.011}, "time_last_update_unix": 1700000000}
 	# Закладываем свежий кэш
@@ -159,7 +159,7 @@ async def test_get_fresh_rate_from_cache(mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange_client._fetch_rates")
+@patch("currency_service.clients.exchange_client._fetch_rates")
 async def test_get_fresh_rate_currency_not_found(mock_fetch):
 	data = {"conversion_rates": {}, "time_last_update_unix": 1700000000}
 	mock_fetch.return_value = data

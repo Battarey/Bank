@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from shared import schemas
 
-from ..exceptions import CurrencyNotAvailable, RateUnavailable
-from . import service
+from ..core.exceptions import CurrencyNotAvailable, RateUnavailable
+from ..services import rates as service
 
 router = APIRouter(
 	prefix="/rates",

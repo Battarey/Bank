@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, status
 from shared import schemas
 from shared.internal_auth import require_user_id
 
-from ..uow import CurrencyUnitOfWork, get_uow
-from . import service
+from ..core.uow import CurrencyUnitOfWork, get_uow
+from ..services import exchange as service
 
 router = APIRouter(
 	prefix="/currency-conversions",

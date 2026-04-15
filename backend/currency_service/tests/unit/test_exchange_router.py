@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from currency_service.exchange.router import convert_currency
+from currency_service.api.exchange import convert_currency
 from shared import models, schemas
 
 
@@ -14,7 +14,7 @@ def exchange_payload():
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange.router.service.exchange")
+@patch("currency_service.api.exchange.service.exchange")
 async def test_convert_currency_success(mock_exchange, uow, exchange_payload):
 	"""Успешная конвертация валюты через роутер."""
 	user_id = uuid4()
@@ -41,10 +41,10 @@ async def test_convert_currency_success(mock_exchange, uow, exchange_payload):
 
 
 @pytest.mark.asyncio
-@patch("currency_service.exchange.router.service.exchange")
+@patch("currency_service.api.exchange.service.exchange")
 async def test_convert_currency_error(mock_exchange, uow, exchange_payload):
 	"""Ошибка при конвертации валюты через роутер."""
-	from currency_service.exceptions import InsufficientFunds
+	from currency_service.core.exceptions import InsufficientFunds
 
 	mock_exchange.side_effect = InsufficientFunds("Not enough funds")
 
