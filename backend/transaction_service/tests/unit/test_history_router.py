@@ -3,11 +3,11 @@ from uuid import uuid4
 
 import pytest
 
-from transaction_service.history.router import list_transactions
+from transaction_service.api.history import list_transactions
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.history.router.service.list_transactions")
+@patch("transaction_service.api.history.service.list_transactions")
 async def test_list_transactions_router_success(mock_svc, mock_uow):
 	"""Роутер: успешное получение списка историй."""
 	user_id = uuid4()

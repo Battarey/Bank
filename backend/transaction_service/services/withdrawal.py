@@ -7,7 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
-from ..exceptions import (
+# Обновленные импорты
+from ..core.exceptions import (
 	AccountFrozen,
 	AccountNotFound,
 	AccountNotOpen,
@@ -15,8 +16,8 @@ from ..exceptions import (
 	SecurityViolation,
 	TransactionConflict,
 )
-from ..uow import TransactionUnitOfWork
-from ..utils import apply_security_freeze, ensure_account_ownership
+from ..core.uow import TransactionUnitOfWork
+from ..core.utils import apply_security_freeze, ensure_account_ownership
 
 
 async def withdraw(
@@ -67,7 +68,7 @@ async def withdraw(
 			raise AccountNotOpen(f"Счёт {account.account_number} не активен ({account.status}).")
 
 		# 2. Антифрод-проверка
-		from .. import security_client
+		from ..clients import security as security_client
 
 		is_safe, violations = await security_client.check_transaction(
 			account_id, "withdrawal", amount, account.currency

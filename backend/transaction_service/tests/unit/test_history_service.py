@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from transaction_service.history.service import list_transactions
+from transaction_service.services.history import list_transactions
 
 
 @pytest.mark.asyncio
@@ -40,7 +40,7 @@ async def test_list_transactions_wrong_owner(mock_uow):
 	mock_account.client_id = other_user_id
 	mock_uow.transactions.get_account.return_value = mock_account
 
-	from transaction_service.exceptions import AccountNotFound
+	from transaction_service.core.exceptions import AccountNotFound
 
 	with pytest.raises(AccountNotFound):
 		await list_transactions(mock_uow, user_id, account_id)

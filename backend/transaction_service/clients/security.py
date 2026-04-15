@@ -8,7 +8,8 @@ import httpx
 
 from shared.bootstrap import get_container
 
-from .config import TransactionSettings
+# Обновленный путь к конфигу
+from ..core.config import TransactionSettings
 
 logger = logging.getLogger("transaction_service")
 

@@ -10,7 +10,7 @@ os.environ.setdefault("INTERNAL_API_KEY", "test-key")
 
 # Вызываем bootstrap ПЕРЕД импортом UoW
 from shared.bootstrap import bootstrap
-from transaction_service.config import TransactionSettings
+from transaction_service.core.config import TransactionSettings
 
 bootstrap(TransactionSettings)
 
@@ -28,8 +28,8 @@ def mock_bootstrap():
 	mock_container.session_factory = MagicMock()
 
 	with (
-		patch("transaction_service.uow.get_container", return_value=mock_container),
-		patch("transaction_service.currency_client.get_container", return_value=mock_container),
+		patch("transaction_service.core.uow.get_container", return_value=mock_container),
+		patch("transaction_service.clients.currency.get_container", return_value=mock_container),
 	):
 		yield mock_container
 

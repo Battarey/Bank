@@ -5,11 +5,11 @@ from uuid import uuid4
 import pytest
 
 from shared import models
-from transaction_service.withdrawal.service import withdraw
+from transaction_service.services.withdrawal import withdraw
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.check_transaction")
+@patch("transaction_service.clients.security.check_transaction")
 async def test_withdraw_success(mock_check, mock_uow):
 	"""Успешное снятие средств со счёта."""
 	user_id = uuid4()
@@ -39,7 +39,7 @@ async def test_withdraw_success(mock_check, mock_uow):
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.check_transaction")
+@patch("transaction_service.clients.security.check_transaction")
 async def test_withdraw_security_violation(mock_check, mock_uow):
 	"""Антифрод блокирует снятие — счёт замораживается."""
 	user_id = uuid4()
@@ -54,7 +54,7 @@ async def test_withdraw_security_violation(mock_check, mock_uow):
 	# Антифрод блокирует
 	mock_check.return_value = (False, [{"rule": "daily_limit"}])
 
-	from transaction_service.exceptions import SecurityViolation
+	from transaction_service.core.exceptions import SecurityViolation
 
 	with pytest.raises(SecurityViolation):
 		await withdraw(mock_uow, user_id, account_id, Decimal("100"), "desc")
@@ -77,8 +77,8 @@ async def test_withdraw_insufficient_funds(mock_uow):
 	mock_account.balance = Decimal("50.00")
 	mock_uow.transactions.get_account_for_update.return_value = mock_account
 
-	with patch("transaction_service.security_client.check_transaction", AsyncMock(return_value=(True, []))):
-		from transaction_service.exceptions import InsufficientFunds
+	with patch("transaction_service.clients.security.check_transaction", AsyncMock(return_value=(True, []))):
+		from transaction_service.core.exceptions import InsufficientFunds
 
 		with pytest.raises(InsufficientFunds):
 			await withdraw(mock_uow, user_id, account_id, Decimal("100"), "desc")

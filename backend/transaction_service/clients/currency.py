@@ -9,7 +9,8 @@ logger = logging.getLogger("transaction_service")
 
 from shared.bootstrap import get_container
 
-from .config import TransactionSettings
+# Обновленный путь к конфигу
+from ..core.config import TransactionSettings
 
 
 def _get_settings() -> TransactionSettings:

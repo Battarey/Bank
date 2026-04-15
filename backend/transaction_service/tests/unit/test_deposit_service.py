@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from shared import models
-from transaction_service.deposit.service import deposit
+from transaction_service.services.deposit import deposit
 
 
 @pytest.mark.asyncio
@@ -52,7 +52,7 @@ async def test_deposit_wrong_owner(mock_uow):
 	mock_account.client_id = other_user_id
 	mock_uow.transactions.get_account_for_update.return_value = mock_account
 
-	from transaction_service.exceptions import AccountNotFound
+	from transaction_service.core.exceptions import AccountNotFound
 
 	with pytest.raises(AccountNotFound, match="Счёт не принадлежит вам"):
 		await deposit(mock_uow, user_id, account_id, Decimal("100"), "desc")

@@ -6,8 +6,9 @@ from typing import Any
 from shared.bootstrap import get_container
 from shared.database_core.uow import SqlAlchemyUnitOfWork
 
-from .history.repository import TransactionQueryRepository
-from .repository import TransactionRepository
+# Импорты репозиториев теперь из новой папки
+from ..repositories.history import TransactionQueryRepository
+from ..repositories.transaction import TransactionRepository
 
 # Получаем инфраструктурный контейнер
 container = get_container()

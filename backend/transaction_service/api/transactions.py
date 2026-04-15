@@ -7,10 +7,14 @@ from fastapi import APIRouter, Depends, status
 from shared import schemas
 from shared.internal_auth import require_user_id
 
-from ..deposit import service as deposit_service
-from ..transfer import service as transfer_service
-from ..uow import TransactionUnitOfWork, get_uow
-from ..withdrawal import service as withdrawal_service
+# Переход на новую структуру сервисов
+from ..services import deposit as deposit_service
+from ..services import transfer as transfer_service
+from ..services import withdrawal as withdrawal_service
+
+# Переход на новую структуру core
+from ..core.uow import TransactionUnitOfWork, get_uow
+from ..core.exceptions import TransactionError
 
 router = APIRouter(
 	prefix="/transactions",
@@ -67,8 +71,6 @@ async def create_transaction(
 		)
 		message = "Перевод успешно выполнен."
 	else:
-		from ..exceptions import TransactionError
-
 		raise TransactionError("Неверный тип операции")
 
 	return schemas.TransactionMessageResponse(

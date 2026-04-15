@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, Query, status
 from shared import schemas
 from shared.internal_auth import require_user_id
 
-from ..uow import TransactionUnitOfWork, get_uow
-from . import service
+# Переход на новую структуру core и services
+from ..core.uow import TransactionUnitOfWork, get_uow
+from ..services import history as service
 
 router = APIRouter(
 	prefix="/accounts",

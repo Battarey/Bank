@@ -9,7 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
-from ..exceptions import (
+# Обновленные импорты
+from ..core.exceptions import (
 	AccountFrozen,
 	AccountNotFound,
 	AccountNotOpen,
@@ -19,8 +20,8 @@ from ..exceptions import (
 	SecurityViolation,
 	TransactionConflict,
 )
-from ..uow import TransactionUnitOfWork
-from ..utils import apply_security_freeze
+from ..core.uow import TransactionUnitOfWork
+from ..core.utils import apply_security_freeze
 
 # Мягкая заморозка: исходящие операции запрещены, пополнение возможно.
 _RECEIVE_ALLOWED_STATUSES = {"open", "frozen"}
@@ -103,7 +104,7 @@ async def transfer(
 		credited_amount = amount
 
 		if cross_currency:
-			from .. import currency_client
+			from ..clients import currency as currency_client
 
 			try:
 				rate = await currency_client.get_rate(from_acc.currency, to_acc.currency)
@@ -112,7 +113,7 @@ async def transfer(
 				raise RateUnavailable(f"Ошибка получения курса валют: {exc}") from exc
 
 		# 4. Антифрод-проверка
-		from .. import security_client
+		from ..clients import security as security_client
 
 		is_safe, violations = await security_client.check_transaction(
 			from_account_id, "transfer", amount, from_acc.currency

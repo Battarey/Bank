@@ -4,11 +4,11 @@ from uuid import uuid4
 
 import pytest
 
-from transaction_service.security_client import check_transaction, connect, disconnect
+from transaction_service.clients.security import check_transaction, connect, disconnect
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.httpx.AsyncClient")
+@patch("transaction_service.clients.security.httpx.AsyncClient")
 async def test_check_transaction_allowed(mock_client_cls, mock_bootstrap):  # noqa: ARG001
 	"""Антифрод: операция разрешена."""
 	mock_client = AsyncMock()
@@ -29,7 +29,7 @@ async def test_check_transaction_allowed(mock_client_cls, mock_bootstrap):  # no
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.httpx.AsyncClient")
+@patch("transaction_service.clients.security.httpx.AsyncClient")
 async def test_check_transaction_denied(mock_client_cls, mock_bootstrap):  # noqa: ARG001
 	"""Антифрод: операция заблокирована."""
 	mock_client = AsyncMock()
@@ -49,7 +49,7 @@ async def test_check_transaction_denied(mock_client_cls, mock_bootstrap):  # noq
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.httpx.AsyncClient")
+@patch("transaction_service.clients.security.httpx.AsyncClient")
 async def test_check_transaction_fail_open(mock_client_cls, mock_bootstrap):  # noqa: ARG001
 	"""Антифрод: сервис недоступен (fail-open)."""
 	mock_client = AsyncMock()

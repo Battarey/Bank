@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from shared import models, schemas
-from transaction_service.transactions.router import create_transaction
+from transaction_service.api.transactions import create_transaction
 
 
 def mock_tx(tx_type="deposit"):
@@ -23,7 +23,7 @@ def mock_tx(tx_type="deposit"):
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.transactions.router.deposit_service.deposit")
+@patch("transaction_service.api.transactions.deposit_service.deposit")
 async def test_create_deposit_router_success(mock_svc, mock_uow):
 	"""Роутер: успешное создание депозита."""
 	mock_svc.return_value = mock_tx("deposit")
@@ -40,7 +40,7 @@ async def test_create_deposit_router_success(mock_svc, mock_uow):
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.transactions.router.withdrawal_service.withdraw")
+@patch("transaction_service.api.transactions.withdrawal_service.withdraw")
 async def test_create_withdrawal_router_success(mock_svc, mock_uow):
 	"""Роутер: успешное создание снятия."""
 	mock_svc.return_value = mock_tx("withdrawal")
@@ -55,7 +55,7 @@ async def test_create_withdrawal_router_success(mock_svc, mock_uow):
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.transactions.router.transfer_service.transfer")
+@patch("transaction_service.api.transactions.transfer_service.transfer")
 async def test_create_transfer_router_success(mock_svc, mock_uow):
 	"""Роутер: успешное создание перевода."""
 	mock_svc.return_value = mock_tx("transfer")

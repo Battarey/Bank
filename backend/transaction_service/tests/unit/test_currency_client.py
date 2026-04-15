@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from transaction_service.currency_client import connect, disconnect, get_rate
+from transaction_service.clients.currency import connect, disconnect, get_rate
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.currency_client.httpx.AsyncClient")
+@patch("transaction_service.clients.currency.httpx.AsyncClient")
 async def test_get_rate_success(mock_client_cls, mock_bootstrap):  # noqa: ARG001
 	"""Успешное получение курса валют."""
 	mock_client = AsyncMock()
@@ -31,7 +31,7 @@ async def test_get_rate_success(mock_client_cls, mock_bootstrap):  # noqa: ARG00
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.currency_client.httpx.AsyncClient")
+@patch("transaction_service.clients.currency.httpx.AsyncClient")
 async def test_get_rate_error(mock_client_cls, mock_bootstrap):  # noqa: ARG001
 	"""Ошибка (напр. 500) от Currency Service."""
 	mock_client = AsyncMock()

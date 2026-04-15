@@ -7,13 +7,14 @@ from sqlalchemy.exc import IntegrityError
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
-from ..exceptions import (
+# Обновленные импорты
+from ..core.exceptions import (
 	AccountNotFound,
 	AccountNotOpen,
 	TransactionConflict,
 )
-from ..uow import TransactionUnitOfWork
-from ..utils import ensure_account_ownership
+from ..core.uow import TransactionUnitOfWork
+from ..core.utils import ensure_account_ownership
 
 # Мягкая заморозка: пополнение разрешено на open и frozen счетах
 _DEPOSIT_ALLOWED_STATUSES = {"open", "frozen"}

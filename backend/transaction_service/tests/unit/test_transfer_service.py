@@ -5,11 +5,11 @@ from uuid import uuid4
 import pytest
 
 from shared import models
-from transaction_service.transfer.service import transfer
+from transaction_service.services.transfer import transfer
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.security_client.check_transaction")
+@patch("transaction_service.clients.security.check_transaction")
 async def test_transfer_success_same_currency(mock_check, mock_uow):
 	"""Успешный перевод между счетами в одной валюте."""
 	user_id = uuid4()
@@ -37,8 +37,8 @@ async def test_transfer_success_same_currency(mock_check, mock_uow):
 
 
 @pytest.mark.asyncio
-@patch("transaction_service.currency_client.get_rate")
-@patch("transaction_service.security_client.check_transaction")
+@patch("transaction_service.clients.currency.get_rate")
+@patch("transaction_service.clients.security.check_transaction")
 async def test_transfer_with_conversion(mock_check, mock_rate, mock_uow):
 	"""Перевод с конвертацией валют (RUB -> USD)."""
 	user_id = uuid4()
@@ -71,7 +71,7 @@ async def test_transfer_same_account(mock_uow):
 	user_id = uuid4()
 	acc_id = uuid4()
 
-	from transaction_service.exceptions import SameAccountTransfer
+	from transaction_service.core.exceptions import SameAccountTransfer
 
 	with pytest.raises(SameAccountTransfer):
 		await transfer(mock_uow, user_id, acc_id, acc_id, Decimal("100"), "self")

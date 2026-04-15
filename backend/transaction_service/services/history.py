@@ -2,7 +2,9 @@ from uuid import UUID
 
 from shared import schemas
 
-from ..uow import TransactionUnitOfWork
+# Обновленные импорты
+from ..core.uow import TransactionUnitOfWork
+from ..core.exceptions import AccountNotFound
 
 
 async def list_transactions(
@@ -33,8 +35,6 @@ async def list_transactions(
 		# 1. Проверка принадлежности счёта
 		account = await uow.transactions.get_account(account_id)
 		if account.client_id != user_id:
-			from ..exceptions import AccountNotFound
-
 			raise AccountNotFound("Счёт не принадлежит вам.")
 
 		# 2. Получение данных через репозиторий чтения (CQRS Query Layer)
