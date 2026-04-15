@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from security_service.rules import (
+from security_service.services.rules import (
 	check_daily_amount,
 	check_daily_count,
 	check_large_single_tx,

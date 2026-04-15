@@ -6,9 +6,9 @@ from uuid import UUID
 
 from shared.events.base import LogEvent
 
-from ..mongo_repository import SecurityEventRepository
-from ..rules import ALL_RULES, Violation
-from ..uow import SecurityUnitOfWork
+from ..repositories.audit import SecurityEventRepository
+from .rules import ALL_RULES, Violation
+from ..core.uow import SecurityUnitOfWork
 
 logger = logging.getLogger("security_service")
 

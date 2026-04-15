@@ -4,11 +4,11 @@ from uuid import uuid4
 
 import pytest
 
-from security_service.check.router import check_transaction
+from security_service.api.antifraud import check_transaction
 
 
 @pytest.mark.asyncio
-@patch("security_service.check.router.service.check_transaction")
+@patch("security_service.api.antifraud.service.check_transaction")
 async def test_check_transaction_api_success(mock_check, mock_mongo_repo, mock_uow):
 	"""Роутер: успешный вызов проверки без нарушений."""
 	account_id = uuid4()
@@ -34,10 +34,10 @@ async def test_check_transaction_api_success(mock_check, mock_mongo_repo, mock_u
 
 
 @pytest.mark.asyncio
-@patch("security_service.check.router.service.check_transaction")
+@patch("security_service.api.antifraud.service.check_transaction")
 async def test_check_transaction_api_violation(mock_check, mock_mongo_repo, mock_uow):
 	"""Роутер: вызов проверки с обнаруженными нарушениями."""
-	from security_service.rules import Violation
+	from security_service.services.rules import Violation
 
 	account_id = uuid4()
 	mock_violation = Violation(rule="test_rule", threshold="100", actual="200", details={})

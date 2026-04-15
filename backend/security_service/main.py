@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI
 
 from shared.bootstrap import bootstrap, get_container
 
-from .config import SecuritySettings
+from .core.config import SecuritySettings
 
 # Инициализация инфраструктуры (Settings, DB Engine, Session Factory)
 bootstrap(SecuritySettings)
@@ -17,7 +17,7 @@ from shared.rabbitmq.client import connect as rmq_connect
 from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .check.router import router as check_router
+from .api.antifraud import router as check_router
 from shared.mongodb_core import close_mongodb, init_mongodb, ping_mongodb
 
 @asynccontextmanager

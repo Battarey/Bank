@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from security_service.check.service import check_transaction
-from security_service.rules import Violation
+from security_service.services.antifraud import check_transaction
+from security_service.services.rules import Violation
 
 
 @pytest.mark.asyncio
@@ -15,7 +15,7 @@ async def test_check_transaction_no_violations(mock_mongo_repo, mock_uow):
 
 	# ALL_RULES: list[Any] = [check_large_single_tx, ...]
 	# Patch all rules to return None
-	with patch("security_service.check.service.ALL_RULES", []):
+	with patch("security_service.services.antifraud.ALL_RULES", []):
 		violations = await check_transaction(
 			mock_uow,
 			mongo_repo=mock_mongo_repo,
@@ -40,7 +40,7 @@ async def test_check_transaction_with_violations(mock_mongo_repo, mock_uow):
 	# Мокируем правила, чтобы одно сработало
 	mock_rule = AsyncMock(return_value=mock_violation)
 
-	with patch("security_service.check.service.ALL_RULES", [mock_rule]):
+	with patch("security_service.services.antifraud.ALL_RULES", [mock_rule]):
 		violations = await check_transaction(
 			mock_uow,
 			mongo_repo=mock_mongo_repo,

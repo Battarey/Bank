@@ -6,7 +6,7 @@ from typing import Any
 from shared.bootstrap import get_container
 from shared.database_core.uow import SqlAlchemyUnitOfWork
 
-from .repository import SecurityRepository
+from ..repositories.security import SecurityRepository
 
 # Получаем инфраструктурный контейнер
 container = get_container()

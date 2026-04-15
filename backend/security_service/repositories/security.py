@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared import models
 from shared.database_core.base_repository import BaseRepository
 
-from .exceptions import AccountNotFound
+from ..core.exceptions import AccountNotFound
 
 
 class SecurityRepository(BaseRepository[models.BankAccount]):

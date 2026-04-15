@@ -1,9 +1,9 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
-from security_service.mongo_repository import SecurityEventRepository
+from security_service.repositories.audit import SecurityEventRepository
 
 @pytest.fixture
-@patch("security_service.mongo_repository.get_mongodb")
+@patch("security_service.repositories.audit.get_mongodb")
 def repo(mock_get_mongodb):
     """Фикстура репозитория с моком базы данных."""
     mock_db = MagicMock()

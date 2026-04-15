@@ -8,9 +8,9 @@ from shared.schemas import (
 	ViolationItem,
 )
 
-from ..mongo_repository import SecurityEventRepository, get_mongo_repo
-from ..uow import SecurityUnitOfWork, get_uow
-from . import service
+from ..repositories.audit import SecurityEventRepository, get_mongo_repo
+from ..core.uow import SecurityUnitOfWork, get_uow
+from ..services import antifraud as service
 
 # ── Эндпоинты ──────────────────────────────────────────────────────────
 

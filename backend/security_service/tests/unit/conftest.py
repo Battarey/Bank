@@ -9,7 +9,7 @@ os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("INTERNAL_API_KEY", "test-key")
 
 # Вызываем bootstrap ПЕРЕД импортом UoW, так как там идет обращение к контейнеру на уровне модуля
-from security_service.config import SecuritySettings
+from security_service.core.config import SecuritySettings
 from shared.bootstrap import bootstrap
 
 bootstrap(SecuritySettings)
@@ -26,7 +26,7 @@ def mock_bootstrap():
 	mock_container.settings = mock_settings
 	mock_container.session_factory = MagicMock()  # SQLAlchemy session factory
 
-	with patch("security_service.uow.get_container", return_value=mock_container):
+	with patch("security_service.core.uow.get_container", return_value=mock_container):
 		yield mock_container
 
 
