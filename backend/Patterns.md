@@ -5,13 +5,24 @@
 ## Файловая архитектура (Стандарт сервиса)
 ```
 service_name/
-├── domain_module/        # Группировка по бизнес-фичам (Router + Service)
+├── api/                  # Слой API: FastAPI роутеры
 │   ├── router.py         # Эндпоинты (только валидация и вызов сервиса)
-│   └── service.py        # Бизнес-логика (не знает о FastAPI/HTTP)
-├── queries/              # CQRS: Слой чтения (Raw SQL / Query Layer)
-├── repository.py         # ORM-репозиторий (Write/Update операции)
-├── uow.py                # Unit of Work (управление транзакциями и событиями)
-├── main.py               # Точка входа, lifespan, middlewares
+│   └── README.md
+├── services/             # Слой Services: Чистая бизнес-логика
+│   ├── domain_logic.py   # Оркестрация процессов
+│   └── README.md
+├── repositories/         # Слой Repositories: Доступ к данным
+│   ├── sql_repo.py       # Работа с PostgreSQL (ORM/SQL)
+│   ├── nosql_repo.py     # Работа с MongoDB/Redis
+│   └── README.md
+├── core/                 # Слой Core: Инфраструктура и UoW
+│   ├── uow.py            # Unit of Work
+│   ├── config.py         # Настройки сервиса (Pydantic)
+│   ├── exceptions.py     # Кастомные исключения
+│   └── README.md
+├── workers/              # (Опционально) Background Workers (RabbitMQ)
+├── clients/              # (Опционально) Внешние клиенты (SMTP, API)
+├── main.py               # Точка входа, lifespan, bootstrap
 └── README.md
 ```
 
@@ -35,19 +46,21 @@ service_name/
 
 ---
 
-## 2. 4-Слойная структура сервиса
+## 2. 4-Слойная структура (Layered Architecture)
 
 Все бизнес-сервисы следуют строгому разделению на слои для обеспечения инверсии зависимостей (DIP) и тестируемости.
 
 ### 2.1 Слои (Layers)
-1.  **Router (API Layer)**: Принимает HTTP-запросы, валидирует входные данные через схемы, вызывает Service. Не содержит бизнес-логики.
-2.  **Service (Domain Logic)**: Чистая бизнес-логика. Работает с абстракциями (`AbstractUnitOfWork`). Не знает о деталях БД или API. Регистрирует доменные события.
-3.  **Unit of Work (UoW)**: Управляет атомарностью операций. Гарантирует завершение транзакции и публикацию событий через Message Bus.
-4.  **Repository / Query (Data Layer)**:
-    - **Repository**: ORM-слой (SQLAlchemy) для записи и простых чтений. Инкапсулирует SQL-детали.
-    - **Query Layer (CQRS)**: Высокопроизводительные сырые SQL-запросы для сложных выборок и аналитики.
+1.  **API Layer (`api/`)**: Роутеры. Принимают HTTP-запросы, валидируют входные данные через схемы, вызывают Service. Не содержит бизнес-логики.
+2.  **Domain Layer (`services/`)**: Чистая бизнес-логика. Работает с абстракциями. Не знает о деталях БД или API. Координирует работу репозиториев.
+3.  **Data Layer (`repositories/`)**: Инкапсулирует работу с хранилищами.
+    - **SQL (SQLAlchemy)**: Транзакционная работа с PostgreSQL.
+    - **NoSQL (MongoDB/Redis)**: Хранение логов, кэша, сессий.
+4.  **Core Layer (`core/`)**: Инфраструктурный клей. Содержит Unit of Work (управление атомарностью), конфигурацию и доменные исключения.
 
-### 2.2 Domain-Driven Design (DDD) элементы
+### 2.2 Дополнительные слои
+- **Workers Layer (`workers/`)**: Консьюмеры RabbitMQ для асинхронной обработки задач (уведомления, логирование).
+- **Clients Layer (`clients/`)**: Интеграции с внешними API (SMTP, платежные шлюзы, курсы валют).
 - **Domain Events**: События, происходящие в домене (напр., `AccountFrozen`), которые должны иметь побочные эффекты в других частях системы.
 - **Entity**: Модели БД (SQLAlchemy).
 - **Value Objects**: Pydantic-схемы для передачи данных.
