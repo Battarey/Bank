@@ -572,6 +572,7 @@ services:
 ##########  Аудит  ##########
 
   audit:
+    profiles: ["audit"]
     image: python:3.12-slim
     container_name: audit
     volumes:
