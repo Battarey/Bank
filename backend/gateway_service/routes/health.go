@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"gateway_service/proxy"
 	"gateway_service/redis"
+	"gateway_service/mongodb"
 	"gateway_service/schemas"
 )
 
@@ -14,6 +15,7 @@ import (
 type HealthHandler struct {
 	Sessions       redis.SessionStore
 	Onboarding     redis.OnboardingStore
+	Mongo          mongodb.MongoStore
 	Proxy          *proxy.ServiceClients
 	InternalAPIKey string
 }
@@ -46,6 +48,14 @@ func (h *HealthHandler) Health(c echo.Context) error {
 		isError = true
 	} else {
 		components["redis_onboarding"] = map[string]string{"status": "ok"}
+	}
+
+	// 2.1 Проверка MongoDB
+	if err := h.Mongo.Ping(ctx); err != nil {
+		components["mongodb"] = map[string]string{"status": "error", "detail": err.Error()}
+		isError = true
+	} else {
+		components["mongodb"] = map[string]string{"status": "ok"}
 	}
 
 	// 3. Параллельный опрос микросервисов

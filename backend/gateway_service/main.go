@@ -54,6 +54,7 @@ import (
 
 	"gateway_service/app"
 	"gateway_service/config"
+	"gateway_service/mongodb"
 	"gateway_service/proxy"
 	redisClient "gateway_service/redis"
 )
@@ -74,11 +75,22 @@ func main() {
 	}
 	defer onboarding.Close()
 
-	// Проверка подключения к Redis
+	// Инициализация MongoDB клиента
+	mongoClient, err := mongodb.NewClient(cfg.MongoURL)
+	if err != nil {
+		log.Fatalf("Ошибка подключения к MongoDB: %v", err)
+	}
+	defer mongoClient.Close()
+
+	// Проверка подключений
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	if err := sessions.Ping(ctx); err != nil {
 		log.Printf("WARN: Redis Sessions недоступен при старте: %v", err)
+	}
+	if err := mongoClient.Ping(ctx); err != nil {
+		log.Printf("WARN: MongoDB недоступна при старте: %v", err)
 	}
 
 	// HTTP-клиенты для внутренних сервисов
@@ -92,7 +104,7 @@ func main() {
 	})
 	defer services.Close()
 
-	e := app.SetupApp(cfg, sessions, onboarding, services)
+	e := app.SetupApp(cfg, sessions, onboarding, mongoClient, services)
 
 	// Graceful shutdown
 	go func() {

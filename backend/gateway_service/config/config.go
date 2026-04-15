@@ -21,6 +21,9 @@ type Config struct {
 	RedisSessionsURL    string
 	RedisOnboardingURL  string
 
+	// MongoDB
+	MongoURL string
+
 	// Безопасность
 	InternalAPIKey     string
 	CORSAllowedOrigins []string
@@ -41,6 +44,8 @@ func Load() *Config {
 
 		RedisSessionsURL:   getEnvRequired("REDIS_SESSIONS_URL"),
 		RedisOnboardingURL: getEnvRequired("REDIS_ONBOARDING_URL"),
+
+		MongoURL: getEnvRequired("MONGO_URL"),
 
 		InternalAPIKey:     getEnvRequired("INTERNAL_API_KEY"),
 		CORSAllowedOrigins: parseCORSOrigins(getEnv("CORS_ALLOWED_ORIGINS", "")),

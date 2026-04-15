@@ -10,6 +10,7 @@ import (
 	"gateway_service/config"
 	_ "gateway_service/docs"
 	"gateway_service/middleware"
+	"gateway_service/mongodb"
 	"gateway_service/proxy"
 	redisClient "gateway_service/redis"
 	"gateway_service/routes"
@@ -20,6 +21,7 @@ func SetupApp(
 	cfg *config.Config,
 	sessions redisClient.SessionStore,
 	onboarding redisClient.OnboardingStore,
+	mongo mongodb.MongoStore,
 	services *proxy.ServiceClients,
 ) *echo.Echo {
 	e := echo.New()
@@ -50,6 +52,7 @@ func SetupApp(
 	healthHandler := &routes.HealthHandler{
 		Sessions:       sessions,
 		Onboarding:     onboarding,
+		Mongo:          mongo,
 		Proxy:          services,
 		InternalAPIKey: cfg.InternalAPIKey,
 	}
