@@ -5,7 +5,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from shared.internal_auth import require_user_id
-from shared.schemas import LoginPinRequest, LoginPinResponse, MessageResponse, SetPinRequest
+from shared.schemas import (
+	LoginPinRequest,
+	LoginPinResponse,
+	MessageResponse,
+	QuickLoginRequest,
+	SetPinRequest,
+)
 
 from ..core.uow import AuthUnitOfWork, get_uow
 from ..services import login as service
@@ -47,7 +53,7 @@ async def login(
 	summary="Быстрый вход (по PIN)",
 )
 async def quick_login(
-	body: schemas.QuickLoginRequest,
+	body: QuickLoginRequest,
 	uow: AuthUnitOfWork = Depends(get_uow),
 ):
 	"""Аутентифицирует пользователя по токену привязки и PIN-коду.
