@@ -8,7 +8,7 @@ from auth_service.core.exceptions import (
 	AuthForbidden,
 	AuthNotFound,
 )
-from auth_service.services.login import login_pin, set_pin
+from auth_service.services.login import login_pin, login_quick, set_pin
 from shared import models
 
 # --- Тесты login_pin ---
@@ -94,16 +94,69 @@ async def test_login_pin_success(mock_bcrypt, mock_blind, mock_rate_limit, mock_
 	mock_rate_limit.check = AsyncMock(return_value=(False, 0, 0))
 	mock_rate_limit.reset = AsyncMock()
 	uow.users.get_by_phone.return_value = (user, contact)
-	mock_tokens.create_token = AsyncMock(return_value="fake_token")
+	mock_tokens.create_token = AsyncMock(return_value="fake_session")
+	mock_tokens.create_refresh_token = AsyncMock(return_value="fake_refresh")
 	mock_bcrypt.checkpw.return_value = True
 
-	token, u_id = await login_pin(uow, "+79991234567", "1234")
+	session, refresh, u_id = await login_pin(uow, "+79991234567", "1234")
 
-	assert token == "fake_token"
+	assert session == "fake_session"
+	assert refresh == "fake_refresh"
 	assert u_id == user.id
 	assert uow.committed is True
 	mock_rate_limit.reset.assert_awaited_once_with("+79991234567")
 	assert any(e.action == "login" and e.status == "success" for e in uow.events)
+
+
+@pytest.mark.asyncio
+@patch("auth_service.services.login.session_tokens")
+@patch("auth_service.services.login.bcrypt")
+async def test_login_quick_success(mock_bcrypt, mock_tokens, uow, user_data):
+	"""Успешный быстрый вход с ротацией токенов."""
+	user, contact = user_data
+	mock_tokens.load_refresh_token = AsyncMock(return_value=user.id)
+	uow.users.get_user_with_contact.return_value = (user, contact)
+	mock_bcrypt.checkpw.return_value = True
+	mock_tokens.delete_refresh_token = AsyncMock()
+	mock_tokens.create_token = AsyncMock(return_value="new_session")
+	mock_tokens.create_refresh_token = AsyncMock(return_value="new_refresh")
+
+	s, r, u_id = await login_quick(uow, "old_refresh", "1234")
+
+	assert s == "new_session"
+	assert r == "new_refresh"
+	assert u_id == user.id
+	mock_tokens.delete_refresh_token.assert_awaited_once_with("old_refresh")
+	assert uow.committed is True
+	assert any(e.action == "quick_login" for e in uow.events)
+
+
+@pytest.mark.asyncio
+@patch("auth_service.services.login.session_tokens")
+async def test_login_quick_invalid_token(mock_tokens, uow):
+	"""Ошибка быстрого входа при невалидном токене."""
+	mock_tokens.load_refresh_token = AsyncMock(return_value=None)
+
+	with pytest.raises(AuthForbidden, match="недействителен или истек"):
+		await login_quick(uow, "invalid_token", "1234")
+
+
+@pytest.mark.asyncio
+@patch("auth_service.services.login.session_tokens")
+@patch("auth_service.services.login.rate_limit")
+@patch("auth_service.services.login.bcrypt")
+async def test_login_quick_wrong_pin(mock_bcrypt, mock_rate_limit, mock_tokens, uow, user_data):
+	"""Ошибка быстрого входа при неверном PIN (с инкрементацией лимитов)."""
+	user, contact = user_data
+	mock_tokens.load_refresh_token = AsyncMock(return_value=user.id)
+	uow.users.get_user_with_contact.return_value = (user, contact)
+	mock_bcrypt.checkpw.return_value = False
+	mock_rate_limit.increment = AsyncMock()
+
+	with pytest.raises(AuthForbidden, match="Неверный PIN-код"):
+		await login_quick(uow, "valid_refresh", "0000")
+
+	mock_rate_limit.increment.assert_awaited_once_with(contact.phone)
 
 
 # --- Тесты set_pin ---

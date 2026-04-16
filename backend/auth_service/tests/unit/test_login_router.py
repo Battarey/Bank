@@ -7,24 +7,44 @@ from auth_service.core.exceptions import (
 	AuthForbidden,
 	AuthNotFound,
 )
-from auth_service.api.login import login, set_pin
-from shared.schemas import LoginPinRequest, SetPinRequest
+from auth_service.api.login import login, quick_login, set_pin
+from shared.schemas import LoginPinRequest, QuickLoginRequest, SetPinRequest
 
 
 @pytest.mark.asyncio
 @patch("auth_service.api.login.service.login_pin")
 async def test_login_success(mock_svc, uow):
-	"""Успешный вход через роутер с возвратом токена."""
+	"""Успешный вход через роутер с возвратом пары токенов."""
 	user_id = uuid4()
-	token = "some_token"
-	mock_svc.return_value = (token, user_id)
+	token = "session_token"
+	refresh = "refresh_token"
+	mock_svc.return_value = (token, refresh, user_id)
 
 	payload = LoginPinRequest(phone="+79991234567", pin="1234")
 	res = await login(body=payload, uow=uow)
 
 	assert res.session_token == token
+	assert res.refresh_token == refresh
 	assert res.user_id == str(user_id)
 	mock_svc.assert_awaited_once_with(uow, "+79991234567", "1234")
+
+
+@pytest.mark.asyncio
+@patch("auth_service.api.login.service.login_quick")
+async def test_quick_login_success(mock_svc, uow):
+	"""Успешный быстрый вход через роутер."""
+	user_id = uuid4()
+	token = "new_session"
+	refresh = "new_refresh"
+	mock_svc.return_value = (token, refresh, user_id)
+
+	payload = QuickLoginRequest(refresh_token="old_refresh", pin="1234")
+	res = await quick_login(body=payload, uow=uow)
+
+	assert res.session_token == token
+	assert res.refresh_token == refresh
+	assert res.user_id == str(user_id)
+	mock_svc.assert_awaited_once_with(uow, "old_refresh", "1234")
 
 
 @pytest.mark.asyncio
