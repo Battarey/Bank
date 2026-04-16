@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 
+from shared.schemas import SecurityCheckRequest
 from security_service.api.antifraud import check_transaction
 
 
@@ -14,16 +15,15 @@ async def test_check_transaction_api_success(mock_check, mock_mongo_repo, mock_u
 	account_id = uuid4()
 	mock_check.return_value = []  # Нет нарушений
 
-	# Имитируем запрос (SecurityCheckRequest)
-	class MockPayload:
-		def __init__(self):
-			self.account_id = account_id
-			self.tx_type = "deposit"
-			self.amount = Decimal("100.00")
-			self.currency = "RUB"
+	payload = SecurityCheckRequest(
+		account_id=account_id,
+		tx_type="deposit",
+		amount=Decimal("100.00"),
+		currency="RUB",
+	)
 
 	res = await check_transaction(
-		payload=MockPayload(),
+		payload=payload,
 		uow=mock_uow,
 		mongo_repo=mock_mongo_repo,
 	)
@@ -43,15 +43,15 @@ async def test_check_transaction_api_violation(mock_check, mock_mongo_repo, mock
 	mock_violation = Violation(rule="test_rule", threshold="100", actual="200", details={})
 	mock_check.return_value = [mock_violation]
 
-	class MockPayload:
-		def __init__(self):
-			self.account_id = account_id
-			self.tx_type = "withdrawal"
-			self.amount = Decimal("200.00")
-			self.currency = "RUB"
+	payload = SecurityCheckRequest(
+		account_id=account_id,
+		tx_type="withdrawal",
+		amount=Decimal("200.00"),
+		currency="RUB",
+	)
 
 	res = await check_transaction(
-		payload=MockPayload(),
+		payload=payload,
 		uow=mock_uow,
 		mongo_repo=mock_mongo_repo,
 	)
