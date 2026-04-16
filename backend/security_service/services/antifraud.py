@@ -53,9 +53,9 @@ async def check_transaction(
 
 		# Собираем агрегаты один раз в рамках одной транзакции UoW
 		data_context = {
-			"total_today": await uow.accounts.get_total_amount_since(account_id, since_24h),
-			"count_today": await uow.accounts.get_transaction_count_since(account_id, since_24h),
-			"count_recent": await uow.accounts.get_transaction_count_since(account_id, since_rapid),
+			"total_today": await uow.accounts.get_total_amount_since(account_id, since_24h, direction="outgoing"),
+			"count_today": await uow.accounts.get_transaction_count_since(account_id, since_24h, direction="outgoing"),
+			"count_recent": await uow.accounts.get_transaction_count_since(account_id, since_rapid, direction="outgoing"),
 			"structuring_hits": await uow.accounts.get_pattern_count(
 				account_id,
 				since_24h,

@@ -26,17 +26,19 @@ class SecurityRepository(BaseRepository[models.BankAccount]):
 			raise AccountNotFound(f"Счёт {account_id} не найден.")
 		return account
 
-	async def get_total_amount_since(self, account_id: UUID, since: datetime) -> Decimal:
+	async def get_total_amount_since(self, account_id: UUID, since: datetime, direction: str | None = None) -> Decimal:
 		"""Возвращает сумму успешных транзакций по счёту за указанный период."""
 		stmt = select(func.coalesce(func.sum(models.Transaction.amount), Decimal("0"))).where(
 			models.Transaction.account_id == account_id,
 			models.Transaction.created_at >= since,
 			models.Transaction.status == "completed",
 		)
+		if direction:
+			stmt = stmt.where(models.Transaction.direction == direction)
 		result = await self.session.execute(stmt)
 		return result.scalar()
 
-	async def get_transaction_count_since(self, account_id: UUID, since: datetime) -> int:
+	async def get_transaction_count_since(self, account_id: UUID, since: datetime, direction: str | None = None) -> int:
 		"""Возвращает количество успешных транзакций по счёту за указанный период."""
 		stmt = (
 			select(func.count())
@@ -47,6 +49,8 @@ class SecurityRepository(BaseRepository[models.BankAccount]):
 				models.Transaction.status == "completed",
 			)
 		)
+		if direction:
+			stmt = stmt.where(models.Transaction.direction == direction)
 		result = await self.session.execute(stmt)
 		return result.scalar() or 0
 
