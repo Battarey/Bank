@@ -50,26 +50,19 @@ async def check_transaction(
 				violations.append(violation)
 
 				# Фиксация события безопасности в MongoDB (внешнее хранилище)
-				try:
-					await mongo_repo.save_event(
-						account_id=str(account_id),
-						rule=violation.rule,
-						details={
-							**violation.details,
-							"tx_type": tx_type,
-							"amount": str(amount),
-							"currency": currency,
-						},
-						action="freeze",  # Рекомендованное действие
-						threshold=violation.threshold,
-						actual=violation.actual,
-					)
-				except Exception:
-					logger.exception(
-						"Ошибка записи security event в хранилище: rule=%s, account=%s",
-						violation.rule,
-						account_id,
-					)
+				await mongo_repo.save_event(
+					account_id=str(account_id),
+					rule=violation.rule,
+					details={
+						**violation.details,
+						"tx_type": tx_type,
+						"amount": str(amount),
+						"currency": currency,
+					},
+					action="freeze",  # Рекомендованное действие
+					threshold=violation.threshold,
+					actual=violation.actual,
+				)
 
 		if violations:
 			rules_summary = ", ".join(v.rule for v in violations)
