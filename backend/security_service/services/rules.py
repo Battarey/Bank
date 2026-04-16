@@ -185,7 +185,7 @@ def check_structuring(
 	*,
 	amount: Decimal,
 	settings: SecuritySettings,
-	hits_today: int,
+	structuring_hits: int,
 	**_kwargs: Any,
 ) -> Violation | None:
 	"""Выявляет признаки дробления транзакций (structuring).
@@ -193,7 +193,7 @@ def check_structuring(
 	Args:
 		amount: Сумма операции.
 		settings: Настройки сервиса безопасности.
-		hits_today: Кол-во уже зафиксированных транзакций в подозрительном диапазоне.
+		structuring_hits: Кол-во уже зафиксированных транзакций в подозрительном диапазоне.
 		**_kwargs: Дополнительные данные.
 
 	Returns:
@@ -204,7 +204,7 @@ def check_structuring(
 
 	# Учитываем текущую операцию
 	current_is_suspicious = lower_bound <= amount < upper_bound
-	total_hits = hits_today + (1 if current_is_suspicious else 0)
+	total_hits = structuring_hits + (1 if current_is_suspicious else 0)
 
 	if total_hits >= settings.STRUCTURING_MIN_HITS:
 		return Violation(
@@ -226,7 +226,7 @@ def check_round_amount_pattern(
 	*,
 	amount: Decimal,
 	settings: SecuritySettings,
-	hits_today: int,
+	round_hits: int,
 	**_kwargs: Any,
 ) -> Violation | None:
 	"""Выявляет серийные крупные переводы круглыми суммами.
@@ -234,14 +234,14 @@ def check_round_amount_pattern(
 	Args:
 		amount: Сумма операции.
 		settings: Настройки сервиса безопасности.
-		hits_today: Кол-во уже зафиксированных круглых операций за период.
+		round_hits: Кол-во уже зафиксированных круглых операций за период.
 		**_kwargs: Дополнительные данные.
 
 	Returns:
 		Violation | None: Описание нарушения или None.
 	"""
 	current_is_round = amount >= settings.ROUND_AMOUNT_FLOOR and amount % settings.ROUND_AMOUNT_STEP == 0
-	total_hits = hits_today + (1 if current_is_round else 0)
+	total_hits = round_hits + (1 if current_is_round else 0)
 
 	if total_hits >= settings.ROUND_AMOUNT_MIN_HITS:
 		return Violation(

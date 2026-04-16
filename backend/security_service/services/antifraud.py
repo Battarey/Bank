@@ -56,13 +56,13 @@ async def check_transaction(
 			"total_today": await uow.accounts.get_total_amount_since(account_id, since_24h),
 			"count_today": await uow.accounts.get_transaction_count_since(account_id, since_24h),
 			"count_recent": await uow.accounts.get_transaction_count_since(account_id, since_rapid),
-			"hits_today": await uow.accounts.get_pattern_count(
+			"structuring_hits": await uow.accounts.get_pattern_count(
 				account_id,
 				since_24h,
 				lower_bound=settings.LARGE_TX_THRESHOLD * settings.STRUCTURING_RATIO,
 				upper_bound=settings.LARGE_TX_THRESHOLD,
 			),
-			"round_hits_today": await uow.accounts.get_round_amount_count(
+			"round_hits": await uow.accounts.get_round_amount_count(
 				account_id,
 				since_24h,
 				floor=settings.ROUND_AMOUNT_FLOOR,
@@ -72,12 +72,11 @@ async def check_transaction(
 
 		# Запуск правил
 		for rule_fn in ALL_RULES:
-			# Передаем настройки и все собранные данные (правила возьмут нужное через **kwargs)
+			# Передаем настройки и все собранные данные
 			violation = rule_fn(
 				amount=amount,
 				currency=currency,
 				settings=settings,
-				hits_today=data_context.get("hits_today") if rule_fn.__name__ == "check_structuring" else data_context.get("round_hits_today"),
 				**data_context,
 			)
 
