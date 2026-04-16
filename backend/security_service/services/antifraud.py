@@ -1,14 +1,16 @@
 """Бизнес-логика антифрод-проверки — оркестрация AML-правил."""
 
 import logging
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
+from shared.bootstrap import get_container
 from shared.events.base import LogEvent
 
+from ..core.uow import SecurityUnitOfWork
 from ..repositories.audit import SecurityEventRepository
 from .rules import ALL_RULES, Violation
-from ..core.uow import SecurityUnitOfWork
 
 logger = logging.getLogger("security_service")
 
@@ -23,12 +25,12 @@ async def check_transaction(
 ) -> list[Violation]:
 	"""Проводит комплексную проверку транзакции по всем активным AML-правилам.
 
-	Каждое нарушение логируется в MongoDB для последующего анализа.
-	В случае срабатывания хотя бы одного правила, операция считается подозрительной.
-	Регистрирует событие LogEvent в Unit of Work при обнаружении нарушений.
+	Сервис собирает необходимые агрегаты из БД через репозиторий и передает их
+	в набор правил для анализа. Каждое нарушение фиксируется в MongoDB.
 
 	Args:
-		uow: Unit of Work для управления транзакцией и событиями.
+		uow: Unit of Work для доступа к репозиторию и управлению транзакцией.
+		mongo_repo: Репозиторий событий безопасности (MongoDB).
 		account_id: ID проверяемого счёта.
 		tx_type: Тип операции (deposit, withdrawal, transfer, exchange).
 		amount: Сумма операции.
@@ -38,18 +40,51 @@ async def check_transaction(
 		list[Violation]: Список зафиксированных нарушений (пустой, если проверка пройдена).
 	"""
 	violations: list[Violation] = []
+	settings = get_container().settings
 
 	async with uow:
 		# Проверка существования счёта
 		await uow.accounts.get_account(account_id)
 
+		# Подготовка данных для правил
+		now = datetime.now(UTC)
+		since_24h = now - timedelta(hours=24)
+		since_rapid = now - timedelta(minutes=settings.RAPID_FIRE_WINDOW_MIN)
+
+		# Собираем агрегаты один раз в рамках одной транзакции UoW
+		data_context = {
+			"total_today": await uow.accounts.get_total_amount_since(account_id, since_24h),
+			"count_today": await uow.accounts.get_transaction_count_since(account_id, since_24h),
+			"count_recent": await uow.accounts.get_transaction_count_since(account_id, since_rapid),
+			"hits_today": await uow.accounts.get_pattern_count(
+				account_id,
+				since_24h,
+				lower_bound=settings.LARGE_TX_THRESHOLD * settings.STRUCTURING_RATIO,
+				upper_bound=settings.LARGE_TX_THRESHOLD,
+			),
+			"round_hits_today": await uow.accounts.get_round_amount_count(
+				account_id,
+				since_24h,
+				floor=settings.ROUND_AMOUNT_FLOOR,
+				step=settings.ROUND_AMOUNT_STEP,
+			),
+		}
+
+		# Запуск правил
 		for rule_fn in ALL_RULES:
-			# Передаем session из UoW в правила
-			violation = await rule_fn(uow.session, account_id, amount, currency)
-			if violation is not None:
+			# Передаем настройки и все собранные данные (правила возьмут нужное через **kwargs)
+			violation = rule_fn(
+				amount=amount,
+				currency=currency,
+				settings=settings,
+				hits_today=data_context.get("hits_today") if rule_fn.__name__ == "check_structuring" else data_context.get("round_hits_today"),
+				**data_context,
+			)
+
+			if violation:
 				violations.append(violation)
 
-				# Фиксация события безопасности в MongoDB (внешнее хранилище)
+				# Фиксация события безопасности в MongoDB
 				await mongo_repo.save_event(
 					account_id=str(account_id),
 					rule=violation.rule,
@@ -59,7 +94,7 @@ async def check_transaction(
 						"amount": str(amount),
 						"currency": currency,
 					},
-					action="freeze",  # Рекомендованное действие
+					action="freeze",
 					threshold=violation.threshold,
 					actual=violation.actual,
 				)
@@ -75,10 +110,9 @@ async def check_transaction(
 				rules_summary,
 			)
 
-			# Регистрация события безопасности «на вырост»
 			uow.add_event(
 				LogEvent(
-					user_id=None,  # Security-лог может быть не привязан к сессии пользователя
+					user_id=None,
 					action="aml_violation",
 					service="security_service",
 					details=f"Нарушения: {rules_summary}",
