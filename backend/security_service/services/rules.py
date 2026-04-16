@@ -16,7 +16,6 @@ from security_service.core.config import SecuritySettings
 
 
 @dataclass(frozen=True, slots=True)
-@runtime_checkable
 class Violation:
 	"""Зафиксированное нарушение AML-правила.
 
@@ -215,7 +214,7 @@ def check_structuring(
 				"description": "Подозрение на дробление (structuring)",
 				"range_low": str(lower_bound),
 				"range_high": str(upper_bound),
-				"hits_today": hits_today,
+				"hits_today": structuring_hits,
 				"current_is_suspicious": current_is_suspicious,
 			},
 		)
@@ -252,7 +251,7 @@ def check_round_amount_pattern(
 				"description": "Серия крупных переводов круглыми суммами",
 				"floor": str(settings.ROUND_AMOUNT_FLOOR),
 				"step": str(settings.ROUND_AMOUNT_STEP),
-				"hits_today": hits_today,
+				"hits_today": round_hits,
 				"current_is_round": current_is_round,
 			},
 		)
