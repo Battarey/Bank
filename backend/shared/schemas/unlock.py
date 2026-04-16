@@ -1,20 +1,19 @@
 """Схемы разблокировки аккаунта."""
 
-from typing import Annotated
-
-from pydantic import BaseModel, EmailStr, Field
+from .auth import Phone, Pin
 
 Code = Annotated[str, Field(pattern=r"^\d{6}$", description="6-значный код разблокировки")]
 
 
 class RequestUnlockRequest(BaseModel):
-	"""Запрос на отправку кода разблокировки."""
+	"""Запрос на отправку кода восстановления доступа."""
 
-	email: EmailStr
+	phone: Phone
 
 
 class UnlockRequest(BaseModel):
-	"""Запрос на разблокировку аккаунта."""
+	"""Запрос на восстановление доступа с обновлением PIN клиента."""
 
-	email: EmailStr
+	phone: Phone
 	code: Code
+	new_pin: Pin = Field(description="Новый PIN-код для доступа к аккаунту")
