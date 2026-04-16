@@ -59,6 +59,13 @@ class AbstractUnitOfWork(abc.ABC):
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 	"""Реализация Unit of Work на базе SQLAlchemy."""
 
+	@property
+	def session(self) -> AsyncSession:
+		"""Возвращает текущую сессию SQLAlchemy."""
+		if self._session is None:
+			raise RuntimeError("Сессия не инициализирована. Используйте Unit of Work внутри контекстного менеджера 'async with'.")
+		return self._session
+
 	def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
 		super().__init__()
 		self.session_factory = session_factory
