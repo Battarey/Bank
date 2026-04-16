@@ -4,6 +4,7 @@ from .auth import (
 	LoginPinRequest,
 	LoginPinResponse,
 	MessageResponse,
+	QuickLoginRequest,
 	SetPinRequest,
 )
 from .bank_account import (
@@ -83,6 +84,7 @@ __all__ = [
 	"PersonalDataPayload",
 	"PersonalDataResponse",
 	"PersonalDataUpdate",
+	"QuickLoginRequest",
 	"RequestUnlockRequest",
 	"SecurityCheckRequest",
 	"SecurityCheckResponse",
