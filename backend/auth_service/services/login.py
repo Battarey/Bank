@@ -22,11 +22,11 @@ async def login_pin(
 	uow: AuthUnitOfWork,
 	phone: str,
 	pin: str,
-) -> tuple[str, UUID]:
-	"""Проверяет PIN-код пользователя и создаёт сессионный токен.
+) -> tuple[str, str, UUID]:
+	"""Проверяет PIN-код пользователя и создаёт пару сессионных токенов.
 
 	Включает проверку rate-limit для предотвращения брутфорса.
-	При успехе создаёт сессию в Redis и возвращает токен.
+	При успехе создаёт сессию и токен привязки (refresh) в Redis.
 
 	Args:
 		uow: Unit of Work для управления транзакцией и событиями.
@@ -34,7 +34,7 @@ async def login_pin(
 		pin: 4-цифровой PIN-код.
 
 	Returns:
-		tuple[str, UUID]: Сессионный токен и ID пользователя.
+		tuple[str, str, UUID]: session_token, refresh_token и ID пользователя.
 
 	Raises:
 		AuthCooldown: Если превышен лимит попыток входа.
@@ -80,10 +80,10 @@ async def login_pin(
 
 			raise AuthForbidden("Неверный PIN-код.")
 
-		# 5. Успех: сброс лимитов и создание сессии
+		# 5. Успех: сброс лимитов и создание сессий
 		await rate_limit.reset(phone)
 
-		token = await session_tokens.create_token(
+		session_token = await session_tokens.create_token(
 			user_id=user.id,
 			data={
 				"phone": phone,
@@ -91,6 +91,7 @@ async def login_pin(
 				"has_pin": "true",
 			},
 		)
+		refresh_token = await session_tokens.create_refresh_token(user_id=user.id)
 
 		uow.add_event(
 			LogEvent(
@@ -103,7 +104,74 @@ async def login_pin(
 		)
 
 		await uow.commit()
-		return token, user.id
+		return session_token, refresh_token, user.id
+
+
+async def login_quick(
+	uow: AuthUnitOfWork,
+	refresh_token: str,
+	pin: str,
+) -> tuple[str, str, UUID]:
+	"""Быстрый вход по токену привязки и PIN-коду.
+
+	Выполняет ротацию Refresh Token: старый удаляется, выдается новый.
+
+	Args:
+		uow: Unit of Work.
+		refresh_token: Ранее выданный токен привязки.
+		pin: 4-цифровой PIN-код.
+
+	Returns:
+		tuple[str, str, UUID]: Новая пара токенов и ID пользователя.
+
+	Raises:
+		AuthForbidden: Если токен невалиден или PIN неверный.
+		AuthNotFound: Если пользователь не найден.
+	"""
+	# 1. Проверка существования рефреш-токена
+	user_id = await session_tokens.load_refresh_token(refresh_token)
+	if not user_id:
+		raise AuthForbidden("Токен привязки недействителен или истек.")
+
+	async with uow:
+		# 2. Получение пользователя (с контактами для логов)
+		user, contact = await uow.users.get_user_with_contact(user_id)
+
+		# 3. Проверка статуса
+		if user.status != "active":
+			raise AuthForbidden(f"Аккаунт находится в статусе '{user.status}'.")
+
+		# 4. Проверка PIN
+		if not user.pin_hash or not bcrypt.checkpw(pin.encode(), user.pin_hash.encode()):
+			# Для быстрого входа тоже можно считать попытки (по телефону из контакта)
+			await rate_limit.increment(contact.phone)
+			raise AuthForbidden("Неверный PIN-код.")
+
+		# 5. Успех: ротация токенов
+		await session_tokens.delete_refresh_token(refresh_token)
+
+		new_session = await session_tokens.create_token(
+			user_id=user.id,
+			data={
+				"phone": contact.phone,
+				"status": user.status,
+				"has_pin": "true",
+			},
+		)
+		new_refresh = await session_tokens.create_refresh_token(user_id=user.id)
+
+		uow.add_event(
+			LogEvent(
+				user_id=user.id,
+				action="quick_login",
+				service="auth_service",
+				status="success",
+				details="Вход по токену привязки и PIN",
+			)
+		)
+
+		await uow.commit()
+		return new_session, new_refresh, user.id
 
 
 async def set_pin(uow: AuthUnitOfWork, user_id: UUID, pin: str) -> None:

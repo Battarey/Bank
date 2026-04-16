@@ -1,5 +1,6 @@
 """Высокоуровневые помощники для хранения пользовательских сессионных токенов в Redis."""
 
+import secrets
 from datetime import timedelta
 from typing import Any
 from uuid import UUID
@@ -8,6 +9,27 @@ from .client import get_client
 
 DEFAULT_SESSION_TTL = timedelta(minutes=30)
 DEFAULT_REFRESH_TTL = timedelta(days=30)
+
+
+async def create_token(
+	user_id: UUID,
+	data: dict[str, Any] | None = None,
+	ttl: timedelta = DEFAULT_SESSION_TTL,
+) -> str:
+	"""Создать новый случайный сессионный токен и сохранить его."""
+	token = secrets.token_urlsafe(32)
+	await save_token(token, user_id, data, ttl)
+	return token
+
+
+async def create_refresh_token(
+	user_id: UUID,
+	ttl: timedelta = DEFAULT_REFRESH_TTL,
+) -> str:
+	"""Создать новый случайный токен привязки (Refresh Token) и сохранить его."""
+	token = secrets.token_urlsafe(48)
+	await save_refresh_token(token, user_id, ttl)
+	return token
 
 
 def _key(token: str) -> str:
@@ -140,6 +162,8 @@ async def revoke_all(user_id: UUID) -> None:
 __all__ = [
 	"DEFAULT_REFRESH_TTL",
 	"DEFAULT_SESSION_TTL",
+	"create_refresh_token",
+	"create_token",
 	"delete_refresh_token",
 	"delete_token",
 	"load_refresh_token",

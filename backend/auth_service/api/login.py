@@ -30,10 +30,44 @@ async def login(
 		uow: Unit of Work для управления транзакцией и событиями.
 
 	Returns:
-		LoginPinResponse: Сессионный токен и ID пользователя.
+		LoginPinResponse: Сессионный токен, токен привязки и ID пользователя.
 	"""
-	token, user_id = await service.login_pin(uow, body.phone, body.pin)
-	return LoginPinResponse(session_token=token, user_id=str(user_id))
+	session_token, refresh_token, user_id = await service.login_pin(uow, body.phone, body.pin)
+	return LoginPinResponse(
+		session_token=session_token,
+		refresh_token=refresh_token,
+		user_id=str(user_id),
+	)
+
+
+@router.post(
+	"/sessions/quick",
+	response_model=LoginPinResponse,
+	status_code=status.HTTP_201_CREATED,
+	summary="Быстрый вход (по PIN)",
+)
+async def quick_login(
+	body: schemas.QuickLoginRequest,
+	uow: AuthUnitOfWork = Depends(get_uow),
+):
+	"""Аутентифицирует пользователя по токену привязки и PIN-коду.
+
+	Используется для повторного входа без ввода номера телефона.
+	При каждом входе токен привязки обновляется (Rotating Refresh Token).
+
+	Args:
+		body: Токен привязки и PIN-код.
+		uow: Unit of Work.
+
+	Returns:
+		LoginPinResponse: Новая пара токенов и ID пользователя.
+	"""
+	session_token, refresh_token, user_id = await service.login_quick(uow, body.refresh_token, body.pin)
+	return LoginPinResponse(
+		session_token=session_token,
+		refresh_token=refresh_token,
+		user_id=str(user_id),
+	)
 
 
 @router.put(
