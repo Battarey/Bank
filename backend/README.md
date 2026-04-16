@@ -1,9 +1,9 @@
 # Банковская Платформа (Backend)
 
-![Python 3.12](https://img.shields.io/badge/python-3.12-blue.png)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.png)
-![Architecture: Clean/Layered](https://img.shields.io/badge/Architecture-Clean%2FLayered-blueviolet.png)
-![Go 1.23](https://img.shields.io/badge/go-1.23-00ADD8.png)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.svg)
+![Architecture: Clean/Layered](https://img.shields.io/badge/Architecture-Clean%2FLayered-blueviolet.svg)
+![Go 1.23](https://img.shields.io/badge/go-1.23-00ADD8.svg)
 
 Централизованная банковская экосистема, построенная на микросервисной архитектуре. Система реализует современные архитектурные паттерны: **Domain-Driven Design (DDD)**, **Unit of Work**, **CQRS** и **Event-Driven Architecture (EDA)**.
 
