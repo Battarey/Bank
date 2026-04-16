@@ -23,11 +23,3 @@ class SecurityRepository(BaseRepository[models.BankAccount]):
 		if not account:
 			raise AccountNotFound(f"Счёт {account_id} не найден.")
 		return account
-
-	async def get_all_by_account(self, account_id: UUID, filters: list | None = None) -> list[models.Transaction]:
-		"""Возвращает список транзакций по счёту с применением фильтров."""
-		stmt = select(models.Transaction).where(models.Transaction.account_id == account_id)
-		if filters:
-			stmt = stmt.where(*filters)
-		result = await self.session.execute(stmt)
-		return result.scalars().all()
