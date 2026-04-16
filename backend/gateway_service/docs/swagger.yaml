@@ -151,7 +151,7 @@ definitions:
     properties:
       detail:
         example: Слишком много попыток входа. Попробуйте через 5 минут или воспользуйтесь
-          кодом разблокировки.
+          кодом восстановления.
         type: string
       status:
         example: 423
@@ -166,7 +166,7 @@ definitions:
   schemas.AuthInvalidCodeErrorResponse:
     properties:
       detail:
-        example: Код разблокировки неверен или истек
+        example: Код подтверждения неверен или истек
         type: string
       status:
         example: 403
@@ -447,6 +447,11 @@ definitions:
           впервые)
         example: true
         type: boolean
+      refresh_token:
+        description: Токен привязки (Long-lived), необходим для быстрого входа по
+          PIN
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
       session_token:
         description: Сессионный токен (JWT), необходим для авторизации последующих
           запросов
@@ -701,15 +706,31 @@ definitions:
         example: Петрович
         type: string
     type: object
-  schemas.RequestUnlockRequest:
+  schemas.QuickLoginRequest:
     properties:
-      email:
-        description: Email, привязанный к профилю клиента
-        example: user@example.com
-        format: email
+      pin:
+        description: Секретный 4-значный код доступа
+        example: "1234"
+        maxLength: 4
+        minLength: 4
+        type: string
+      refresh_token:
+        description: Токен привязки (Refresh Token), полученный при первом входе
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     required:
-    - email
+    - pin
+    - refresh_token
+    type: object
+  schemas.RequestUnlockRequest:
+    properties:
+      phone:
+        description: Номер телефона, привязанный к аккаунту (+7...)
+        example: "+79991234567"
+        format: phone
+        type: string
+    required:
+    - phone
     type: object
   schemas.SecurityViolationErrorResponse:
     properties:
@@ -856,14 +877,21 @@ definitions:
         maxLength: 6
         minLength: 6
         type: string
-      email:
-        description: Email, привязанный к профилю клиента
-        example: user@example.com
-        format: email
+      phone:
+        description: Номер телефона, привязанный к аккаунту (+7...)
+        example: "+79991234567"
+        format: phone
+        type: string
+      pin:
+        description: Новый 4-значный PIN-код доступа
+        example: "5678"
+        maxLength: 4
+        minLength: 4
         type: string
     required:
     - code
-    - email
+    - phone
+    - pin
     type: object
   schemas.ValidationErrorResponse:
     properties:
@@ -1287,10 +1315,10 @@ paths:
       consumes:
       - application/json
       description: |-
-        Отправляет 6-значный одноразовый код на привязанный Email пользователя.
-        Код необходим для сброса блокировки после неверного ввода PIN.
+        Отправляет 6-значный одноразовый код на Email пользователя, привязанный к номеру телефона.
+        Код необходим для сброса блокировки или смены забытого PIN.
       parameters:
-      - description: Email, привязанный к аккаунту
+      - description: Номер телефона, привязанный к аккаунту
         in: body
         name: payload
         required: true
@@ -1300,29 +1328,29 @@ paths:
       - application/json
       responses:
         "201":
-          description: Код успешно отправлен
+          description: Код успешно отправлен на Email
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "400":
-          description: Некорректный формат Email
+          description: Некорректный формат телефона
           schema:
             $ref: '#/definitions/schemas.ValidationErrorResponse'
         "404":
-          description: Email не найден в системе (AuthNotFound)
+          description: Пользователь не найден
           schema:
             $ref: '#/definitions/schemas.NotFoundErrorResponse'
-      summary: Запросить код разблокировки
+      summary: Запросить код восстановления доступа
       tags:
-      - auth-unlock
+      - auth-recovery
   /api/v1/auth/unlock-codes/verifications:
     post:
       consumes:
       - application/json
       description: |-
-        Проверяет код из письма и разблокирует учетную запись пользователя.
-        После разблокировки пользователь сможет снова войти по своему PIN.
+        Проверяет код из письма и устанавливает новый PIN-код для входа в аккаунт.
+        После успешного сброса статус аккаунта меняется на 'active'.
       parameters:
-      - description: Email и 6-значный код
+      - description: Телефон, код из письма и новый PIN
         in: body
         name: payload
         required: true
@@ -1332,7 +1360,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Аккаунт успешно разблокирован
+          description: Доступ успешно восстановлен
           schema:
             $ref: '#/definitions/schemas.SuccessResponse'
         "400":
@@ -1340,16 +1368,16 @@ paths:
           schema:
             $ref: '#/definitions/schemas.ValidationErrorResponse'
         "403":
-          description: Неверный или просроченный код (AuthInvalidCode)
+          description: Неверный или просроченный код
           schema:
             $ref: '#/definitions/schemas.AuthInvalidCodeErrorResponse'
         "404":
           description: Пользователь не найден
           schema:
             $ref: '#/definitions/schemas.NotFoundErrorResponse'
-      summary: Подтвердить разблокировку
+      summary: Подтвердить восстановление и сменить PIN
       tags:
-      - auth-unlock
+      - auth-recovery
   /api/v1/currencies/rates:
     get:
       description: |-
@@ -1880,7 +1908,7 @@ paths:
       - application/json
       description: |-
         Аутентификация по номеру телефона и PIN-коду.
-        В случае успеха возвращает сессионный токен, который нужно передавать в заголовке X-Session-Token.
+        В случае успеха возвращает сессионный токен (JWT) и токен привязки (Refresh Token).
       parameters:
       - description: Номер телефона (+7...) и 4-значный PIN
         in: body
@@ -1937,6 +1965,38 @@ paths:
       security:
       - SessionToken: []
       summary: Выход (текущая сессия)
+      tags:
+      - sessions
+  /api/v1/sessions/quick:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Повторный вход в приложение с использованием токена привязки и PIN-кода.
+        Позволяет войти без ввода номера телефона. Токен привязки обновляется при каждом входе.
+      parameters:
+      - description: Токен привязки и 4-значный PIN
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.QuickLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешная авторизация
+          schema:
+            $ref: '#/definitions/schemas.LoginResponse'
+        "400":
+          description: Ошибка валидации данных
+          schema:
+            $ref: '#/definitions/schemas.ValidationErrorResponse'
+        "403":
+          description: Неверный PIN или токен привязки
+          schema:
+            $ref: '#/definitions/schemas.AuthInvalidCodeErrorResponse'
+      summary: Быстрый вход (по PIN)
       tags:
       - sessions
   /api/v1/transactions:

@@ -23,10 +23,11 @@ func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
 	// Группа API v1
 	v1 := e.Group("/api/v1")
 
-	// Публичные (вход и разблокировка)
-	v1.POST("/sessions", h.Login)             // Создать сессию (Вход)
-	v1.POST("/auth/unlock-codes", h.RequestUnlock)         // Запросить код
-	v1.POST("/auth/unlock-codes/verifications", h.ConfirmUnlock) // Подтверждение разблокировки
+	// Публичные (вход и восстановление)
+	v1.POST("/sessions", h.Login)                               // Создать сессию (Вход)
+	v1.POST("/sessions/quick", h.QuickLogin)                     // Быстрый вход по PIN
+	v1.POST("/auth/unlock-codes", h.RequestUnlock)               // Запросить код восстановления
+	v1.POST("/auth/unlock-codes/verifications", h.ConfirmUnlock) // Восстановление и смена PIN
 
 	// Защищённые (управление сессиями и PIN)
 	v1.PUT("/auth/pins", h.SetPin)                         // Обновить PIN
@@ -40,7 +41,7 @@ func (h *AuthHandler) RegisterAuthRoutes(e *echo.Echo) {
 // login godoc
 // @Summary     Вход в приложение
 // @Description Аутентификация по номеру телефона и PIN-коду. 
-// @Description В случае успеха возвращает сессионный токен, который нужно передавать в заголовке X-Session-Token.
+// @Description В случае успеха возвращает сессионный токен (JWT) и токен привязки (Refresh Token).
 // @Tags        sessions
 // @Accept      json
 // @Produce     json
@@ -62,17 +63,39 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	return h.Proxy.ForwardRaw(c, http.MethodPost, "/sessions", body, "auth", h.APIKey)
 }
 
-// requestUnlock godoc
-// @Summary     Запросить код разблокировки
-// @Description Отправляет 6-значный одноразовый код на привязанный Email пользователя.
-// @Description Код необходим для сброса блокировки после неверного ввода PIN.
-// @Tags        auth-unlock
+// quickLogin godoc
+// @Summary     Быстрый вход (по PIN)
+// @Description Повторный вход в приложение с использованием токена привязки и PIN-кода.
+// @Description Позволяет войти без ввода номера телефона. Токен привязки обновляется при каждом входе.
+// @Tags        sessions
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.RequestUnlockRequest true "Email, привязанный к аккаунту"
-// @Success     201 {object} schemas.SuccessResponse "Код успешно отправлен"
-// @Failure     400 {object} schemas.ValidationErrorResponse "Некорректный формат Email"
-// @Failure     404 {object} schemas.NotFoundErrorResponse "Email не найден в системе (AuthNotFound)"
+// @Param       payload body schemas.QuickLoginRequest true "Токен привязки и 4-значный PIN"
+// @Success     201 {object} schemas.LoginResponse "Успешная авторизация"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка валидации данных"
+// @Failure     403 {object} schemas.AuthInvalidCodeErrorResponse "Неверный PIN или токен привязки"
+// @Router      /api/v1/sessions/quick [post]
+func (h *AuthHandler) QuickLogin(c echo.Context) error {
+	body, err := ReadBody(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]string{
+			"detail": "Ошибка чтения тела запроса.",
+		})
+	}
+	return h.Proxy.ForwardRaw(c, http.MethodPost, "/sessions/quick", body, "auth", h.APIKey)
+}
+
+// requestUnlock godoc
+// @Summary     Запросить код восстановления доступа
+// @Description Отправляет 6-значный одноразовый код на Email пользователя, привязанный к номеру телефона.
+// @Description Код необходим для сброса блокировки или смены забытого PIN.
+// @Tags        auth-recovery
+// @Accept      json
+// @Produce     json
+// @Param       payload body schemas.RequestUnlockRequest true "Номер телефона, привязанный к аккаунту"
+// @Success     201 {object} schemas.SuccessResponse "Код успешно отправлен на Email"
+// @Failure     400 {object} schemas.ValidationErrorResponse "Некорректный формат телефона"
+// @Failure     404 {object} schemas.NotFoundErrorResponse "Пользователь не найден"
 // @Router      /api/v1/auth/unlock-codes [post]
 func (h *AuthHandler) RequestUnlock(c echo.Context) error {
 	body, err := ReadBody(c)
@@ -85,16 +108,16 @@ func (h *AuthHandler) RequestUnlock(c echo.Context) error {
 }
 
 // confirmUnlock godoc
-// @Summary     Подтвердить разблокировку
-// @Description Проверяет код из письма и разблокирует учетную запись пользователя.
-// @Description После разблокировки пользователь сможет снова войти по своему PIN.
-// @Tags        auth-unlock
+// @Summary     Подтвердить восстановление и сменить PIN
+// @Description Проверяет код из письма и устанавливает новый PIN-код для входа в аккаунт.
+// @Description После успешного сброса статус аккаунта меняется на 'active'.
+// @Tags        auth-recovery
 // @Accept      json
 // @Produce     json
-// @Param       payload body schemas.UnlockRequest true "Email и 6-значный код"
-// @Success     200 {object} schemas.SuccessResponse "Аккаунт успешно разблокирован"
+// @Param       payload body schemas.UnlockRequest true "Телефон, код из письма и новый PIN"
+// @Success     200 {object} schemas.SuccessResponse "Доступ успешно восстановлен"
 // @Failure     400 {object} schemas.ValidationErrorResponse "Ошибка формата данных"
-// @Failure     403 {object} schemas.AuthInvalidCodeErrorResponse "Неверный или просроченный код (AuthInvalidCode)"
+// @Failure     403 {object} schemas.AuthInvalidCodeErrorResponse "Неверный или просроченный код"
 // @Failure     404 {object} schemas.NotFoundErrorResponse "Пользователь не найден"
 // @Router      /api/v1/auth/unlock-codes/verifications [post]
 func (h *AuthHandler) ConfirmUnlock(c echo.Context) error {

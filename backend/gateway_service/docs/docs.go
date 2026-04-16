@@ -589,7 +589,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/unlock-codes": {
             "post": {
-                "description": "Отправляет 6-значный одноразовый код на привязанный Email пользователя.\nКод необходим для сброса блокировки после неверного ввода PIN.",
+                "description": "Отправляет 6-значный одноразовый код на Email пользователя, привязанный к номеру телефона.\nКод необходим для сброса блокировки или смены забытого PIN.",
                 "consumes": [
                     "application/json"
                 ],
@@ -597,12 +597,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth-unlock"
+                    "auth-recovery"
                 ],
-                "summary": "Запросить код разблокировки",
+                "summary": "Запросить код восстановления доступа",
                 "parameters": [
                     {
-                        "description": "Email, привязанный к аккаунту",
+                        "description": "Номер телефона, привязанный к аккаунту",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -613,19 +613,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Код успешно отправлен",
+                        "description": "Код успешно отправлен на Email",
                         "schema": {
                             "$ref": "#/definitions/schemas.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректный формат Email",
+                        "description": "Некорректный формат телефона",
                         "schema": {
                             "$ref": "#/definitions/schemas.ValidationErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Email не найден в системе (AuthNotFound)",
+                        "description": "Пользователь не найден",
                         "schema": {
                             "$ref": "#/definitions/schemas.NotFoundErrorResponse"
                         }
@@ -635,7 +635,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/unlock-codes/verifications": {
             "post": {
-                "description": "Проверяет код из письма и разблокирует учетную запись пользователя.\nПосле разблокировки пользователь сможет снова войти по своему PIN.",
+                "description": "Проверяет код из письма и устанавливает новый PIN-код для входа в аккаунт.\nПосле успешного сброса статус аккаунта меняется на 'active'.",
                 "consumes": [
                     "application/json"
                 ],
@@ -643,12 +643,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth-unlock"
+                    "auth-recovery"
                 ],
-                "summary": "Подтвердить разблокировку",
+                "summary": "Подтвердить восстановление и сменить PIN",
                 "parameters": [
                     {
-                        "description": "Email и 6-значный код",
+                        "description": "Телефон, код из письма и новый PIN",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -659,7 +659,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Аккаунт успешно разблокирован",
+                        "description": "Доступ успешно восстановлен",
                         "schema": {
                             "$ref": "#/definitions/schemas.SuccessResponse"
                         }
@@ -671,7 +671,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Неверный или просроченный код (AuthInvalidCode)",
+                        "description": "Неверный или просроченный код",
                         "schema": {
                             "$ref": "#/definitions/schemas.AuthInvalidCodeErrorResponse"
                         }
@@ -1441,7 +1441,7 @@ const docTemplate = `{
         },
         "/api/v1/sessions": {
             "post": {
-                "description": "Аутентификация по номеру телефона и PIN-коду.\nВ случае успеха возвращает сессионный токен, который нужно передавать в заголовке X-Session-Token.",
+                "description": "Аутентификация по номеру телефона и PIN-коду.\nВ случае успеха возвращает сессионный токен (JWT) и токен привязки (Refresh Token).",
                 "consumes": [
                     "application/json"
                 ],
@@ -1558,6 +1558,52 @@ const docTemplate = `{
                         "description": "Токен уже недействителен",
                         "schema": {
                             "$ref": "#/definitions/schemas.UnauthorizedErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sessions/quick": {
+            "post": {
+                "description": "Повторный вход в приложение с использованием токена привязки и PIN-кода.\nПозволяет войти без ввода номера телефона. Токен привязки обновляется при каждом входе.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Быстрый вход (по PIN)",
+                "parameters": [
+                    {
+                        "description": "Токен привязки и 4-значный PIN",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.QuickLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешная авторизация",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка валидации данных",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.ValidationErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный PIN или токен привязки",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.AuthInvalidCodeErrorResponse"
                         }
                     }
                 }
@@ -1920,7 +1966,7 @@ const docTemplate = `{
             "properties": {
                 "detail": {
                     "type": "string",
-                    "example": "Слишком много попыток входа. Попробуйте через 5 минут или воспользуйтесь кодом разблокировки."
+                    "example": "Слишком много попыток входа. Попробуйте через 5 минут или воспользуйтесь кодом восстановления."
                 },
                 "status": {
                     "type": "integer",
@@ -1941,7 +1987,7 @@ const docTemplate = `{
             "properties": {
                 "detail": {
                     "type": "string",
-                    "example": "Код разблокировки неверен или истек"
+                    "example": "Код подтверждения неверен или истек"
                 },
                 "status": {
                     "type": "integer",
@@ -2322,6 +2368,11 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": true
                 },
+                "refresh_token": {
+                    "description": "Токен привязки (Long-lived), необходим для быстрого входа по PIN",
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
                 "session_token": {
                     "description": "Сессионный токен (JWT), необходим для авторизации последующих запросов",
                     "type": "string",
@@ -2652,17 +2703,38 @@ const docTemplate = `{
                 }
             }
         },
+        "schemas.QuickLoginRequest": {
+            "type": "object",
+            "required": [
+                "pin",
+                "refresh_token"
+            ],
+            "properties": {
+                "pin": {
+                    "description": "Секретный 4-значный код доступа",
+                    "type": "string",
+                    "maxLength": 4,
+                    "minLength": 4,
+                    "example": "1234"
+                },
+                "refresh_token": {
+                    "description": "Токен привязки (Refresh Token), полученный при первом входе",
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            }
+        },
         "schemas.RequestUnlockRequest": {
             "type": "object",
             "required": [
-                "email"
+                "phone"
             ],
             "properties": {
-                "email": {
-                    "description": "Email, привязанный к профилю клиента",
+                "phone": {
+                    "description": "Номер телефона, привязанный к аккаунту (+7...)",
                     "type": "string",
-                    "format": "email",
-                    "example": "user@example.com"
+                    "format": "phone",
+                    "example": "+79991234567"
                 }
             }
         },
@@ -2852,7 +2924,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "code",
-                "email"
+                "phone",
+                "pin"
             ],
             "properties": {
                 "code": {
@@ -2862,11 +2935,18 @@ const docTemplate = `{
                     "minLength": 6,
                     "example": "123456"
                 },
-                "email": {
-                    "description": "Email, привязанный к профилю клиента",
+                "phone": {
+                    "description": "Номер телефона, привязанный к аккаунту (+7...)",
                     "type": "string",
-                    "format": "email",
-                    "example": "user@example.com"
+                    "format": "phone",
+                    "example": "+79991234567"
+                },
+                "pin": {
+                    "description": "Новый 4-значный PIN-код доступа",
+                    "type": "string",
+                    "maxLength": 4,
+                    "minLength": 4,
+                    "example": "5678"
                 }
             }
         },
