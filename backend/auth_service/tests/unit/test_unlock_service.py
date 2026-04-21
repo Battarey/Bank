@@ -25,7 +25,8 @@ def user_contact_tuple():
 
 
 @pytest.mark.asyncio
-async def test_request_unlock_user_not_found(uow):
+@patch("auth_service.services.unlock.get_blind_index")
+async def test_request_unlock_user_not_found(mock_blind, uow):  # noqa: ARG001
 	"""Ошибка при запросе восстановления несуществующего пользователя."""
 	uow.users.get_by_phone.return_value = None
 
@@ -34,8 +35,9 @@ async def test_request_unlock_user_not_found(uow):
 
 
 @pytest.mark.asyncio
+@patch("auth_service.services.unlock.get_blind_index")
 @patch("auth_service.services.unlock.unlock_codes")
-async def test_request_unlock_success(mock_codes, uow, user_contact_tuple):
+async def test_request_unlock_success(mock_codes, mock_blind, uow, user_contact_tuple):  # noqa: ARG001
 	"""Успешный запрос кода восстановления (отправка на Email по номеру телефона)."""
 	mock_codes.save_unlock_code = AsyncMock()
 	mock_codes.generate_code.return_value = "112233"
@@ -50,8 +52,9 @@ async def test_request_unlock_success(mock_codes, uow, user_contact_tuple):
 
 
 @pytest.mark.asyncio
+@patch("auth_service.services.unlock.get_blind_index")
 @patch("auth_service.services.unlock.unlock_codes")
-async def test_confirm_unlock_invalid_code(mock_codes, uow, user_contact_tuple):
+async def test_confirm_unlock_invalid_code(mock_codes, mock_blind, uow, user_contact_tuple):  # noqa: ARG001
 	"""Ошибка при вводе неверного кода восстановления."""
 	user, contact = user_contact_tuple
 	uow.users.get_by_phone = AsyncMock(return_value=(user, contact))
@@ -62,10 +65,11 @@ async def test_confirm_unlock_invalid_code(mock_codes, uow, user_contact_tuple):
 
 
 @pytest.mark.asyncio
+@patch("auth_service.services.unlock.get_blind_index")
 @patch("auth_service.services.unlock.bcrypt")
 @patch("auth_service.services.unlock.rate_limit")
 @patch("auth_service.services.unlock.unlock_codes")
-async def test_confirm_unlock_success(mock_codes, mock_rate_limit, mock_bcrypt, uow, user_contact_tuple):
+async def test_confirm_unlock_success(mock_codes, mock_rate_limit, mock_bcrypt, mock_blind, uow, user_contact_tuple):  # noqa: ARG001
 	"""Успешное подтверждение восстановления со сменой PIN и разморозкой счетов."""
 	user, contact = user_contact_tuple
 	uow.users.get_by_phone = AsyncMock(return_value=(user, contact))

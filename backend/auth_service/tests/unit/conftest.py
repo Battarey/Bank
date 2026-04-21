@@ -3,12 +3,21 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from shared.bootstrap.container import bootstrap
+from shared.config.base import BaseAppSettings
+
 os.environ.setdefault("RABBITMQ_HOST", "localhost")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("INTERNAL_API_KEY", "test-internal-key")
 os.environ.setdefault("ENCRYPTION_KEY", "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_container():
+	"""Автоматическая инициализация контейнера настроек для всех тестов сессии."""
+	bootstrap(BaseAppSettings)
 
 
 @pytest.fixture
