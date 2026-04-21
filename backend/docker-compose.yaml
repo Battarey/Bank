@@ -518,6 +518,13 @@ services:
       - ./.env
     volumes:
       - ch_data:/var/lib/clickhouse
+      - ../infra/clickhouse/config.d/listen_host.xml:/etc/clickhouse-server/config.d/listen_host.xml
+    cap_add:
+      - SYS_NICE
+      - NET_ADMIN
+      - IPC_LOCK
+    security_opt:
+      - seccomp:unconfined
     ports:
       - "${CLICKHOUSE_HOST_PORT}:${CLICKHOUSE_CONTAINER_PORT}"
       - "${CLICKHOUSE_TCP_HOST_PORT}:${CLICKHOUSE_TCP_CONTAINER_PORT}"
