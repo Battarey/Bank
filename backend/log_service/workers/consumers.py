@@ -95,11 +95,11 @@ async def run_consumers() -> None:
 
 	# 2. Подключение к RabbitMQ
 	settings = get_container().settings
-	logger.info("Подключение к RabbitMQ: %s", settings.RABBITMQ_URL)
+	logger.info("Подключение к RabbitMQ: %s", settings.rabbitmq.URL)
 	connection = None
 	for attempt in range(1, MAX_RETRIES + 1):
 		try:
-			connection = await aio_pika.connect_robust(settings.RABBITMQ_URL)
+			connection = await aio_pika.connect_robust(settings.rabbitmq.URL)
 			break
 		except Exception as exc:
 			logger.warning("Попытка %d/%d не удалась: %s", attempt, MAX_RETRIES, exc)

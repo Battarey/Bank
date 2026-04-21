@@ -4,8 +4,12 @@ import logging
 import uvicorn
 
 from shared.bootstrap import bootstrap, get_container
-from .api.router import app
 from .core.config import LogSettings
+
+# Инициализация инфраструктуры ДО импорта роутеров и воркеров
+bootstrap(LogSettings)
+
+from .api.router import app
 from .workers.consumers import run_consumers
 
 logging.basicConfig(
@@ -29,8 +33,7 @@ async def run_services(settings: LogSettings):
 
 def main() -> None:
 	"""Entry point."""
-	# Инициализация инфраструктуры на базе типизированных настроек
-	bootstrap(LogSettings)
+	# Настройки уже инициализированы при импорте модуля выше
 	container = get_container()
 	settings = container.settings
 

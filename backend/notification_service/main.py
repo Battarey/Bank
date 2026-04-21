@@ -4,9 +4,12 @@ import logging
 import uvicorn
 
 from shared.bootstrap import bootstrap, get_container
+from .core.config import NotificationSettings
+
+# Инициализация инфраструктуры до импорта зависимых модулей
+bootstrap(NotificationSettings)
 
 from .api.router import app
-from .core.config import NotificationSettings
 from .workers.consumers import run_consumers
 
 logging.basicConfig(
@@ -30,8 +33,6 @@ async def run_services(settings: NotificationSettings):
 
 def main() -> None:
 	"""Entry point."""
-	# Инициализация инфраструктуры на базе типизированных настроек
-	bootstrap(NotificationSettings)
 	container = get_container()
 	settings = container.settings
 
