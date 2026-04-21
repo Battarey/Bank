@@ -1,18 +1,17 @@
 """Асинхронный Redis-клиент для хранения черновиков онбординга."""
 
-import os
-
 from redis.asyncio import Redis
+
+from shared.bootstrap import get_container
 
 
 def _resolve_redis_url() -> str:
-	"""Определяет URL для Redis онбординга из окружения или Bootstrap-контейнера."""
-	try:
-		from shared.bootstrap import get_container
+	"""Определяет URL для Redis онбординга из Bootstrap-контейнера."""
 
-		return get_container().db_settings.REDIS_ONBOARDING_URL or ""
-	except (RuntimeError, ImportError):
-		return os.getenv("REDIS_ONBOARDING_URL", "")
+	url = get_container().db_settings.REDIS_ONBOARDING_URL
+	if not url:
+		raise RuntimeError("REDIS_ONBOARDING_URL не задан в настройках!")
+	return url
 
 
 _client: Redis | None = None

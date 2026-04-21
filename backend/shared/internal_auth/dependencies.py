@@ -1,24 +1,27 @@
 """Зависимости для защиты внутренних микросервисов от прямого доступа."""
 
-import os
 import secrets
 from uuid import UUID
 
 from fastapi import Header, HTTPException, status
 
-# Секрет для проверки, что запрос пришёл от gateway, а не напрямую
-INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "")
+from shared.bootstrap import get_container
 
 
 def verify_internal_key(x_internal_key: str = Header(..., alias="X-Internal-Key")) -> None:
-	"""Проверяет, что запрос содержит валидный внутренний ключ от gateway."""
+	"""Проверяет, что запрос содержит валидный внутренний ключ от gateway.
 
-	if not INTERNAL_API_KEY:
+	Ключ извлекается из глобального контейнера настроек (Pydantic Settings).
+	"""
+	settings = get_container().settings
+	internal_key = settings.INTERNAL_API_KEY
+
+	if not internal_key:
 		raise HTTPException(
 			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
 			detail="Сервис не сконфигурирован: INTERNAL_API_KEY не задан.",
 		)
-	if not secrets.compare_digest(x_internal_key, INTERNAL_API_KEY):
+	if not secrets.compare_digest(x_internal_key, internal_key):
 		raise HTTPException(
 			status_code=status.HTTP_403_FORBIDDEN,
 			detail="Недействительный внутренний ключ.",

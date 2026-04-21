@@ -1,20 +1,16 @@
 """Утилиты для обеспечения безопасности данных (шифрование и хеширование)."""
 
 import hashlib
-import os
-from typing import Final
+import logging
+from shared.bootstrap import get_container
 
 from cryptography.fernet import Fernet
-
-# Ключ для симметричного шифрования (должен быть в base64, 32 байта)
-ENCRYPTION_KEY: Final[str | None] = os.getenv("ENCRYPTION_KEY")
-
-# Соль для слепого индекса (blind index), чтобы хеши не были предсказуемыми
-BLIND_INDEX_SALT: Final[str] = os.getenv("BLIND_INDEX_SALT", "bank_default_salt_2024")
 
 
 def encrypt_data(data: str) -> str:
 	"""Шифрует строку с использованием Fernet (AES-128 в режиме CBC с HMAC).
+
+	Ключ извлекается из глобального контейнера настроек.
 
 	Args:
 		data: Исходные данные в виде строки.
@@ -25,10 +21,13 @@ def encrypt_data(data: str) -> str:
 	Raises:
 		ValueError: Если ENCRYPTION_KEY не задан.
 	"""
-	if not ENCRYPTION_KEY:
-		raise ValueError("Переменная окружения ENCRYPTION_KEY не задана!")
+	settings = get_container().settings
+	key = settings.ENCRYPTION_KEY
 
-	f = Fernet(ENCRYPTION_KEY.encode())
+	if not key:
+		raise ValueError("Настройка ENCRYPTION_KEY не задана!")
+
+	f = Fernet(key.encode())
 	return f.encrypt(data.encode()).decode()
 
 
@@ -44,18 +43,18 @@ def decrypt_data(token: str) -> str:
 	Raises:
 		ValueError: Если ENCRYPTION_KEY не задан.
 	"""
-	if not ENCRYPTION_KEY:
-		raise ValueError("Переменная окружения ENCRYPTION_KEY не задана!")
+	settings = get_container().settings
+	key = settings.ENCRYPTION_KEY
 
-	f = Fernet(ENCRYPTION_KEY.encode())
+	if not key:
+		raise ValueError("Настройка ENCRYPTION_KEY не задана!")
+
+	f = Fernet(key.encode())
 	return f.decrypt(token.encode()).decode()
 
 
 def get_blind_index(data: str) -> str:
 	"""Создает детерминированный хеш (слепой индекс) для поиска по зашифрованным полям.
-
-	Используется для обеспечения уникальности и возможности поиска (равенства),
-	так как основное шифрование Fernet недетерминировано (разный IV при каждом вызове).
 
 	Args:
 		data: Исходные данные.
@@ -63,7 +62,10 @@ def get_blind_index(data: str) -> str:
 	Returns:
 		Хеш в шестнадцатеричном формате.
 	"""
-	payload = f"{data}{BLIND_INDEX_SALT}"
+	settings = get_container().settings
+	salt = settings.BLIND_INDEX_SALT
+
+	payload = f"{data}{salt}"
 	return hashlib.sha256(payload.encode()).hexdigest()
 
 

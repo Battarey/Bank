@@ -1,20 +1,18 @@
 """Асинхронный Redis-клиент для хранения сессий и токенов."""
 
-import os
-
 from redis.asyncio import Redis
+
+from shared.bootstrap import get_container
 
 
 def _resolve_redis_url() -> str:
-	"""Определяет URL для сессионного Redis из окружения или Bootstrap-контейнера."""
-	try:
-		from shared.bootstrap import get_container
+	"""Определяет URL для сессионного Redis из Bootstrap-контейнера."""
 
-		# Пытаемся взять из типизированных настроек
-		return get_container().db_settings.REDIS_SESSIONS_URL or ""
-	except (RuntimeError, ImportError):
-		# Fallback для совместимости
-		return os.getenv("REDIS_SESSIONS_URL")
+	# Берем из типизированных настроек контейнера
+	url = get_container().db_settings.REDIS_SESSIONS_URL
+	if not url:
+		raise RuntimeError("REDIS_SESSIONS_URL не задан в настройках!")
+	return url
 
 
 _client: Redis | None = None

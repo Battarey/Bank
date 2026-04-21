@@ -5,14 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 from typing import Any
 
 import aio_pika
 
 logger = logging.getLogger(__name__)
 
-RABBITMQ_URL: str = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+from shared.bootstrap import get_container
 
 _connection: aio_pika.abc.AbstractRobustConnection | None = None
 _channel: aio_pika.abc.AbstractChannel | None = None
@@ -21,15 +20,21 @@ MAX_RETRIES = 10
 RETRY_DELAY = 3  # секунды
 
 
-async def connect() -> None:
-	"""Установить соединение и открыть канал с retry-логикой."""
+async def connect(url: str | None = None) -> None:
+	"""Установить соединение и открыть канал с retry-логикой.
+
+	Если url не указан, берется из глобального контейнера настроек.
+	"""
 	global _connection, _channel
+
+	if url is None:
+		url = get_container().rmq_settings.URL
 
 	for attempt in range(1, MAX_RETRIES + 1):
 		try:
-			_connection = await aio_pika.connect_robust(RABBITMQ_URL)
+			_connection = await aio_pika.connect_robust(url)
 			_channel = await _connection.channel()
-			logger.info("RabbitMQ connected: %s", RABBITMQ_URL)
+			logger.info("RabbitMQ connected: %s", url)
 			return
 		except Exception as exc:
 			logger.warning(

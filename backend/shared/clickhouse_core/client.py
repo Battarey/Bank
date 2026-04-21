@@ -7,19 +7,14 @@
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime
 
 import clickhouse_connect
 from clickhouse_connect.driver.asyncclient import AsyncClient
 
-logger = logging.getLogger("clickhouse_core")
+from shared.bootstrap import get_container
 
-CLICKHOUSE_HOST: str = os.getenv("CLICKHOUSE_HOST")
-CLICKHOUSE_PORT: int = int(os.getenv("CLICKHOUSE_PORT"))
-CLICKHOUSE_USER: str = os.getenv("CLICKHOUSE_USER")
-CLICKHOUSE_PASSWORD: str = os.getenv("CLICKHOUSE_PASSWORD")
-CLICKHOUSE_DB: str = os.getenv("CLICKHOUSE_DB")
+logger = logging.getLogger("clickhouse_core")
 
 _client: AsyncClient | None = None
 
@@ -52,12 +47,14 @@ async def init_clickhouse() -> None:
 
 	global _client
 
+	settings = get_container().history_settings
+
 	_client = await clickhouse_connect.get_async_client(
-		host=CLICKHOUSE_HOST,
-		port=CLICKHOUSE_PORT,
-		username=CLICKHOUSE_USER,
-		password=CLICKHOUSE_PASSWORD,
-		database=CLICKHOUSE_DB,
+		host=settings.HOST,
+		port=settings.PORT,
+		username=settings.USER,
+		password=settings.PASSWORD,
+		database=settings.DATABASE,
 	)
 
 	# Создаём таблицу если не существует
@@ -65,9 +62,9 @@ async def init_clickhouse() -> None:
 
 	logger.info(
 		"ClickHouse подключён: %s:%s/%s",
-		CLICKHOUSE_HOST,
-		CLICKHOUSE_PORT,
-		CLICKHOUSE_DB,
+		settings.HOST,
+		settings.PORT,
+		settings.DATABASE,
 	)
 
 

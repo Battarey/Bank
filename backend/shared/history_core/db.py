@@ -5,32 +5,37 @@ from collections.abc import AsyncGenerator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from .env import HISTORY_DATABASE_URL
+from shared.bootstrap import get_container
 
-history_engine = create_async_engine(
-	HISTORY_DATABASE_URL,
-	pool_pre_ping=True,
-	future=True,
-)
-HistorySessionLocal = async_sessionmaker(
-	bind=history_engine,
-	autoflush=False,
-	expire_on_commit=False,
-)
+# ВНИМАНИЕ: Эти функции требуют предварительного вызова bootstrap() в main.py
+def _get_history_engine():
+	return get_container().history_engine
+
+def _get_history_session_factory():
+	return get_container().history_session_factory
 
 
 async def ping_db() -> bool:
 	"""Проверить доступность базы данных истории."""
-	async with history_engine.connect() as conn:
+	engine = _get_history_engine()
+	async with engine.connect() as conn:
 		await conn.execute(text("SELECT 1"))
 		return True
 
 
 async def get_history_session() -> AsyncGenerator[AsyncSession, None]:
 	"""Асинхронная зависимость FastAPI, возвращающая сессию к postgres_history."""
-
-	async with HistorySessionLocal() as session:
+	session_factory = _get_history_session_factory()
+	async with session_factory() as session:
 		yield session
 
 
-__all__ = ["AsyncSession", "HistorySessionLocal", "history_engine", "get_history_session"]
+def __getattr__(name: str):
+	if name == "history_engine":
+		return _get_history_engine()
+	if name == "HistorySessionLocal":
+		return _get_history_session_factory()
+	raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+__all__ = ["AsyncSession", "get_history_session", "ping_db"]
