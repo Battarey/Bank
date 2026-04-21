@@ -1,4 +1,8 @@
-"""Настройки Security Service."""
+"""Security Settings.
+
+Централизованная конфигурация для Security Service, включающая настройки
+баз данных и константы для AML-мониторинга.
+"""
 
 from decimal import Decimal
 from pydantic import Field
@@ -7,12 +11,24 @@ from shared.config import BaseAppSettings
 
 
 class SecuritySettings(BaseAppSettings):
-	"""Настройки для антифрод-мониторинга (SQL + MongoDB + RabbitMQ)."""
+	"""Настройки для антифрод-мониторинга (SQL + MongoDB + RabbitMQ).
 
-	# MongoDB (Журнал событий безопасности)
-	MONGO_URL: str = Field("mongodb://mongodb:27017/bank_security_db", alias="MONGO_URL")
+	Attributes:
+		SECURITY_COLLECTION: Название коллекции для логов безопасности.
+		SECURITY_TTL_DAYS: Срок хранения логов в днях.
+		LARGE_TX_THRESHOLD: Порог крупной разовой операции.
+		DAILY_AMOUNT_LIMIT: Дневной лимит суммы исходящих операций.
+		DAILY_TX_COUNT: Дневной лимит количества операций.
+		RAPID_FIRE_COUNT: Порог срабатывания правила частых операций.
+		RAPID_FIRE_WINDOW_MIN: Окно в минутах для частых операций.
+		STRUCTURING_RATIO: Коэффициент близости к лимиту для правила структурирования.
+		STRUCTURING_MIN_HITS: Минимальное количество попаданий для правила структурирования.
+		ROUND_AMOUNT_FLOOR: Минимальная сумма для проверки правила круглых сумм.
+		ROUND_AMOUNT_STEP: Шаг округления для правила круглых сумм.
+		ROUND_AMOUNT_MIN_HITS: Минимальное количество попаданий для правила круглых сумм.
+	"""
 
-	# Константы коллекции
+	# Константы коллекции (специфично для Security Service)
 	SECURITY_COLLECTION: str = Field("security_events", alias="SECURITY_COLLECTION")
 	SECURITY_TTL_DAYS: int = Field(365, alias="SECURITY_TTL_DAYS")
 

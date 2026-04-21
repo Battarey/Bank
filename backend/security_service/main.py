@@ -32,7 +32,7 @@ async def lifespan(_app: FastAPI):
 			"expireAfterSeconds": settings.SECURITY_TTL_DAYS * 86_400,
 		}
 	]
-	await init_mongodb(settings.MONGO_URL, indexes=mongo_indexes)
+	await init_mongodb(settings.mongo.URL, indexes=mongo_indexes)
 	
 	yield
 	await close_mongodb()
