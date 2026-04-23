@@ -156,7 +156,9 @@ async def some_action(uow: AbstractUnitOfWork, ...):
 
 ### 7.2 Docker и Deployment
 - Конфигурации через `.env` и `pydantic-settings`.
-- Multi-stage Docker-сборки.
+- **Стандарт Multi-stage сборки**: Все Python-сервисы должны использовать двухэтапную сборку:
+  - **Этап 1 (builder)**: Установка зависимостей с флагом `--prefix=/install`. Здесь могут присутствовать инструменты сборки (`gcc`, `libpq-dev`).
+  - **Этап 2 (runtime)**: Копирование только необходимых файлов (`/install`) в чистый `slim` образ. Это минимизирует размер образа и исключает уязвимости в инструментах сборки.
 - Проверка Healthcheck для каждого сервиса в Docker Compose.
  
  ---
