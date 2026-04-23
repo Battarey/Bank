@@ -4,13 +4,12 @@ from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy.exc import IntegrityError
-
 from shared import models
 from shared.events.base import LogEvent, NotificationEvent
 
 from ..clients import exchange_client
 from ..core.exceptions import (
+	AccountNotFound,
 	AccountNotOpen,
 	InsufficientFunds,
 	RateUnavailable,
@@ -26,7 +25,7 @@ async def exchange(
 	from_account_id: UUID,
 	to_account_id: UUID,
 	amount: Decimal,
-) -> tuple[Decimal, Decimal, Decimal]:
+) -> tuple[Decimal, Decimal, Decimal, str, str]:
 	"""Выполняет конвертацию средств между двумя счетами одного пользователя.
 
 	Атомарная операция (Unit of Work):
@@ -44,7 +43,7 @@ async def exchange(
 		amount: Сумма списания в валюте 'from'.
 
 	Returns:
-		tuple[Decimal, Decimal, Decimal]: (списано, зачислено, курс).
+		tuple[Decimal, Decimal, Decimal, str, str]: (списано, зачислено, курс, валюта_от, валюта_к).
 
 	Raises:
 		SameAccountExchange: Если счета совпадают.
@@ -52,7 +51,7 @@ async def exchange(
 		AccountNotOpen: Если счета закрыты или заморожены.
 		SameCurrencyExchange: Если валюты счетов совпадают.
 		InsufficientFunds: Если не хватает средств на счёте списания.
-		RateUnavailable: Если не удалось получить актуальный курс или сохранить транзакцию.
+		RateUnavailable: Если не удалось получить актуальный курс.
 	"""
 	if from_account_id == to_account_id:
 		raise SameAccountExchange("Обмен на тот же счёт невозможен.")
@@ -64,12 +63,9 @@ async def exchange(
 		to_acc = accounts.get(to_account_id)
 
 		if not from_acc or from_acc.client_id != user_id:
-			from ..core.exceptions import AccountNotFound
-
 			raise AccountNotFound(f"Счёт списания {from_account_id} не найден.")
+		
 		if not to_acc or to_acc.client_id != user_id:
-			from ..core.exceptions import AccountNotFound
-
 			raise AccountNotFound(f"Счёт зачисления {to_account_id} не найден.")
 
 		# 2. Проверка статусов и валют
@@ -163,9 +159,6 @@ async def exchange(
 			)
 		)
 
-		try:
-			await uow.commit()  # Выполняет коммит и публикует события
-		except IntegrityError as exc:
-			raise RateUnavailable("Системная ошибка при сохранении транзакции.") from exc
+		await uow.commit()  # Выполняет коммит и публикует события
 
-		return amount, converted, rate
+		return amount, converted, rate, from_acc.currency, to_acc.currency

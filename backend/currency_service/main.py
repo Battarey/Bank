@@ -44,7 +44,7 @@ app = FastAPI(
 			"description": "Получение курсов валют в реальном времени.",
 		},
 		{
-			"name": "exchange",
+			"name": "conversions",
 			"description": "Операции обмена валют между банковскими счетами.",
 		},
 		{
@@ -60,17 +60,29 @@ setup_exception_handlers(app)
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict:
-	"""Глубокая проверка работоспособности сервиса и его зависимостей."""
+	"""Глубокая проверка работоспособности сервиса и его зависимостей (RabbitMQ, DB)."""
+	from sqlalchemy import text
 	from shared.rabbitmq.client import ping_rabbitmq
 
+	# 1. Проверка RabbitMQ
 	rmq_ok = await ping_rabbitmq()
 
-	overall_status = "ok" if rmq_ok else "error"
-	
+	# 2. Проверка БД
+	db_ok = False
+	try:
+		async with container.db_session_factory() as session:
+			await session.execute(text("SELECT 1"))
+			db_ok = True
+	except Exception:
+		pass
+
+	overall_status = "ok" if (rmq_ok and db_ok) else "degraded"
+
 	return {
 		"status": overall_status,
 		"dependencies": {
 			"rabbitmq": "ok" if rmq_ok else "error",
+			"database": "ok" if db_ok else "error",
 		},
 	}
 

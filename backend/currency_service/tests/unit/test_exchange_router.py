@@ -18,10 +18,7 @@ def exchange_payload():
 async def test_convert_currency_success(mock_exchange, uow, exchange_payload):
 	"""Успешная конвертация валюты через роутер."""
 	user_id = uuid4()
-	mock_exchange.return_value = (Decimal("1000"), Decimal("11"), Decimal("0.011"))
-
-	# Мокаем репозиторий для формирования ответа (линии 52-53 в router.py)
-	uow.accounts.get_by_user.side_effect = [models.BankAccount(currency="RUB"), models.BankAccount(currency="USD")]
+	mock_exchange.return_value = (Decimal("1000"), Decimal("11"), Decimal("0.011"), "RUB", "USD")
 
 	res = await convert_currency(payload=exchange_payload, user_id=user_id, uow=uow)
 

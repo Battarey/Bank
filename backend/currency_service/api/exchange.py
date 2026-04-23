@@ -40,18 +40,13 @@ async def convert_currency(
 	Returns:
 		schemas.ExchangeResponse: Результат конвертации с деталями списания и зачисления.
 	"""
-	from_amount, to_amount, rate = await service.exchange(
+	from_amount, to_amount, rate, from_curr, to_curr = await service.exchange(
 		uow,
 		user_id,
 		from_account_id=payload.from_account_id,
 		to_account_id=payload.to_account_id,
 		amount=payload.amount,
 	)
-
-	# Получаем актуальные данные счетов для формирования ответа
-	async with uow:
-		from_account = await uow.accounts.get_by_user(user_id, payload.from_account_id)
-		to_account = await uow.accounts.get_by_user(user_id, payload.to_account_id)
 
 	return schemas.ExchangeResponse(
 		message="Конвертация успешно выполнена.",
@@ -60,6 +55,6 @@ async def convert_currency(
 		from_amount=from_amount,
 		to_amount=to_amount,
 		rate=rate,
-		from_currency=from_account.currency,
-		to_currency=to_account.currency,
+		from_currency=from_curr,
+		to_currency=to_curr,
 	)

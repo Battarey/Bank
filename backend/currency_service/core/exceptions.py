@@ -43,13 +43,14 @@ class SameCurrencyExchange(CurrencyError, UnprocessableError):
 	title = "Валюты совпадают"
 
 
-class CurrencyNotAvailable(CurrencyError, UnprocessableError):
+class CurrencyNotAvailable(CurrencyError, NotFoundError):
 	"""Валюта недоступна в API."""
 
 	title = "Валюта недоступна"
 
 
-class RateUnavailable(CurrencyError, UnprocessableError):
+class RateUnavailable(CurrencyError):
 	"""Не удалось получить актуальный курс."""
 
+	status_code = 502
 	title = "Курс валют недоступен"

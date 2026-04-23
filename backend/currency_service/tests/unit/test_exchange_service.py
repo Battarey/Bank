@@ -57,6 +57,17 @@ async def test_exchange_from_not_found(uow, user_id):
 
 
 @pytest.mark.asyncio
+async def test_exchange_to_not_found(uow, user_id):
+	"""Ошибка: счет зачисления не найден."""
+	from_acc = _make_account(client_id=user_id)
+	# Возвращаем только один счет вместо двух
+	uow.accounts.lock_accounts.return_value = {from_acc.id: from_acc}
+
+	with pytest.raises(AccountNotFound, match="Счёт зачисления"):
+		await exchange(uow, user_id, from_acc.id, uuid4(), Decimal("100"))
+
+
+@pytest.mark.asyncio
 async def test_exchange_same_currency(uow, user_id, accounts):
 	"""Ошибка: валюты счетов совпадают."""
 	from_acc, to_acc = accounts
@@ -87,10 +98,12 @@ async def test_exchange_success(mock_rate, uow, user_id, accounts):
 	uow.accounts.get_owner_contact.return_value = models.Contact(email="test@test.com")
 	mock_rate.return_value = (Decimal("0.011"), None)
 
-	from_amount, to_amount, _rate = await exchange(uow, user_id, from_acc.id, to_acc.id, Decimal("1000"))
+	from_amount, to_amount, _rate, from_curr, to_curr = await exchange(uow, user_id, from_acc.id, to_acc.id, Decimal("1000"))
 
 	assert from_amount == Decimal("1000")
 	assert to_amount == Decimal("11.00")
+	assert from_curr == "RUB"
+	assert to_curr == "USD"
 	assert from_acc.balance == Decimal("9000")
 	assert to_acc.balance == Decimal("11.00")
 

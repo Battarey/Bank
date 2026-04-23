@@ -13,5 +13,5 @@ class CurrencySettings(BaseAppSettings):
 	EXCHANGE_RATE_BASE_URL: str = Field("https://v6.exchangerate-api.com/v6", alias="EXCHANGE_RATE_BASE_URL")
 
 	# Настройки кэширования (в секундах)
-	CACHE_TTL: int = Field(30, alias="EXCHANGE_RATE_CACHE_TTL")
-	TRADE_FRESHNESS_TTL: int = Field(60, alias="EXCHANGE_RATE_TRADE_TTL")
+	CACHE_TTL: int = Field(300, alias="EXCHANGE_RATE_CACHE_TTL")
+	TRADE_FRESHNESS_TTL: int = Field(30, alias="EXCHANGE_RATE_TRADE_TTL")
