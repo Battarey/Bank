@@ -48,16 +48,20 @@ class DatabaseSettings(BaseSettings):
 	)
 	REDIS_SESSION_TTL: int = Field(1800, alias="REDIS_SESSION_TTL")
 
-	@model_validator(mode="after")
-	def use_test_database(self) -> "DatabaseSettings":
+	@model_validator(mode="before")
+	@classmethod
+	def use_test_database(cls, data: Any) -> Any:
 		"""Автоматически переключает URL на тестовый, если APP_ENV=test."""
-		if self.APP_ENV == "test":
-			if self.TEST_DATABASE_URL:
-				logger.info("Switching to TEST_DATABASE_URL because APP_ENV=test")
-				self.DATABASE_URL = self.TEST_DATABASE_URL
-			else:
-				logger.warning("APP_ENV=test but TEST_DATABASE_URL is not set!")
-		return self
+		if isinstance(data, dict):
+			app_env = data.get("APP_ENV", "local")
+			if app_env == "test":
+				test_url = data.get("TEST_DATABASE_URL")
+				if test_url:
+					logger.info("Switching to TEST_DATABASE_URL because APP_ENV=test")
+					data["DATABASE_URL"] = test_url
+				else:
+					logger.warning("APP_ENV=test but TEST_DATABASE_URL is not set!")
+		return data
 
 
 class HistorySettings(BaseSettings):
