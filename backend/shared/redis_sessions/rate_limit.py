@@ -91,13 +91,34 @@ async def reset(phone: str) -> None:
 	await client.delete(_total_key(phone), _cooldown_key(phone))
 
 
+# ── Высокоуровневый API ──────────────────────────────────────────────────
+
+
+async def check(phone: str) -> tuple[bool, int, int]:
+	"""Выполняет комплексную проверку ограничений.
+
+	Returns:
+		tuple[bool, int, int]: (is_limited, retry_after, failures)
+	"""
+	retry_after = await check_cooldown(phone)
+	failures = await get_total_failures(phone)
+	return retry_after is not None, retry_after or 0, failures
+
+
+async def increment(phone: str) -> None:
+	"""Инкрементирует счетчик неудачных попыток."""
+	await record_failure(phone)
+
+
 __all__ = [
 	"COOLDOWN_TTL",
 	"MAX_BLOCKS",
 	"MAX_FAILURES_PER_BLOCK",
 	"TOTAL_MAX_FAILURES",
+	"check",
 	"check_cooldown",
 	"get_total_failures",
+	"increment",
 	"record_failure",
 	"reset",
 ]
