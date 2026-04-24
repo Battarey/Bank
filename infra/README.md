@@ -35,8 +35,6 @@
 | `mongodb`          | `mongo:7`                      | 27017 | Журнал уведомлений (email_log, TTL 90 д)         |
 | `postgres_history` | `postgres:17`                  | 5433  | БД истории действий пользователей (user_actions) |
 | `clickhouse`       | `clickhouse-server:24`         | 8123  | Аналитика бизнес-событий (TTL 2 года)            |
-| `pgadmin`          | `dpage/pgadmin4`               | 5050  | Веб-интерфейс для PostgreSQL                     |
-| `mongo_express`    | `mongo-express:latest`         | 8081  | Веб-интерфейс для MongoDB                        |
 
 > Все сервисы запускаются с `restart: unless-stopped`. Redis-сервисы имеют healthcheck (`redis-cli ping`), и зависимые сервисы ждут `condition: service_healthy`.
 
@@ -151,8 +149,6 @@ docker compose run --rm audit
 ### Доступные интерфейсы:
 - **API Gateway**: [http://localhost:8000](http://localhost:8000)
 - **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **pgAdmin**: [http://localhost:5050](http://localhost:5050)
-- **Mongo Express**: [http://localhost:8081](http://localhost:8081)
 - **RabbitMQ Management**: [http://localhost:15672](http://localhost:15672)
 
 ---
