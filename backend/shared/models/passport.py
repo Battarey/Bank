@@ -36,10 +36,7 @@ class Passport(Base):
 	issued_at: Mapped[date] = mapped_column(Date, nullable=False)
 	expiration_date: Mapped[date] = mapped_column(Date, nullable=False)
 
-	__table_args__ = (
-		# Индекс passport_hash уже уникален, UniqueConstraint на series/number не сработает
-		# из-за шифрования, поэтому мы его убираем из БД, заменяя на passport_hash.
-	)
+
 
 
 __all__ = ["Passport"]

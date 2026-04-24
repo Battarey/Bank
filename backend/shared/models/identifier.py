@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from shared.models.types import EncryptedString
+from .types import EncryptedString
 
 from .base import Base
 

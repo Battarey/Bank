@@ -7,8 +7,6 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-ModelT = TypeVar("ModelT")
-
 
 class BaseRepository[ModelT]:
 	"""Базовая реализация паттерна Repository.
