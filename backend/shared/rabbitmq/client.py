@@ -13,18 +13,14 @@ from shared.bootstrap import get_container
 
 logger = logging.getLogger(__name__)
 
-_connection: aio_pika.abc.AbstractRobustConnection | None = None
-_channel: aio_pika.abc.AbstractChannel | None = None
-
-
 async def connect(url: str | None = None) -> None:
 	"""Установить соединение и открыть канал с retry-логикой.
 
-	Если url не указан, берется из глобального контейнера настроек.
+	Результаты сохраняются в BootstrapContainer.
 	"""
-	global _connection, _channel
+	container = get_container()
+	settings = container.rmq_settings
 
-	settings = get_container().rmq_settings
 	if url is None:
 		url = settings.URL
 
@@ -33,8 +29,8 @@ async def connect(url: str | None = None) -> None:
 
 	for attempt in range(1, max_retries + 1):
 		try:
-			_connection = await aio_pika.connect_robust(url)
-			_channel = await _connection.channel()
+			container._rmq_connection = await aio_pika.connect_robust(url)
+			container._rmq_channel = await container._rmq_connection.channel()
 			logger.info("RabbitMQ connected: %s", url)
 			return
 		except Exception as exc:
@@ -51,15 +47,17 @@ async def connect(url: str | None = None) -> None:
 
 
 async def disconnect() -> None:
-	"""Закрыть канал и соединение."""
-	global _connection, _channel
+	"""Закрыть канал и соединение через контейнер."""
+	container = get_container()
 
-	if _channel and not _channel.is_closed:
-		await _channel.close()
-	if _connection and not _connection.is_closed:
-		await _connection.close()
-	_connection = None
-	_channel = None
+	if container._rmq_channel and not container._rmq_channel.is_closed:
+		await container._rmq_channel.close()
+	if container._rmq_connection and not container._rmq_connection.is_closed:
+		await container._rmq_connection.close()
+
+	container._rmq_connection = None
+	container._rmq_channel = None
+	container._rmq_exchanges.clear()
 	logger.info("RabbitMQ disconnected.")
 
 
@@ -68,18 +66,22 @@ async def publish(
 	routing_key: str,
 	body: dict[str, Any],
 ) -> None:
-	"""Опубликовать JSON-сообщение в указанный exchange.
+	"""Опубликовать JSON-сообщение в указанный exchange (с кэшированием)."""
+	container = get_container()
+	channel = container._rmq_channel
 
-	Raises RuntimeError если соединение не установлено.
-	"""
-	if _channel is None:
+	if channel is None:
 		raise RuntimeError("RabbitMQ не подключён. Вызовите connect() при старте.")
 
-	exchange = await _channel.declare_exchange(
-		exchange_name,
-		aio_pika.ExchangeType.TOPIC,
-		durable=True,
-	)
+	# Кэширование exchange для избежания повторных деклараций
+	if exchange_name not in container._rmq_exchanges:
+		container._rmq_exchanges[exchange_name] = await channel.declare_exchange(
+			exchange_name,
+			aio_pika.ExchangeType.TOPIC,
+			durable=True,
+		)
+
+	exchange = container._rmq_exchanges[exchange_name]
 
 	message = aio_pika.Message(
 		body=json.dumps(body, ensure_ascii=False).encode(),
@@ -92,10 +94,14 @@ async def publish(
 
 
 async def ping_rabbitmq() -> bool:
-	"""Проверить доступность RabbitMQ."""
-	if _connection is None or _connection.is_closed:
+	"""Проверить доступность RabbitMQ через контейнер."""
+	container = get_container()
+	conn = container._rmq_connection
+	chan = container._rmq_channel
+
+	if conn is None or conn.is_closed:
 		return False
-	if _channel is None or _channel.is_closed:
+	if chan is None or chan.is_closed:
 		return False
 	return True
 

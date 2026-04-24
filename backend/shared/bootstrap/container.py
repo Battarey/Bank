@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
 	from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+	import aio_pika
 
 from ..config.base import BaseAppSettings
 from ..config.database import DatabaseSettings, HistorySettings, MongoSettings
@@ -37,6 +38,11 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 
 		self._history_engine: AsyncEngine | None = None
 		self._history_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+		# RabbitMQ
+		self._rmq_connection: aio_pika.abc.AbstractRobustConnection | None = None
+		self._rmq_channel: aio_pika.abc.AbstractChannel | None = None
+		self._rmq_exchanges: dict[str, aio_pika.abc.AbstractExchange] = {}
 
 	@property
 	def db_settings(self) -> DatabaseSettings:
@@ -133,6 +139,12 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 			await self._engine.dispose()
 		if self._history_engine is not None:
 			await self._history_engine.dispose()
+
+		# Закрываем RabbitMQ
+		if self._rmq_channel and not self._rmq_channel.is_closed:
+			await self._rmq_channel.close()
+		if self._rmq_connection and not self._rmq_connection.is_closed:
+			await self._rmq_connection.close()
 
 
 _container: BootstrapContainer | None = None
