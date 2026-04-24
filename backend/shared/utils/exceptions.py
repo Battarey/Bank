@@ -45,3 +45,10 @@ class UnprocessableError(BaseBusinessError):
 
 	status_code = 422
 	title = "Невозможно обработать операцию"
+
+
+class ExternalServiceError(BaseBusinessError):
+	"""Исключение для ошибок при обращении к внешним сервисам/API."""
+
+	status_code = 502
+	title = "Ошибка внешнего сервиса"

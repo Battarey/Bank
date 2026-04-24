@@ -2,7 +2,7 @@
 
 from shared.utils.exceptions import (
 	BaseBusinessError,
-	UnprocessableError,
+	ExternalServiceError,
 )
 
 
@@ -12,7 +12,7 @@ class MetalError(BaseBusinessError):
 	title = "Ошибка операций с драгметаллами"
 
 
-class RateUnavailable(MetalError, UnprocessableError):
+class RateUnavailable(MetalError, ExternalServiceError):
 	"""Не удалось получить актуальную цену металла."""
 
 	title = "Цена металла недоступна"

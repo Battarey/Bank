@@ -44,10 +44,9 @@ async def test_get_metal_rates_empty(mock_svc):
 @pytest.mark.asyncio
 @patch("metal_service.api.rates.service.get_all_prices")
 async def test_get_metal_rates_unavailable(mock_svc):
-	"""502 Bad Gateway — при ошибке получения цен."""
+	"""Проверка, что исключение RateUnavailable пробрасывается наверх."""
 	mock_svc.side_effect = RateUnavailable("Внешний API недоступен")
 
-	with pytest.raises(HTTPException) as exc:
+	with pytest.raises(RateUnavailable) as exc:
 		await get_metal_rates(base="RUB")
-	assert exc.value.status_code == 502
-	assert "недоступен" in str(exc.value.detail)
+	assert "недоступен" in str(exc.value)
