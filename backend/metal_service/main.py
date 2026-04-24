@@ -23,13 +23,13 @@ from .repositories.metal import get_metal_repository
 class HealthCheckDependencies(BaseModel):
 	"""Состояние зависимостей сервиса."""
 
-	external_metal_api: str = Field(..., example="ok")
+	external_metal_api: str = Field(..., json_schema_extra={"example": "ok"})
 
 
 class HealthCheckResponse(BaseModel):
 	"""Формат ответа проверки состояния сервиса."""
 
-	status: str = Field(..., example="ok")
+	status: str = Field(..., json_schema_extra={"example": "ok"})
 	dependencies: HealthCheckDependencies
 
 

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from metal_service.api.rates import get_metal_rates
+from shared.utils.exceptions import UnprocessableError
 
 
 @pytest.mark.asyncio
@@ -22,3 +23,13 @@ async def test_get_metal_rates_success(mock_svc_method):
 	assert res.base_currency == "RUB"
 	assert res.rates[0].metal == "XAU"
 	mock_service.get_all_prices.assert_awaited_once_with("RUB")
+
+
+@pytest.mark.asyncio
+async def test_get_metal_rates_validation_error():
+	"""Роутер: проброс ошибки валидации из сервиса."""
+	mock_service = AsyncMock()
+	mock_service.get_all_prices.side_effect = UnprocessableError("Invalid currency")
+	
+	with pytest.raises(UnprocessableError):
+		await get_metal_rates(base="INVALID", service=mock_service)

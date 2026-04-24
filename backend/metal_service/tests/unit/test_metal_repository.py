@@ -1,9 +1,12 @@
+import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
+from metal_service.core.exceptions import RateUnavailable
 from metal_service.repositories.metal import MetalRepository
 
 
@@ -67,6 +70,34 @@ async def test_fetch_from_api_success(repository):
 	assert last_updated.year == 2026
 
 
+@pytest.mark.asyncio
+async def test_fetch_from_api_api_error(repository):
+	"""Обработка ошибки в ответе API (status != success)."""
+	mock_resp = MagicMock()
+	mock_resp.json.return_value = {
+		"status": "error",
+		"error_code": "INVALID_KEY",
+		"error_message": "Invalid key",
+	}
+	mock_client = AsyncMock()
+	mock_client.get = AsyncMock(return_value=mock_resp)
+	repository._client = mock_client
+
+	with pytest.raises(RateUnavailable, match="INVALID_KEY"):
+		await repository._fetch_from_api("RUB")
+
+
+@pytest.mark.asyncio
+async def test_fetch_from_api_http_error(repository):
+	"""Обработка сетевой ошибки httpx."""
+	mock_client = AsyncMock()
+	mock_client.get.side_effect = httpx.HTTPError("Network down")
+	repository._client = mock_client
+
+	with pytest.raises(RateUnavailable, match="Ошибка сети"):
+		await repository._fetch_from_api("RUB")
+
+
 # ── get_metal_prices (Кэширование и Lock) ──────────────────────────────
 
 
@@ -102,3 +133,26 @@ async def test_get_metal_prices_cache_expired(mock_fetch, mock_time, repository)
 	await repository.get_metal_prices("RUB")
 
 	assert mock_fetch.await_count == 2
+
+
+@pytest.mark.asyncio
+@patch("metal_service.repositories.metal.MetalRepository._fetch_from_api")
+async def test_get_metal_prices_concurrency(mock_fetch, repository):
+	"""Проверка, что при конкурентных запросах API вызывается один раз (Lock)."""
+	prices = {"XAU": Decimal("100.00")}
+	updated = datetime.now(UTC)
+	
+	# Имитируем задержку в API
+	async def slow_fetch(*args, **kwargs):
+		await asyncio.sleep(0.1)
+		return prices, updated
+		
+	mock_fetch.side_effect = slow_fetch
+
+	# Запускаем 5 запросов одновременно
+	results = await asyncio.gather(*[repository.get_metal_prices("RUB") for _ in range(5)])
+
+	assert len(results) == 5
+	assert mock_fetch.await_count == 1
+	for res_prices, _ in results:
+		assert res_prices == prices
