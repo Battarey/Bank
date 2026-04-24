@@ -14,33 +14,32 @@ def _resolve_redis_url() -> str:
 	return url
 
 
-_client: Redis | None = None
-
-
 def get_client() -> Redis:
-	"""Вернуть синглтон-клиент Redis для черновиков онбординга."""
+	"""Вернуть синглтон-клиент Redis для черновиков онбординга из контейнера."""
+	container = get_container()
 
-	global _client
-	if _client is None:
+	if container._redis_onboarding is None:
 		url = _resolve_redis_url()
-		_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
-	return _client
+		container._redis_onboarding = Redis.from_url(url, encoding="utf-8", decode_responses=True)
+	return container._redis_onboarding
 
 
 async def close_client() -> None:
-	"""Закрыть пул соединений Redis (например, при остановке сервиса)."""
+	"""Закрыть пул соединений Redis через контейнер."""
+	container = get_container()
 
-	global _client
-	if _client is None:
-		return
-	await _client.close()
-	_client = None
+	if container._redis_onboarding:
+		await container._redis_onboarding.close()
+		container._redis_onboarding = None
 
 
 async def ping() -> bool:
 	"""Проверить доступность Redis."""
-	client = get_client()
-	return await client.ping()
+	try:
+		client = get_client()
+		return await client.ping()
+	except Exception:
+		return False
 
 
 __all__ = ["close_client", "get_client", "ping"]

@@ -15,33 +15,32 @@ def _resolve_redis_url() -> str:
 	return url
 
 
-_client: Redis | None = None
-
-
 def get_client() -> Redis:
-	"""Вернуть синглтон-клиент Redis для сессионных токенов."""
+	"""Вернуть синглтон-клиент Redis для сессионных токенов из контейнера."""
+	container = get_container()
 
-	global _client
-	if _client is None:
+	if container._redis_sessions is None:
 		url = _resolve_redis_url()
-		_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
-	return _client
+		container._redis_sessions = Redis.from_url(url, encoding="utf-8", decode_responses=True)
+	return container._redis_sessions
 
 
 async def close_client() -> None:
-	"""Закрыть пул соединений Redis (например, при остановке сервиса)."""
+	"""Закрыть пул соединений Redis через контейнер."""
+	container = get_container()
 
-	global _client
-	if _client is None:
-		return
-	await _client.close()
-	_client = None
+	if container._redis_sessions:
+		await container._redis_sessions.close()
+		container._redis_sessions = None
 
 
 async def ping() -> bool:
 	"""Проверить доступность Redis."""
-	client = get_client()
-	return await client.ping()
+	try:
+		client = get_client()
+		return await client.ping()
+	except Exception:
+		return False
 
 
 __all__ = ["close_client", "get_client", "ping"]

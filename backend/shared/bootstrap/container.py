@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TypeVar
 if TYPE_CHECKING:
 	from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 	import aio_pika
+	from redis.asyncio import Redis
 
 from ..config.base import BaseAppSettings
 from ..config.database import DatabaseSettings, HistorySettings, MongoSettings
@@ -43,6 +44,10 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 		self._rmq_connection: aio_pika.abc.AbstractRobustConnection | None = None
 		self._rmq_channel: aio_pika.abc.AbstractChannel | None = None
 		self._rmq_exchanges: dict[str, aio_pika.abc.AbstractExchange] = {}
+
+		# Redis
+		self._redis_sessions: Redis | None = None
+		self._redis_onboarding: Redis | None = None
 
 	@property
 	def db_settings(self) -> DatabaseSettings:
@@ -145,6 +150,12 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 			await self._rmq_channel.close()
 		if self._rmq_connection and not self._rmq_connection.is_closed:
 			await self._rmq_connection.close()
+
+		# Закрываем Redis
+		if self._redis_sessions:
+			await self._redis_sessions.close()
+		if self._redis_onboarding:
+			await self._redis_onboarding.close()
 
 
 _container: BootstrapContainer | None = None
