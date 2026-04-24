@@ -11,12 +11,9 @@ from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
-logger = logging.getLogger("shared.mongodb_core")
-
 from shared.bootstrap import get_container
 
 logger = logging.getLogger("shared.mongodb_core")
-
 
 async def init_mongodb(
     mongo_url: str,

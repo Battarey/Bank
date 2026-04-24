@@ -1,15 +1,19 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
-from shared import mongodb_core
+
+from shared.config.base import BaseAppSettings
+from shared.bootstrap import bootstrap, get_container
 
 @pytest.fixture(autouse=True)
 def reset_mongo_client_state():
-    """Сброс глобального состояния клиента Mongo в shared подсистеме."""
-    mongodb_core.db._client = None
-    mongodb_core.db._db = None
+    """Явная инициализация и сброс состояния контейнера для тестов."""
+    bootstrap(BaseAppSettings)
+    container = get_container()
+    container._mongo_client = None
+    container._mongo_db = None
     yield
-    mongodb_core.db._client = None
-    mongodb_core.db._db = None
+    container._mongo_client = None
+    container._mongo_db = None
 
 @pytest.mark.asyncio
 @patch("shared.mongodb_core.db.AsyncIOMotorClient")
@@ -34,8 +38,9 @@ async def test_init_mongodb_success(mock_motor):
 
     await init_mongodb("mongodb://test:27017", indexes=mongo_indexes)
 
-    assert mongodb_core.db._client == mock_cl
-    assert mongodb_core.db._db == mock_db
+    container = get_container()
+    assert container._mongo_client == mock_cl
+    assert container._mongo_db == mock_db
     # Проверка создания индекса 
     mock_coll.create_index.assert_awaited_once_with([("created_at", 1)], expireAfterSeconds=90 * 86_400)
 
@@ -43,10 +48,11 @@ async def test_init_mongodb_success(mock_motor):
 async def test_close_mongodb_active():
     """Закрытие активного соединения Mongo через shared.mongodb_core."""
     mock_cl = MagicMock()
-    mongodb_core.db._client = mock_cl
+    container = get_container()
+    container._mongo_client = mock_cl
 
     from shared.mongodb_core import close_mongodb
     await close_mongodb()
 
     mock_cl.close.assert_called_once()
-    assert mongodb_core.db._client is None
+    assert container._mongo_client is None
