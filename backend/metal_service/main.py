@@ -15,15 +15,16 @@ container = get_container()
 from shared.internal_auth import verify_internal_key
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .clients import metal_client
+from .repositories.metal import get_metal_repository
 from .api.rates import router as rates_router
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-	await metal_client.connect()
+	repo = get_metal_repository()
+	await repo.connect()
 	yield
-	await metal_client.disconnect()
+	await repo.disconnect()
 
 
 app = FastAPI(

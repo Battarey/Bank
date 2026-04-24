@@ -1,33 +1,39 @@
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from metal_service.core.exceptions import RateUnavailable
-from metal_service.services.rates import get_all_prices
+from metal_service.services.rates import MetalRatesService
+from shared.utils.exceptions import UnprocessableError
+
+
+@pytest.fixture
+def mock_repo():
+	return MagicMock()
+
+
+@pytest.fixture
+def service(mock_repo):
+	return MetalRatesService(repository=mock_repo)
 
 
 @pytest.mark.asyncio
-@patch("metal_service.services.rates.metal_client.get_metal_prices")
-async def test_get_all_prices_success(mock_client):
-	"""Успешное получение цен через клиента."""
-	prices = {"XAU": Decimal("6500.00"), "XAG": Decimal("85.50")}
+async def test_get_all_prices_success(service, mock_repo):
+	"""Успешное получение цен через сервис."""
+	prices = {"XAU": Decimal("6500.00")}
 	updated = datetime.now(UTC)
-	mock_client.return_value = (prices, updated)
+	mock_repo.get_metal_prices = AsyncMock(return_value=(prices, updated))
 
-	res_prices, res_updated = await get_all_prices("RUB")
+	res_prices, res_updated = await service.get_all_prices("RUB")
 
 	assert res_prices == prices
 	assert res_updated == updated
-	mock_client.assert_awaited_once_with("RUB")
+	mock_repo.get_metal_prices.assert_awaited_once_with("RUB")
 
 
 @pytest.mark.asyncio
-@patch("metal_service.services.rates.metal_client.get_metal_prices")
-async def test_get_all_prices_error(mock_client):
-	"""RateUnavailable — если клиент бросил ошибку."""
-	mock_client.side_effect = Exception("Metals.Dev error")
-
-	with pytest.raises(RateUnavailable, match="Не удалось получить цены металлов"):
-		await get_all_prices("RUB")
+async def test_get_all_prices_invalid_currency(service):
+	"""Ошибка валидации при некорректной валюте."""
+	with pytest.raises(UnprocessableError, match="Некорректный формат валюты"):
+		await service.get_all_prices("INVALID")

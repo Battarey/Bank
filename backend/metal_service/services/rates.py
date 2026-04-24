@@ -1,27 +1,49 @@
 """Бизнес-логика получения котировок драгоценных металлов."""
 
+import re
 from datetime import datetime
 from decimal import Decimal
 
-from ..clients import metal_client
-from ..core.exceptions import RateUnavailable
+from fastapi import Depends
+
+from shared.utils.exceptions import UnprocessableError
+
+from ..repositories.metal import MetalRepository, get_metal_repository
 
 
-async def get_all_prices(base_currency: str) -> tuple[dict[str, Decimal], datetime]:
-	"""Возвращает актуальные цены всех поддерживаемых металлов за грамм.
+class MetalRatesService:
+	"""Сервис для работы с котировками металлов."""
 
-	Данные запрашиваются из внешнего API (через MetalClient) и кэшируются.
+	def __init__(self, repository: MetalRepository = Depends(get_metal_repository)):
+		self._repository = repository
 
-	Args:
-		base_currency: Код базовой валюты (например, 'RUB').
+	async def get_all_prices(self, base_currency: str) -> tuple[dict[str, Decimal], datetime]:
+		"""Возвращает актуальные цены металлов за грамм.
 
-	Returns:
-		tuple[dict[str, Decimal], datetime]: Словарь цен (металл -> цена) и время обновления.
+		Args:
+			base_currency: Код базовой валюты (ISO 4217).
 
-	Raises:
-		RateUnavailable: Если не удалось получить данные от внешнего провайдера.
-	"""
-	try:
-		return await metal_client.get_metal_prices(base_currency)
-	except Exception as exc:
-		raise RateUnavailable(f"Не удалось получить цены металлов для {base_currency}: {exc}") from exc
+		Returns:
+			tuple[dict[str, Decimal], datetime]: Цены и время обновления.
+
+		Raises:
+			UnprocessableError: Если код валюты невалиден.
+			RateUnavailable: Если данные недоступны.
+		"""
+		self._validate_currency(base_currency)
+		return await self._repository.get_metal_prices(base_currency)
+
+	def _validate_currency(self, currency: str) -> None:
+		"""Проверка формата кода валюты."""
+		if not re.match(r"^[A-Z]{3}$", currency):
+			raise UnprocessableError(
+				message=f"Некорректный формат валюты: {currency}. Ожидается 3-буквенный ISO код.",
+				details={"currency": currency}
+			)
+
+
+def get_metal_rates_service(
+	service: MetalRatesService = Depends(MetalRatesService)
+) -> MetalRatesService:
+	"""Провайдер сервиса для FastAPI Depends."""
+	return service
