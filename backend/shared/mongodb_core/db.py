@@ -47,10 +47,12 @@ async def init_mongodb(
     # Создание индексов, если они переданы
     if indexes and _db is not None:
         for idx in indexes:
-            collection_name = idx.pop("collection")
-            fields = idx.pop("fields")
+            collection_name = idx["collection"]
+            fields = idx["fields"]
+            options = {k: v for k, v in idx.items() if k not in ("collection", "fields")}
+            
             try:
-                await _db[collection_name].create_index(fields, **idx)
+                await _db[collection_name].create_index(fields, **options)
                 logger.info("Индекс успешно создан для коллекции '%s'", collection_name)
             except Exception as exc:
                 logger.error(
