@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from pydantic import BaseModel, Field
 
 from shared.bootstrap import bootstrap, get_container
 
@@ -15,8 +16,21 @@ container = get_container()
 from shared.internal_auth import verify_internal_key
 from shared.utils.exceptions_handler import setup_exception_handlers
 
-from .repositories.metal import get_metal_repository
 from .api.rates import router as rates_router
+from .repositories.metal import get_metal_repository
+
+
+class HealthCheckDependencies(BaseModel):
+	"""Состояние зависимостей сервиса."""
+
+	external_metal_api: str = Field(..., example="ok")
+
+
+class HealthCheckResponse(BaseModel):
+	"""Формат ответа проверки состояния сервиса."""
+
+	status: str = Field(..., example="ok")
+	dependencies: HealthCheckDependencies
 
 
 @asynccontextmanager
@@ -49,7 +63,7 @@ app = FastAPI(
 setup_exception_handlers(app)
 
 
-@app.get("/health", tags=["health"])
+@app.get("/health", tags=["health"], response_model=HealthCheckResponse)
 async def health_check() -> dict:
 	"""Проверка работоспособности сервиса."""
 	# Metal service зависит в основном от внешнего API, которое проверяется в lifespan
