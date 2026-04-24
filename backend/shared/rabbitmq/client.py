@@ -9,15 +9,12 @@ from typing import Any
 
 import aio_pika
 
-logger = logging.getLogger(__name__)
-
 from shared.bootstrap import get_container
+
+logger = logging.getLogger(__name__)
 
 _connection: aio_pika.abc.AbstractRobustConnection | None = None
 _channel: aio_pika.abc.AbstractChannel | None = None
-
-MAX_RETRIES = 10
-RETRY_DELAY = 3  # секунды
 
 
 async def connect(url: str | None = None) -> None:
@@ -27,10 +24,14 @@ async def connect(url: str | None = None) -> None:
 	"""
 	global _connection, _channel
 
+	settings = get_container().rmq_settings
 	if url is None:
-		url = get_container().rmq_settings.URL
+		url = settings.URL
 
-	for attempt in range(1, MAX_RETRIES + 1):
+	max_retries = settings.MAX_RETRIES
+	retry_delay = settings.RETRY_DELAY
+
+	for attempt in range(1, max_retries + 1):
 		try:
 			_connection = await aio_pika.connect_robust(url)
 			_channel = await _connection.channel()
@@ -40,13 +41,13 @@ async def connect(url: str | None = None) -> None:
 			logger.warning(
 				"RabbitMQ connection attempt %d/%d failed: %s. Retry in %ds...",
 				attempt,
-				MAX_RETRIES,
+				max_retries,
 				exc,
-				RETRY_DELAY,
+				retry_delay,
 			)
-			if attempt == MAX_RETRIES:
+			if attempt == max_retries:
 				raise
-			await asyncio.sleep(RETRY_DELAY)
+			await asyncio.sleep(retry_delay)
 
 
 async def disconnect() -> None:
