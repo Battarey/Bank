@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 	from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 	import aio_pika
 	from redis.asyncio import Redis
+	from clickhouse_connect.driver.asyncclient import AsyncClient
 
 from ..config.base import BaseAppSettings
 from ..config.database import DatabaseSettings, HistorySettings, MongoSettings
@@ -48,6 +49,9 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 		# Redis
 		self._redis_sessions: Redis | None = None
 		self._redis_onboarding: Redis | None = None
+
+		# ClickHouse
+		self._clickhouse_client: AsyncClient | None = None
 
 	@property
 	def db_settings(self) -> DatabaseSettings:
@@ -156,6 +160,10 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 			await self._redis_sessions.close()
 		if self._redis_onboarding:
 			await self._redis_onboarding.close()
+
+		# Закрываем ClickHouse
+		if self._clickhouse_client:
+			await self._clickhouse_client.close()
 
 
 _container: BootstrapContainer | None = None

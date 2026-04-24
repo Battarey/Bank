@@ -43,13 +43,11 @@ SETTINGS index_granularity = 8192
 
 
 async def init_clickhouse() -> None:
-	"""Подключение к ClickHouse и создание таблицы."""
+	"""Подключение к ClickHouse и создание таблицы через контейнер."""
+	container = get_container()
+	settings = container.history_settings
 
-	global _client
-
-	settings = get_container().history_settings
-
-	_client = await clickhouse_connect.get_async_client(
+	container._clickhouse_client = await clickhouse_connect.get_async_client(
 		host=settings.HOST,
 		port=settings.PORT,
 		username=settings.USER,
@@ -58,7 +56,7 @@ async def init_clickhouse() -> None:
 	)
 
 	# Создаём таблицу если не существует
-	await _client.command(_CREATE_TABLE_SQL)
+	await container._clickhouse_client.command(_CREATE_TABLE_SQL)
 
 	logger.info(
 		"ClickHouse подключён: %s:%s/%s",
@@ -69,14 +67,15 @@ async def init_clickhouse() -> None:
 
 
 async def close_clickhouse() -> None:
-	"""Закрытие соединения с ClickHouse."""
+	"""Закрытие соединения с ClickHouse через контейнер."""
+	container = get_container()
 
-	global _client
-
-	if _client is not None:
-		await _client.close()  # clickhouse_connect async client.close() is a coroutine
-		_client = None
-		logger.info("ClickHouse отключён.")
+	if container._clickhouse_client is not None:
+		try:
+			await container._clickhouse_client.close()
+			logger.info("ClickHouse отключён.")
+		finally:
+			container._clickhouse_client = None
 
 
 async def insert_log_event(
@@ -110,7 +109,9 @@ async def insert_log_event(
 		ip_address: IP-адрес клиента.
 		created_at: ISO-время события (если не указано — текущее).
 	"""
-	if _client is None:
+	client = get_container()._clickhouse_client
+
+	if client is None:
 		logger.warning("ClickHouse не подключён. Событие не записано.")
 		return
 
@@ -149,7 +150,7 @@ async def insert_log_event(
 	]
 
 	try:
-		await _client.insert(
+		await client.insert(
 			table="business_events",
 			data=row,
 			column_names=column_names,
@@ -159,10 +160,11 @@ async def insert_log_event(
 
 
 async def ping_clickhouse() -> bool:
-	"""Проверить доступность ClickHouse."""
-	if _client is None:
+	"""Проверить доступность ClickHouse через контейнер."""
+	client = get_container()._clickhouse_client
+	if client is None:
 		return False
-	return await _client.ping()
+	return await client.ping()
 
 
 __all__ = ["close_clickhouse", "init_clickhouse", "insert_log_event", "ping_clickhouse"]
