@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 	import aio_pika
 	from redis.asyncio import Redis
 	from clickhouse_connect.driver.asyncclient import AsyncClient
+	from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from ..config.base import BaseAppSettings
 from ..config.database import DatabaseSettings, HistorySettings, MongoSettings
@@ -52,6 +53,10 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 
 		# ClickHouse
 		self._clickhouse_client: AsyncClient | None = None
+
+		# MongoDB
+		self._mongo_client: AsyncIOMotorClient | None = None
+		self._mongo_db: AsyncIOMotorDatabase | None = None
 
 	@property
 	def db_settings(self) -> DatabaseSettings:
@@ -164,6 +169,10 @@ class BootstrapContainer[TSettings: BaseAppSettings]:
 		# Закрываем ClickHouse
 		if self._clickhouse_client:
 			await self._clickhouse_client.close()
+
+		# Закрываем MongoDB
+		if self._mongo_client:
+			self._mongo_client.close()
 
 
 _container: BootstrapContainer | None = None
