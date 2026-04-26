@@ -37,3 +37,6 @@
 | `security` | `LARGE_TX_THRESHOLD`   | 600 000            |
 | `security` | `DAILY_AMOUNT_LIMIT`   | 1 000 000          |
 | `security` | `DAILY_TX_COUNT`       | 20                 |
+| `infra`    | `PROMETHEUS_HOST_PORT` | 9090               |
+| `infra`    | `GRAFANA_HOST_PORT`    | 3000               |
+| `infra`    | `GRAFANA_ADMIN_PASSWORD` | admin            |

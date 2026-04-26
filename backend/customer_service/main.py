@@ -16,6 +16,7 @@ from shared.rabbitmq import connect as rmq_connect
 from shared.rabbitmq import disconnect as rmq_disconnect
 from shared.redis_onboarding import client as redis_onboarding_client
 from shared.utils.exceptions_handler import setup_exception_handlers
+from shared.utils.monitoring import instrument_app
 
 from .api.onboarding import router as onboarding_router
 from .api.account import router as delete_account_router
@@ -55,6 +56,9 @@ app = FastAPI(
 
 # Регистрация глобального обработчика ошибок BaseBusinessError
 setup_exception_handlers(app)
+
+# Инструментирование для мониторинга
+instrument_app(app)
 
 
 @app.get("/health", tags=["health"])

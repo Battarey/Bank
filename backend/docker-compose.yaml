@@ -535,6 +535,38 @@ services:
         aliases:
           - clickhouse
 
+##########  Мониторинг  ##########
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ../infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "${PROMETHEUS_HOST_PORT}:9090"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "${GRAFANA_HOST_PORT}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    networks:
+      - backend
+    restart: unless-stopped
+
 ##########  Аудит  ##########
 
   audit:
@@ -574,3 +606,5 @@ volumes:
   redis_onboarding_data:
   mongo_data:
   ch_data:
+  prometheus_data:
+  grafana_data:
