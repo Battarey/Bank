@@ -28,4 +28,4 @@
 
 ### 5. [Исследования (Research)](./research/)
 Записи о принятых решениях и результаты тестов.
-- [Architecture Decision Records (ADR)](./research/adr/)
+- [Architecture Decision Records (ADR)](.adr/architecture.md)
