@@ -451,6 +451,9 @@ services:
       data:
         aliases:
           - redis_sessions
+      backend:
+        aliases:
+          - redis_sessions
 
   redis_onboarding:
     image: redis/redis-stack-server:latest
@@ -470,6 +473,9 @@ services:
       retries: 5
     networks:
       data:
+        aliases:
+          - redis_onboarding
+      backend:
         aliases:
           - redis_onboarding
 
@@ -504,6 +510,9 @@ services:
       data:
         aliases:
           - mongodb
+      backend:
+        aliases:
+          - mongodb
 
   clickhouse:
     image: clickhouse/clickhouse-server:24
@@ -519,6 +528,7 @@ services:
     volumes:
       - ch_data:/var/lib/clickhouse
       - ../infra/clickhouse/config.d/listen_host.xml:/etc/clickhouse-server/config.d/listen_host.xml
+      - ../infra/clickhouse/config.d/prometheus.xml:/etc/clickhouse-server/config.d/prometheus.xml
     cap_add:
       - SYS_NICE
       - NET_ADMIN
@@ -535,6 +545,9 @@ services:
       retries: 5
     networks:
       data:
+        aliases:
+          - clickhouse
+      backend:
         aliases:
           - clickhouse
 
@@ -564,6 +577,7 @@ services:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_CORE_USER}:${POSTGRES_CORE_PASSWORD}@postgres_core:5432/${POSTGRES_CORE_DB}?sslmode=disable"
     networks:
       - backend
+      - data
     restart: unless-stopped
     depends_on:
       postgres_core:
@@ -576,9 +590,47 @@ services:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_HISTORY_USER}:${POSTGRES_HISTORY_PASSWORD}@postgres_history:5432/${POSTGRES_HISTORY_DB}?sslmode=disable"
     networks:
       - backend
+      - data
     restart: unless-stopped
     depends_on:
       postgres_history:
+        condition: service_healthy
+
+  redis_sessions_exporter:
+    image: oliver006/redis_exporter
+    container_name: redis_sessions_exporter
+    environment:
+      - REDIS_ADDR=redis_sessions:6379
+    networks:
+      - backend
+      - data
+    restart: unless-stopped
+    depends_on:
+      - redis_sessions
+
+  redis_onboarding_exporter:
+    image: oliver006/redis_exporter
+    container_name: redis_onboarding_exporter
+    environment:
+      - REDIS_ADDR=redis_onboarding:6379
+    networks:
+      - backend
+      - data
+    restart: unless-stopped
+    depends_on:
+      - redis_onboarding
+
+  mongodb_exporter:
+    image: percona/mongodb_exporter:0.40
+    container_name: mongodb_exporter
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/admin?authSource=admin
+    networks:
+      - backend
+      - data
+    restart: unless-stopped
+    depends_on:
+      mongodb:
         condition: service_healthy
 
   grafana:
