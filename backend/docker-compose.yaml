@@ -561,6 +561,7 @@ services:
       - "${GRAFANA_HOST_PORT}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ../infra/monitoring/grafana/provisioning:/etc/grafana/provisioning
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
     networks:
