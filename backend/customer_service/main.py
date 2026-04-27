@@ -37,7 +37,6 @@ app = FastAPI(
 	version="0.2.0",
 	description="Управление данными клиента: онбординг (KYC), обновление профиля и удаление аккаунта.",
 	lifespan=lifespan,
-	dependencies=[Depends(verify_internal_key)],
 	openapi_tags=[
 		{
 			"name": "onboarding",
@@ -83,6 +82,6 @@ async def health_check() -> dict:
 	}
 
 
-app.include_router(onboarding_router)
-app.include_router(update_user_data_router)
-app.include_router(delete_account_router)
+app.include_router(onboarding_router, dependencies=[Depends(verify_internal_key)])
+app.include_router(update_user_data_router, dependencies=[Depends(verify_internal_key)])
+app.include_router(delete_account_router, dependencies=[Depends(verify_internal_key)])
