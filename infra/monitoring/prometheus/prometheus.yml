@@ -10,3 +10,55 @@ scrape_configs:
   - job_name: 'customer_service'
     static_configs:
       - targets: ['customer_service:8000']
+
+  - job_name: 'auth_service'
+    static_configs:
+      - targets: ['auth_service:8000']
+
+  - job_name: 'account_service'
+    static_configs:
+      - targets: ['account_service:8000']
+
+  - job_name: 'transaction_service'
+    static_configs:
+      - targets: ['transaction_service:8000']
+
+  - job_name: 'currency_service'
+    static_configs:
+      - targets: ['currency_service:8000']
+
+  - job_name: 'metal_service'
+    static_configs:
+      - targets: ['metal_service:8000']
+
+  - job_name: 'notification_service'
+    static_configs:
+      - targets: ['notification_service:8000']
+
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+
+  - job_name: 'postgres_core'
+    static_configs:
+      - targets: ['postgres_core_exporter:9187']
+
+  - job_name: 'postgres_history'
+    static_configs:
+      - targets: ['postgres_history_exporter:9187']
+
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['clickhouse:9363']
+
+  - job_name: 'redis_sessions'
+    static_configs:
+      - targets: ['redis_sessions_exporter:9121']
+
+  - job_name: 'redis_onboarding'
+    static_configs:
+      - targets: ['redis_onboarding_exporter:9121']
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb_exporter:9216']
