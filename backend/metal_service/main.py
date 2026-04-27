@@ -15,6 +15,7 @@ container = get_container()
 
 from shared.internal_auth import verify_internal_key
 from shared.utils.exceptions_handler import setup_exception_handlers
+from shared.utils.monitoring import instrument_app
 
 from .api.rates import router as rates_router
 from .repositories.metal import get_metal_repository
@@ -46,7 +47,6 @@ app = FastAPI(
 	version="0.2.0",
 	description="Сервис получения банковских котировок на драгоценные металлы (Золото, Серебро, Платина, Палладий).",
 	lifespan=lifespan,
-	dependencies=[Depends(verify_internal_key)],
 	openapi_tags=[
 		{
 			"name": "metal-rates",
@@ -75,4 +75,8 @@ async def health_check() -> dict:
 	}
 
 
-app.include_router(rates_router)
+# Инструментирование для мониторинга
+instrument_app(app)
+
+
+app.include_router(rates_router, dependencies=[Depends(verify_internal_key)])

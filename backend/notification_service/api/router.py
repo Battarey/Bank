@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from shared.rabbitmq.client import ping_rabbitmq
 from shared.mongodb_core import ping_mongodb
-from shared.rabbitmq.client import ping_rabbitmq
+from shared.utils.monitoring import instrument_app
 
 app = FastAPI(title="Notification Service Health API")
 
@@ -18,3 +18,5 @@ async def health_check():
 			"rabbitmq": "ok" if rmq_ok else "error",
 		}
 	}
+
+instrument_app(app)

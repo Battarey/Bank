@@ -15,6 +15,7 @@ from shared.internal_auth import verify_internal_key
 from shared.rabbitmq.client import connect as rmq_connect
 from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.utils.exceptions_handler import setup_exception_handlers
+from shared.utils.monitoring import instrument_app
 
 from .api.accounts import router as accounts_router
 
@@ -32,7 +33,6 @@ app = FastAPI(
 	version="0.3.0",
 	description="Сервис управления жизненным циклом банковских счетов: открытие, мониторинг, блокировка и закрытие.",
 	lifespan=lifespan,
-	dependencies=[Depends(verify_internal_key)],
 	openapi_tags=[
 		{
 			"name": "accounts",
@@ -69,4 +69,8 @@ async def health_check() -> dict:
 	}
 
 
-app.include_router(accounts_router)
+# Инструментирование для мониторинга
+instrument_app(app)
+
+
+app.include_router(accounts_router, dependencies=[Depends(verify_internal_key)])

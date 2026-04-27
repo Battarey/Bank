@@ -16,6 +16,7 @@ from shared.rabbitmq.client import connect as rmq_connect
 from shared.rabbitmq.client import disconnect as rmq_disconnect
 from shared.redis_sessions import client as redis_client
 from shared.utils.exceptions_handler import setup_exception_handlers
+from shared.utils.monitoring import instrument_app
 
 from .api.login import router as login_router
 from .api.session import router as session_router
@@ -36,7 +37,6 @@ app = FastAPI(
 	version="0.3.0",
 	description="Сервис управления доступом: вход по PIN, сессии, блокировка и разблокировка.",
 	lifespan=lifespan,
-	dependencies=[Depends(verify_internal_key)],
 	openapi_tags=[
 		{
 			"name": "auth-sessions",
@@ -79,6 +79,10 @@ async def health_check() -> dict:
 	}
 
 
-app.include_router(login_router)
-app.include_router(session_router)
-app.include_router(unlock_router)
+# Инструментирование для мониторинга
+instrument_app(app)
+
+
+app.include_router(login_router, dependencies=[Depends(verify_internal_key)])
+app.include_router(session_router, dependencies=[Depends(verify_internal_key)])
+app.include_router(unlock_router, dependencies=[Depends(verify_internal_key)])
