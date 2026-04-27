@@ -426,6 +426,9 @@ services:
       data:
         aliases:
           - rabbitmq
+      backend:
+        aliases:
+          - rabbitmq
 
   redis_sessions:
     image: redis:7-alpine
@@ -553,6 +556,30 @@ services:
     networks:
       - backend
     restart: unless-stopped
+
+  postgres_core_exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres_core_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_CORE_USER}:${POSTGRES_CORE_PASSWORD}@postgres_core:5432/${POSTGRES_CORE_DB}?sslmode=disable"
+    networks:
+      - backend
+    restart: unless-stopped
+    depends_on:
+      postgres_core:
+        condition: service_healthy
+
+  postgres_history_exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres_history_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_HISTORY_USER}:${POSTGRES_HISTORY_PASSWORD}@postgres_history:5432/${POSTGRES_HISTORY_DB}?sslmode=disable"
+    networks:
+      - backend
+    restart: unless-stopped
+    depends_on:
+      postgres_history:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest
